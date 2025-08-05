@@ -63,7 +63,7 @@ export const useBudgetData = () => {
       return result;
     } catch (error) {
       console.error('useBudgetData: Error adding person:', error);
-      throw error;
+      return { success: false, error: error as Error };
     }
   };
 
@@ -80,7 +80,7 @@ export const useBudgetData = () => {
       return result;
     } catch (error) {
       console.error('useBudgetData: Error removing person:', error);
-      throw error;
+      return { success: false, error: error as Error };
     }
   };
 
@@ -96,7 +96,7 @@ export const useBudgetData = () => {
       return result;
     } catch (error) {
       console.error('useBudgetData: Error updating person:', error);
-      throw error;
+      return { success: false, error: error as Error };
     }
   };
 
@@ -107,7 +107,7 @@ export const useBudgetData = () => {
       const person = data.people.find(p => p.id === personId);
       if (!person) {
         console.error('useBudgetData: Person not found:', personId);
-        throw new Error('Person not found');
+        return { success: false, error: new Error('Person not found') };
       }
       
       const newData = {
@@ -125,7 +125,7 @@ export const useBudgetData = () => {
       return result;
     } catch (error) {
       console.error('useBudgetData: Error adding income:', error);
-      throw error;
+      return { success: false, error: error as Error };
     }
   };
 
@@ -137,14 +137,14 @@ export const useBudgetData = () => {
       const person = data.people.find(p => p.id === personId);
       if (!person) {
         console.error('useBudgetData: Person not found:', personId);
-        throw new Error('Person not found');
+        return { success: false, error: new Error('Person not found') };
       }
       
       // Check if the income exists
       const incomeExists = person.income.find(i => i.id === incomeId);
       if (!incomeExists) {
         console.error('useBudgetData: Income not found:', incomeId);
-        throw new Error('Income not found');
+        return { success: false, error: new Error('Income not found') };
       }
       
       const newData = {
@@ -162,7 +162,7 @@ export const useBudgetData = () => {
       return result;
     } catch (error) {
       console.error('useBudgetData: Error removing income:', error);
-      throw error;
+      return { success: false, error: error as Error };
     }
   };
 
@@ -175,7 +175,7 @@ export const useBudgetData = () => {
       return result;
     } catch (error) {
       console.error('useBudgetData: Error adding expense:', error);
-      throw error;
+      return { success: false, error: error as Error };
     }
   };
 
@@ -191,7 +191,7 @@ export const useBudgetData = () => {
       return result;
     } catch (error) {
       console.error('useBudgetData: Error removing expense:', error);
-      throw error;
+      return { success: false, error: error as Error };
     }
   };
 
@@ -207,7 +207,7 @@ export const useBudgetData = () => {
       return result;
     } catch (error) {
       console.error('useBudgetData: Error updating expense:', error);
-      throw error;
+      return { success: false, error: error as Error };
     }
   };
 
@@ -220,7 +220,7 @@ export const useBudgetData = () => {
       return result;
     } catch (error) {
       console.error('useBudgetData: Error updating household settings:', error);
-      throw error;
+      return { success: false, error: error as Error };
     }
   };
 
