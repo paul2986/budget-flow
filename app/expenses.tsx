@@ -1,11 +1,12 @@
 
-import { Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, Alert, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { commonStyles, colors } from '../styles/commonStyles';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { calculateMonthlyAmount } from '../utils/calculations';
 import Icon from '../components/Icon';
+import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 
 export default function ExpensesScreen() {
   const { data, removeExpense } = useBudgetData();
@@ -20,17 +21,33 @@ export default function ExpensesScreen() {
 
   const handleRemoveExpense = (expenseId: string, description: string) => {
     Alert.alert(
-      'Remove Expense',
-      `Are you sure you want to remove "${description}"?`,
+      'Delete Expense',
+      `Are you sure you want to delete "${description}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Remove', 
+          text: 'Delete', 
           style: 'destructive',
           onPress: () => removeExpense(expenseId)
         },
       ]
     );
+  };
+
+  const handleEditExpense = (expense: any) => {
+    console.log('Editing expense:', expense);
+    router.push({
+      pathname: '/add-expense',
+      params: { 
+        editMode: 'true',
+        expenseId: expense.id,
+        amount: expense.amount.toString(),
+        description: expense.description,
+        category: expense.category,
+        frequency: expense.frequency,
+        personId: expense.personId || '',
+      }
+    });
   };
 
   const filteredExpenses = data.expenses.filter(expense => {
@@ -71,8 +88,8 @@ export default function ExpensesScreen() {
   return (
     <View style={commonStyles.container}>
       <View style={commonStyles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Icon name="arrow-back" size={24} style={{ color: colors.text }} />
+        <TouchableOpacity onPress={() => router.push('/')}>
+          <Icon name="home" size={24} style={{ color: colors.text }} />
         </TouchableOpacity>
         <Text style={commonStyles.headerTitle}>Expenses</Text>
         <TouchableOpacity onPress={() => router.push('/add-expense')}>
@@ -104,6 +121,15 @@ export default function ExpensesScreen() {
           </View>
         </View>
 
+        {/* Instructions */}
+        {sortedExpenses.length > 0 && (
+          <View style={[commonStyles.card, { backgroundColor: colors.primary + '10', marginBottom: 16 }]}>
+            <Text style={[commonStyles.text, { textAlign: 'center', fontSize: 14 }]}>
+              💡 <Text style={{ fontWeight: '600' }}>Tap</Text> an expense to edit • <Text style={{ fontWeight: '600' }}>Swipe left</Text> to delete
+            </Text>
+          </View>
+        )}
+
         {/* Expenses List */}
         {sortedExpenses.length === 0 ? (
           <View style={commonStyles.emptyState}>
@@ -116,61 +142,96 @@ export default function ExpensesScreen() {
             </Text>
           </View>
         ) : (
-          sortedExpenses.map((expense) => {
-            const person = data.people.find(p => p.id === expense.personId);
-            const monthlyAmount = calculateMonthlyAmount(expense.amount, expense.frequency);
-            
-            return (
-              <View key={expense.id} style={commonStyles.card}>
-                <View style={[commonStyles.row, { marginBottom: 8 }]}>
-                  <View style={commonStyles.flex1}>
-                    <Text style={[commonStyles.text, { fontWeight: '600', fontSize: 16 }]}>
-                      {expense.description}
-                    </Text>
-                  </View>
-                  <TouchableOpacity 
+          <GestureHandlerRootView>
+            {sortedExpenses.map((expense) => {
+              const person = data.people.find(p => p.id === expense.personId);
+              const monthlyAmount = calculateMonthlyAmount(expense.amount, expense.frequency);
+              
+              const renderRightActions = () => (
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  paddingRight: 20,
+                }}>
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: colors.error,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      width: 80,
+                      height: '100%',
+                      borderRadius: 12,
+                      marginLeft: 10,
+                    }}
                     onPress={() => handleRemoveExpense(expense.id, expense.description)}
                   >
-                    <Icon name="trash-outline" size={20} style={{ color: colors.error }} />
+                    <Icon name="trash" size={24} style={{ color: 'white' }} />
+                    <Text style={{ color: 'white', fontSize: 12, fontWeight: '600', marginTop: 4 }}>
+                      Delete
+                    </Text>
                   </TouchableOpacity>
                 </View>
-                
-                <View style={[commonStyles.row, { marginBottom: 8 }]}>
-                  <View style={commonStyles.rowStart}>
-                    <View style={[
-                      commonStyles.badge,
-                      { 
-                        backgroundColor: expense.category === 'household' ? colors.household : colors.personal,
-                        marginRight: 8,
-                      }
-                    ]}>
-                      <Text style={commonStyles.badgeText}>
-                        {expense.category === 'household' ? 'Household' : 'Personal'}
+              );
+              
+              return (
+                <Swipeable
+                  key={expense.id}
+                  renderRightActions={renderRightActions}
+                  rightThreshold={40}
+                >
+                  <TouchableOpacity
+                    style={[commonStyles.card, { marginBottom: 12 }]}
+                    onPress={() => handleEditExpense(expense)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[commonStyles.row, { marginBottom: 8 }]}>
+                      <View style={commonStyles.flex1}>
+                        <Text style={[commonStyles.text, { fontWeight: '600', fontSize: 16 }]}>
+                          {expense.description}
+                        </Text>
+                      </View>
+                      <Icon name="chevron-forward" size={16} style={{ color: colors.textSecondary }} />
+                    </View>
+                    
+                    <View style={[commonStyles.row, { marginBottom: 8 }]}>
+                      <View style={commonStyles.rowStart}>
+                        <View style={[
+                          commonStyles.badge,
+                          { 
+                            backgroundColor: expense.category === 'household' ? colors.household : colors.personal,
+                            marginRight: 8,
+                          }
+                        ]}>
+                          <Text style={commonStyles.badgeText}>
+                            {expense.category === 'household' ? 'Household' : 'Personal'}
+                          </Text>
+                        </View>
+                        {expense.category === 'personal' && person && (
+                          <Text style={commonStyles.textSecondary}>{person.name}</Text>
+                        )}
+                      </View>
+                      <Text style={[
+                        commonStyles.text, 
+                        { color: colors.expense, fontWeight: '600', fontSize: 16 }
+                      ]}>
+                        {formatCurrency(expense.amount)}
                       </Text>
                     </View>
-                    {expense.category === 'personal' && person && (
-                      <Text style={commonStyles.textSecondary}>{person.name}</Text>
-                    )}
-                  </View>
-                  <Text style={[
-                    commonStyles.text, 
-                    { color: colors.expense, fontWeight: '600', fontSize: 16 }
-                  ]}>
-                    {formatCurrency(expense.amount)}
-                  </Text>
-                </View>
-                
-                <View style={commonStyles.row}>
-                  <Text style={commonStyles.textSecondary}>
-                    {expense.frequency} • {new Date(expense.date).toLocaleDateString()}
-                  </Text>
-                  <Text style={[commonStyles.textSecondary, { fontWeight: '600' }]}>
-                    {formatCurrency(monthlyAmount)}/month
-                  </Text>
-                </View>
-              </View>
-            );
-          })
+                    
+                    <View style={commonStyles.row}>
+                      <Text style={commonStyles.textSecondary}>
+                        {expense.frequency} • {new Date(expense.date).toLocaleDateString()}
+                      </Text>
+                      <Text style={[commonStyles.textSecondary, { fontWeight: '600' }]}>
+                        {formatCurrency(monthlyAmount)}/month
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </Swipeable>
+              );
+            })}
+          </GestureHandlerRootView>
         )}
       </ScrollView>
     </View>

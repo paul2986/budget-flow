@@ -58,8 +58,8 @@ export default function SettingsScreen() {
   return (
     <View style={commonStyles.container}>
       <View style={commonStyles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Icon name="arrow-back" size={24} style={{ color: colors.text }} />
+        <TouchableOpacity onPress={() => router.push('/')}>
+          <Icon name="home" size={24} style={{ color: colors.text }} />
         </TouchableOpacity>
         <Text style={commonStyles.headerTitle}>Settings</Text>
         <View style={{ width: 24 }} />

@@ -1,7 +1,7 @@
 
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useState, useEffect } from 'react';
 import { commonStyles, colors, buttonStyles } from '../styles/commonStyles';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { Expense } from '../types/budget';
@@ -9,7 +9,10 @@ import Button from '../components/Button';
 import Icon from '../components/Icon';
 
 export default function AddExpenseScreen() {
-  const { data, addExpense } = useBudgetData();
+  const { data, addExpense, updateExpense } = useBudgetData();
+  const params = useLocalSearchParams();
+  const isEditMode = params.editMode === 'true';
+  
   const [expense, setExpense] = useState({
     amount: '',
     description: '',
@@ -18,8 +21,21 @@ export default function AddExpenseScreen() {
     personId: data.people[0]?.id || '',
   });
 
-  const handleAddExpense = async () => {
-    console.log('Add expense button pressed');
+  useEffect(() => {
+    if (isEditMode && params) {
+      console.log('Edit mode detected, params:', params);
+      setExpense({
+        amount: params.amount as string || '',
+        description: params.description as string || '',
+        category: (params.category as 'household' | 'personal') || 'personal',
+        frequency: (params.frequency as any) || 'monthly',
+        personId: params.personId as string || data.people[0]?.id || '',
+      });
+    }
+  }, [isEditMode, params, data.people]);
+
+  const handleSaveExpense = async () => {
+    console.log(isEditMode ? 'Update expense button pressed' : 'Add expense button pressed');
     console.log('Current expense data:', expense);
     
     if (!expense.amount || !expense.description.trim()) {
@@ -39,39 +55,65 @@ export default function AddExpenseScreen() {
     }
 
     try {
-      const newExpense: Expense = {
-        id: `expense_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        amount: amount,
-        description: expense.description.trim(),
-        category: expense.category,
-        frequency: expense.frequency,
-        personId: expense.category === 'personal' ? expense.personId : undefined,
-        date: new Date().toISOString(),
-      };
+      if (isEditMode) {
+        // Update existing expense
+        const updatedExpense: Expense = {
+          id: params.expenseId as string,
+          amount: amount,
+          description: expense.description.trim(),
+          category: expense.category,
+          frequency: expense.frequency,
+          personId: expense.category === 'personal' ? expense.personId : undefined,
+          date: new Date().toISOString(), // Update the date to current time
+        };
 
-      console.log('Adding new expense:', newExpense);
-      await addExpense(newExpense);
-      console.log('Expense added successfully');
-      
-      Alert.alert(
-        'Success',
-        'Expense added successfully!',
-        [
-          { text: 'Add Another', onPress: () => {
-            setExpense({
-              amount: '',
-              description: '',
-              category: 'personal',
-              frequency: 'monthly',
-              personId: data.people[0]?.id || '',
-            });
-          }},
-          { text: 'Go Home', onPress: () => router.push('/') },
-        ]
-      );
+        console.log('Updating expense:', updatedExpense);
+        await updateExpense(updatedExpense);
+        console.log('Expense updated successfully');
+        
+        Alert.alert(
+          'Success',
+          'Expense updated successfully!',
+          [
+            { text: 'OK', onPress: () => router.push('/expenses') },
+          ]
+        );
+      } else {
+        // Add new expense
+        const newExpense: Expense = {
+          id: `expense_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          amount: amount,
+          description: expense.description.trim(),
+          category: expense.category,
+          frequency: expense.frequency,
+          personId: expense.category === 'personal' ? expense.personId : undefined,
+          date: new Date().toISOString(),
+        };
+
+        console.log('Adding new expense:', newExpense);
+        await addExpense(newExpense);
+        console.log('Expense added successfully');
+        
+        Alert.alert(
+          'Success',
+          'Expense added successfully!',
+          [
+            { text: 'Add Another', onPress: () => {
+              setExpense({
+                amount: '',
+                description: '',
+                category: 'personal',
+                frequency: 'monthly',
+                personId: data.people[0]?.id || '',
+              });
+            }},
+            { text: 'Go Home', onPress: () => router.push('/') },
+          ]
+        );
+      }
     } catch (error) {
-      console.error('Error adding expense:', error);
-      Alert.alert('Error', 'Failed to add expense. Please try again.');
+      console.error('Error saving expense:', error);
+      Alert.alert('Error', `Failed to ${isEditMode ? 'update' : 'add'} expense. Please try again.`);
     }
   };
 
@@ -193,13 +235,15 @@ export default function AddExpenseScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Icon name="arrow-back" size={24} style={{ color: colors.text }} />
         </TouchableOpacity>
-        <Text style={commonStyles.headerTitle}>Add Expense</Text>
+        <Text style={commonStyles.headerTitle}>{isEditMode ? 'Edit Expense' : 'Add Expense'}</Text>
         <View style={{ width: 24 }} />
       </View>
 
       <ScrollView style={commonStyles.content} contentContainerStyle={commonStyles.scrollContent}>
         <View style={commonStyles.card}>
-          <Text style={[commonStyles.subtitle, { marginBottom: 16 }]}>Expense Details</Text>
+          <Text style={[commonStyles.subtitle, { marginBottom: 16 }]}>
+            {isEditMode ? 'Edit Expense Details' : 'Expense Details'}
+          </Text>
           
           <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
             Description:
@@ -250,8 +294,8 @@ export default function AddExpenseScreen() {
           )}
           
           <Button
-            text="Add Expense"
-            onPress={handleAddExpense}
+            text={isEditMode ? "Update Expense" : "Add Expense"}
+            onPress={handleSaveExpense}
             style={[buttonStyles.primary, { backgroundColor: colors.expense }]}
           />
         </View>

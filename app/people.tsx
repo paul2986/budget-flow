@@ -158,8 +158,8 @@ export default function PeopleScreen() {
   return (
     <View style={commonStyles.container}>
       <View style={commonStyles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Icon name="arrow-back" size={24} style={{ color: colors.text }} />
+        <TouchableOpacity onPress={() => router.push('/')}>
+          <Icon name="home" size={24} style={{ color: colors.text }} />
         </TouchableOpacity>
         <Text style={commonStyles.headerTitle}>Manage People</Text>
         <TouchableOpacity onPress={() => setShowAddPerson(true)}>

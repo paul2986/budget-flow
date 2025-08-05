@@ -94,6 +94,14 @@ export const useBudgetData = () => {
     await saveData(newData);
   };
 
+  const updateExpense = async (updatedExpense: Expense) => {
+    const newData = {
+      ...data,
+      expenses: data.expenses.map(e => e.id === updatedExpense.id ? updatedExpense : e),
+    };
+    await saveData(newData);
+  };
+
   const updateHouseholdSettings = async (settings: HouseholdSettings) => {
     const newData = { ...data, householdSettings: settings };
     await saveData(newData);
@@ -109,6 +117,7 @@ export const useBudgetData = () => {
     removeIncome,
     addExpense,
     removeExpense,
+    updateExpense,
     updateHouseholdSettings,
     refreshData: loadData,
   };
