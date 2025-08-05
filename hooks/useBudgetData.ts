@@ -17,6 +17,7 @@ export const useBudgetData = () => {
 
   const loadData = async () => {
     try {
+      console.log('useBudgetData: Loading data...');
       const budgetData = await loadBudgetData();
       console.log('useBudgetData: Loaded data:', budgetData);
       setData(budgetData);
@@ -41,100 +42,163 @@ export const useBudgetData = () => {
 
   const addPerson = async (person: Person) => {
     console.log('useBudgetData: Adding person:', person);
-    const newData = { ...data, people: [...data.people, person] };
-    await saveData(newData);
+    try {
+      const newData = { ...data, people: [...data.people, person] };
+      await saveData(newData);
+      console.log('useBudgetData: Person added successfully');
+    } catch (error) {
+      console.error('useBudgetData: Error adding person:', error);
+      throw error;
+    }
   };
 
   const removePerson = async (personId: string) => {
     console.log('useBudgetData: Removing person:', personId);
-    const newData = {
-      ...data,
-      people: data.people.filter(p => p.id !== personId),
-      expenses: data.expenses.filter(e => e.personId !== personId),
-    };
-    await saveData(newData);
+    try {
+      const newData = {
+        ...data,
+        people: data.people.filter(p => p.id !== personId),
+        expenses: data.expenses.filter(e => e.personId !== personId),
+      };
+      await saveData(newData);
+      console.log('useBudgetData: Person removed successfully');
+    } catch (error) {
+      console.error('useBudgetData: Error removing person:', error);
+      throw error;
+    }
   };
 
   const updatePerson = async (updatedPerson: Person) => {
     console.log('useBudgetData: Updating person:', updatedPerson);
-    const newData = {
-      ...data,
-      people: data.people.map(p => p.id === updatedPerson.id ? updatedPerson : p),
-    };
-    await saveData(newData);
+    try {
+      const newData = {
+        ...data,
+        people: data.people.map(p => p.id === updatedPerson.id ? updatedPerson : p),
+      };
+      await saveData(newData);
+      console.log('useBudgetData: Person updated successfully');
+    } catch (error) {
+      console.error('useBudgetData: Error updating person:', error);
+      throw error;
+    }
   };
 
   const addIncome = async (personId: string, income: Income) => {
     console.log('useBudgetData: Adding income to person:', personId, income);
-    const newData = {
-      ...data,
-      people: data.people.map(p => 
-        p.id === personId 
-          ? { ...p, income: [...p.income, income] }
-          : p
-      ),
-    };
-    await saveData(newData);
+    try {
+      // Find the person first to verify they exist
+      const person = data.people.find(p => p.id === personId);
+      if (!person) {
+        console.error('useBudgetData: Person not found:', personId);
+        throw new Error('Person not found');
+      }
+      
+      const newData = {
+        ...data,
+        people: data.people.map(p => 
+          p.id === personId 
+            ? { ...p, income: [...p.income, income] }
+            : p
+        ),
+      };
+      
+      console.log('useBudgetData: New data after adding income:', newData);
+      await saveData(newData);
+      console.log('useBudgetData: Income added successfully');
+    } catch (error) {
+      console.error('useBudgetData: Error adding income:', error);
+      throw error;
+    }
   };
 
   const removeIncome = async (personId: string, incomeId: string) => {
     console.log('useBudgetData: Removing income from person:', personId, incomeId);
     
-    // Find the person first to verify they exist
-    const person = data.people.find(p => p.id === personId);
-    if (!person) {
-      console.error('useBudgetData: Person not found:', personId);
-      throw new Error('Person not found');
+    try {
+      // Find the person first to verify they exist
+      const person = data.people.find(p => p.id === personId);
+      if (!person) {
+        console.error('useBudgetData: Person not found:', personId);
+        throw new Error('Person not found');
+      }
+      
+      // Check if the income exists
+      const incomeExists = person.income.find(i => i.id === incomeId);
+      if (!incomeExists) {
+        console.error('useBudgetData: Income not found:', incomeId);
+        throw new Error('Income not found');
+      }
+      
+      const newData = {
+        ...data,
+        people: data.people.map(p => 
+          p.id === personId 
+            ? { ...p, income: p.income.filter(i => i.id !== incomeId) }
+            : p
+        ),
+      };
+      
+      console.log('useBudgetData: New data after removing income:', newData);
+      await saveData(newData);
+      console.log('useBudgetData: Income removed successfully');
+    } catch (error) {
+      console.error('useBudgetData: Error removing income:', error);
+      throw error;
     }
-    
-    // Check if the income exists
-    const incomeExists = person.income.find(i => i.id === incomeId);
-    if (!incomeExists) {
-      console.error('useBudgetData: Income not found:', incomeId);
-      throw new Error('Income not found');
-    }
-    
-    const newData = {
-      ...data,
-      people: data.people.map(p => 
-        p.id === personId 
-          ? { ...p, income: p.income.filter(i => i.id !== incomeId) }
-          : p
-      ),
-    };
-    
-    console.log('useBudgetData: New data after removing income:', newData);
-    await saveData(newData);
   };
 
   const addExpense = async (expense: Expense) => {
     console.log('useBudgetData: Adding expense:', expense);
-    const newData = { ...data, expenses: [...data.expenses, expense] };
-    await saveData(newData);
+    try {
+      const newData = { ...data, expenses: [...data.expenses, expense] };
+      await saveData(newData);
+      console.log('useBudgetData: Expense added successfully');
+    } catch (error) {
+      console.error('useBudgetData: Error adding expense:', error);
+      throw error;
+    }
   };
 
   const removeExpense = async (expenseId: string) => {
     console.log('useBudgetData: Removing expense:', expenseId);
-    const newData = {
-      ...data,
-      expenses: data.expenses.filter(e => e.id !== expenseId),
-    };
-    await saveData(newData);
+    try {
+      const newData = {
+        ...data,
+        expenses: data.expenses.filter(e => e.id !== expenseId),
+      };
+      await saveData(newData);
+      console.log('useBudgetData: Expense removed successfully');
+    } catch (error) {
+      console.error('useBudgetData: Error removing expense:', error);
+      throw error;
+    }
   };
 
   const updateExpense = async (updatedExpense: Expense) => {
     console.log('useBudgetData: Updating expense:', updatedExpense);
-    const newData = {
-      ...data,
-      expenses: data.expenses.map(e => e.id === updatedExpense.id ? updatedExpense : e),
-    };
-    await saveData(newData);
+    try {
+      const newData = {
+        ...data,
+        expenses: data.expenses.map(e => e.id === updatedExpense.id ? updatedExpense : e),
+      };
+      await saveData(newData);
+      console.log('useBudgetData: Expense updated successfully');
+    } catch (error) {
+      console.error('useBudgetData: Error updating expense:', error);
+      throw error;
+    }
   };
 
   const updateHouseholdSettings = async (settings: HouseholdSettings) => {
     console.log('useBudgetData: Updating household settings:', settings);
-    const newData = { ...data, householdSettings: settings };
-    await saveData(newData);
+    try {
+      const newData = { ...data, householdSettings: settings };
+      await saveData(newData);
+      console.log('useBudgetData: Household settings updated successfully');
+    } catch (error) {
+      console.error('useBudgetData: Error updating household settings:', error);
+      throw error;
+    }
   };
 
   return {

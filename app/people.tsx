@@ -32,8 +32,8 @@ export default function PeopleScreen() {
   });
 
   const handleAddPerson = async () => {
-    console.log('Add person button pressed');
-    console.log('New person name:', newPersonName);
+    console.log('PeopleScreen: Add person button pressed');
+    console.log('PeopleScreen: New person name:', newPersonName);
     
     if (!newPersonName.trim()) {
       Alert.alert('Error', 'Please enter a name');
@@ -47,21 +47,22 @@ export default function PeopleScreen() {
         income: [],
       };
 
-      console.log('Adding new person:', person);
+      console.log('PeopleScreen: Adding new person:', person);
       await addPerson(person);
-      console.log('Person added successfully');
+      console.log('PeopleScreen: Person added successfully');
       
       setNewPersonName('');
       setShowAddPerson(false);
       
       Alert.alert('Success', `${person.name} has been added successfully!`);
     } catch (error) {
-      console.error('Error adding person:', error);
+      console.error('PeopleScreen: Error adding person:', error);
       Alert.alert('Error', 'Failed to add person. Please try again.');
     }
   };
 
   const handleRemovePerson = (person: Person) => {
+    console.log('PeopleScreen: Attempting to remove person:', person);
     Alert.alert(
       'Remove Person',
       `Are you sure you want to remove ${person.name}? This will also remove all their income and personal expenses.`,
@@ -70,13 +71,24 @@ export default function PeopleScreen() {
         { 
           text: 'Remove', 
           style: 'destructive',
-          onPress: () => removePerson(person.id)
+          onPress: async () => {
+            try {
+              console.log('PeopleScreen: Removing person:', person.id);
+              await removePerson(person.id);
+              console.log('PeopleScreen: Person removed successfully');
+              Alert.alert('Success', `${person.name} has been removed.`);
+            } catch (error) {
+              console.error('PeopleScreen: Error removing person:', error);
+              Alert.alert('Error', 'Failed to remove person. Please try again.');
+            }
+          }
         },
       ]
     );
   };
 
   const handleEditPerson = (person: Person) => {
+    console.log('PeopleScreen: Navigating to edit person:', person);
     router.push({
       pathname: '/edit-person',
       params: { personId: person.id }
@@ -84,8 +96,8 @@ export default function PeopleScreen() {
   };
 
   const handleAddIncome = async () => {
-    console.log('Add income button pressed');
-    console.log('New income data:', newIncome);
+    console.log('PeopleScreen: Add income button pressed');
+    console.log('PeopleScreen: New income data:', newIncome);
     
     if (!selectedPersonId || !newIncome.amount || !newIncome.label.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
@@ -107,9 +119,9 @@ export default function PeopleScreen() {
         personId: selectedPersonId,
       };
 
-      console.log('Adding new income:', income);
+      console.log('PeopleScreen: Adding new income:', income);
       await addIncome(selectedPersonId, income);
-      console.log('Income added successfully');
+      console.log('PeopleScreen: Income added successfully');
       
       setNewIncome({ amount: '', label: '', frequency: 'monthly' });
       setShowAddIncome(false);
@@ -117,12 +129,13 @@ export default function PeopleScreen() {
       
       Alert.alert('Success', 'Income source added successfully!');
     } catch (error) {
-      console.error('Error adding income:', error);
+      console.error('PeopleScreen: Error adding income:', error);
       Alert.alert('Error', 'Failed to add income. Please try again.');
     }
   };
 
   const handleRemoveIncome = (personId: string, incomeId: string, incomeLabel: string) => {
+    console.log('PeopleScreen: Attempting to remove income:', { personId, incomeId, incomeLabel });
     Alert.alert(
       'Remove Income',
       `Are you sure you want to remove "${incomeLabel}"?`,
@@ -131,7 +144,17 @@ export default function PeopleScreen() {
         { 
           text: 'Remove', 
           style: 'destructive',
-          onPress: () => removeIncome(personId, incomeId)
+          onPress: async () => {
+            try {
+              console.log('PeopleScreen: Removing income:', personId, incomeId);
+              await removeIncome(personId, incomeId);
+              console.log('PeopleScreen: Income removed successfully');
+              Alert.alert('Success', `"${incomeLabel}" has been removed.`);
+            } catch (error) {
+              console.error('PeopleScreen: Error removing income:', error);
+              Alert.alert('Error', 'Failed to remove income. Please try again.');
+            }
+          }
         },
       ]
     );
@@ -352,7 +375,12 @@ export default function PeopleScreen() {
                   <Text style={[commonStyles.subtitle, { marginBottom: 0, color: currentColors.text }]}>
                     {person.name}
                   </Text>
-                  <TouchableOpacity onPress={() => handleRemovePerson(person)}>
+                  <TouchableOpacity 
+                    onPress={(e) => {
+                      e.stopPropagation(); // Prevent triggering the edit action
+                      handleRemovePerson(person);
+                    }}
+                  >
                     <Icon name="trash-outline" size={20} style={{ color: currentColors.error }} />
                   </TouchableOpacity>
                 </View>
@@ -382,7 +410,8 @@ export default function PeopleScreen() {
                   <View style={[commonStyles.row, { marginBottom: 8 }]}>
                     <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>Income Sources:</Text>
                     <TouchableOpacity 
-                      onPress={() => {
+                      onPress={(e) => {
+                        e.stopPropagation(); // Prevent triggering the edit action
                         setSelectedPersonId(person.id);
                         setShowAddIncome(true);
                       }}
@@ -403,7 +432,10 @@ export default function PeopleScreen() {
                           </Text>
                         </View>
                         <TouchableOpacity 
-                          onPress={() => handleRemoveIncome(person.id, income.id, income.label)}
+                          onPress={(e) => {
+                            e.stopPropagation(); // Prevent triggering the edit action
+                            handleRemoveIncome(person.id, income.id, income.label);
+                          }}
                         >
                           <Icon name="close-circle-outline" size={16} style={{ color: currentColors.error }} />
                         </TouchableOpacity>

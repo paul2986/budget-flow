@@ -20,6 +20,14 @@ export default function HomeScreen() {
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
 
+  const handleEditExpense = (expenseId: string) => {
+    console.log('HomeScreen: Navigating to edit expense:', expenseId);
+    router.push({
+      pathname: '/add-expense',
+      params: { id: expenseId }
+    });
+  };
+
   if (loading) {
     return (
       <View style={[commonStyles.container, commonStyles.centerContent, { backgroundColor: currentColors.background }]}>
@@ -133,7 +141,12 @@ export default function HomeScreen() {
             data.expenses.slice(-3).reverse().map((expense) => {
               const person = data.people.find(p => p.id === expense.personId);
               return (
-                <View key={expense.id} style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
+                <TouchableOpacity 
+                  key={expense.id} 
+                  style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}
+                  onPress={() => handleEditExpense(expense.id)}
+                  activeOpacity={0.7}
+                >
                   <View style={commonStyles.row}>
                     <View style={commonStyles.flex1}>
                       <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>
@@ -145,18 +158,23 @@ export default function HomeScreen() {
                         {expense.frequency}
                       </Text>
                     </View>
-                    <Text style={[
-                      commonStyles.text, 
-                      { 
-                        color: currentColors.expense, 
-                        fontWeight: '600',
-                        fontSize: 16 
-                      }
-                    ]}>
-                      {formatCurrency(expense.amount)}
-                    </Text>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={[
+                        commonStyles.text, 
+                        { 
+                          color: currentColors.expense, 
+                          fontWeight: '600',
+                          fontSize: 16 
+                        }
+                      ]}>
+                        {formatCurrency(expense.amount)}
+                      </Text>
+                      <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, fontSize: 12 }]}>
+                        Tap to edit
+                      </Text>
+                    </View>
                   </View>
-                </View>
+                </TouchableOpacity>
               );
             })
           )}

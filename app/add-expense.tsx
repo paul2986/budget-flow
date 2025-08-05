@@ -26,18 +26,28 @@ export default function AddExpenseScreen() {
   const expenseToEdit = data.expenses.find(e => e.id === params.id);
 
   useEffect(() => {
+    console.log('AddExpenseScreen: Edit mode:', isEditMode);
+    console.log('AddExpenseScreen: Expense ID:', params.id);
+    console.log('AddExpenseScreen: Found expense:', expenseToEdit);
+    
     if (isEditMode && expenseToEdit) {
+      console.log('AddExpenseScreen: Pre-filling form with expense data');
       setDescription(expenseToEdit.description);
       setAmount(expenseToEdit.amount.toString());
       setCategory(expenseToEdit.category);
       setFrequency(expenseToEdit.frequency);
       setSelectedPersonId(expenseToEdit.personId || '');
+    } else if (isEditMode && !expenseToEdit) {
+      console.log('AddExpenseScreen: Expense not found for editing');
+      Alert.alert('Error', 'Expense not found', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
     }
-  }, [isEditMode, expenseToEdit, data.people]);
+  }, [isEditMode, expenseToEdit, data.people, params.id]);
 
   const handleSaveExpense = async () => {
-    console.log('Save expense button pressed');
-    console.log('Form data:', { description, amount, category, frequency, selectedPersonId });
+    console.log('AddExpenseScreen: Save expense button pressed');
+    console.log('AddExpenseScreen: Form data:', { description, amount, category, frequency, selectedPersonId });
     
     if (!description.trim()) {
       Alert.alert('Error', 'Please enter a description');
@@ -63,24 +73,26 @@ export default function AddExpenseScreen() {
         category,
         frequency,
         personId: category === 'personal' ? selectedPersonId : undefined,
-        date: new Date().toISOString(),
+        date: isEditMode ? expenseToEdit!.date : new Date().toISOString(),
       };
 
-      console.log('Saving expense:', expenseData);
+      console.log('AddExpenseScreen: Saving expense:', expenseData);
       
       if (isEditMode) {
         await updateExpense(expenseData);
-        console.log('Expense updated successfully');
-        Alert.alert('Success', 'Expense updated successfully!');
+        console.log('AddExpenseScreen: Expense updated successfully');
+        Alert.alert('Success', 'Expense updated successfully!', [
+          { text: 'OK', onPress: () => router.back() }
+        ]);
       } else {
         await addExpense(expenseData);
-        console.log('Expense added successfully');
-        Alert.alert('Success', 'Expense added successfully!');
+        console.log('AddExpenseScreen: Expense added successfully');
+        Alert.alert('Success', 'Expense added successfully!', [
+          { text: 'OK', onPress: () => router.back() }
+        ]);
       }
-      
-      router.back();
     } catch (error) {
-      console.error('Error saving expense:', error);
+      console.error('AddExpenseScreen: Error saving expense:', error);
       Alert.alert('Error', 'Failed to save expense. Please try again.');
     }
   };

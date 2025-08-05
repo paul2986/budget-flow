@@ -43,8 +43,9 @@ export default function EditPersonScreen() {
       setPersonName(foundPerson.name);
     } else {
       console.log('EditPersonScreen: Person not found');
-      Alert.alert('Error', 'Person not found');
-      router.back();
+      Alert.alert('Error', 'Person not found', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
     }
   }, [personId, data.people]);
 
@@ -66,8 +67,9 @@ export default function EditPersonScreen() {
       await updatePerson(updatedPerson);
       console.log('EditPersonScreen: Person updated successfully');
       
-      Alert.alert('Success', 'Person updated successfully!');
-      router.back();
+      Alert.alert('Success', 'Person updated successfully!', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
     } catch (error) {
       console.error('EditPersonScreen: Error updating person:', error);
       Alert.alert('Error', 'Failed to update person. Please try again.');
@@ -129,6 +131,7 @@ export default function EditPersonScreen() {
               console.log('EditPersonScreen: Calling removeIncome with:', person.id, incomeId);
               await removeIncome(person.id, incomeId);
               console.log('EditPersonScreen: Income removed successfully');
+              Alert.alert('Success', `"${incomeLabel}" has been removed.`);
             } catch (error) {
               console.error('EditPersonScreen: Error removing income:', error);
               Alert.alert('Error', 'Failed to remove income. Please try again.');
@@ -270,6 +273,7 @@ export default function EditPersonScreen() {
               placeholderTextColor={currentColors.textSecondary}
               value={newIncome.label}
               onChangeText={(text) => setNewIncome({ ...newIncome, label: text })}
+              autoFocus
             />
             
             <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
@@ -352,6 +356,22 @@ export default function EditPersonScreen() {
               </View>
             ))
           )}
+        </View>
+
+        {/* Save Button */}
+        <View style={commonStyles.section}>
+          <Button
+            text="Save Changes"
+            onPress={handleSavePerson}
+            style={[buttonStyles.primary, { backgroundColor: currentColors.primary }]}
+          />
+          
+          <Button
+            text="Cancel"
+            onPress={() => router.back()}
+            style={[buttonStyles.outline, { borderColor: currentColors.textSecondary, marginTop: 12 }]}
+            textStyle={{ color: currentColors.textSecondary }}
+          />
         </View>
       </ScrollView>
     </View>
