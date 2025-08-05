@@ -18,9 +18,10 @@ export const useBudgetData = () => {
   const loadData = async () => {
     try {
       const budgetData = await loadBudgetData();
+      console.log('useBudgetData: Loaded data:', budgetData);
       setData(budgetData);
     } catch (error) {
-      console.error('Error loading budget data:', error);
+      console.error('useBudgetData: Error loading budget data:', error);
     } finally {
       setLoading(false);
     }
@@ -28,19 +29,24 @@ export const useBudgetData = () => {
 
   const saveData = async (newData: BudgetData) => {
     try {
+      console.log('useBudgetData: Saving data:', newData);
       await saveBudgetData(newData);
       setData(newData);
+      console.log('useBudgetData: Data saved successfully');
     } catch (error) {
-      console.error('Error saving budget data:', error);
+      console.error('useBudgetData: Error saving budget data:', error);
+      throw error;
     }
   };
 
   const addPerson = async (person: Person) => {
+    console.log('useBudgetData: Adding person:', person);
     const newData = { ...data, people: [...data.people, person] };
     await saveData(newData);
   };
 
   const removePerson = async (personId: string) => {
+    console.log('useBudgetData: Removing person:', personId);
     const newData = {
       ...data,
       people: data.people.filter(p => p.id !== personId),
@@ -50,6 +56,7 @@ export const useBudgetData = () => {
   };
 
   const updatePerson = async (updatedPerson: Person) => {
+    console.log('useBudgetData: Updating person:', updatedPerson);
     const newData = {
       ...data,
       people: data.people.map(p => p.id === updatedPerson.id ? updatedPerson : p),
@@ -58,6 +65,7 @@ export const useBudgetData = () => {
   };
 
   const addIncome = async (personId: string, income: Income) => {
+    console.log('useBudgetData: Adding income to person:', personId, income);
     const newData = {
       ...data,
       people: data.people.map(p => 
@@ -70,6 +78,22 @@ export const useBudgetData = () => {
   };
 
   const removeIncome = async (personId: string, incomeId: string) => {
+    console.log('useBudgetData: Removing income from person:', personId, incomeId);
+    
+    // Find the person first to verify they exist
+    const person = data.people.find(p => p.id === personId);
+    if (!person) {
+      console.error('useBudgetData: Person not found:', personId);
+      throw new Error('Person not found');
+    }
+    
+    // Check if the income exists
+    const incomeExists = person.income.find(i => i.id === incomeId);
+    if (!incomeExists) {
+      console.error('useBudgetData: Income not found:', incomeId);
+      throw new Error('Income not found');
+    }
+    
     const newData = {
       ...data,
       people: data.people.map(p => 
@@ -78,15 +102,19 @@ export const useBudgetData = () => {
           : p
       ),
     };
+    
+    console.log('useBudgetData: New data after removing income:', newData);
     await saveData(newData);
   };
 
   const addExpense = async (expense: Expense) => {
+    console.log('useBudgetData: Adding expense:', expense);
     const newData = { ...data, expenses: [...data.expenses, expense] };
     await saveData(newData);
   };
 
   const removeExpense = async (expenseId: string) => {
+    console.log('useBudgetData: Removing expense:', expenseId);
     const newData = {
       ...data,
       expenses: data.expenses.filter(e => e.id !== expenseId),
@@ -95,6 +123,7 @@ export const useBudgetData = () => {
   };
 
   const updateExpense = async (updatedExpense: Expense) => {
+    console.log('useBudgetData: Updating expense:', updatedExpense);
     const newData = {
       ...data,
       expenses: data.expenses.map(e => e.id === updatedExpense.id ? updatedExpense : e),
@@ -103,6 +132,7 @@ export const useBudgetData = () => {
   };
 
   const updateHouseholdSettings = async (settings: HouseholdSettings) => {
+    console.log('useBudgetData: Updating household settings:', settings);
     const newData = { ...data, householdSettings: settings };
     await saveData(newData);
   };

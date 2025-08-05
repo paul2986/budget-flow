@@ -38,35 +38,11 @@ export default function HomeScreen() {
   const monthlyExpenses = calculateMonthlyAmount(totalExpenses, 'yearly');
   const monthlyRemaining = calculateMonthlyAmount(remainingBudget, 'yearly');
 
-  const QuickActionCard = ({ title, icon, onPress, color }: any) => (
-    <TouchableOpacity 
-      style={[
-        commonStyles.card, 
-        { 
-          backgroundColor: color, 
-          minHeight: 100,
-          borderColor: currentColors.border 
-        }
-      ]} 
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <View style={commonStyles.centerContent}>
-        <Icon name={icon} size={32} style={{ color: currentColors.backgroundAlt, marginBottom: 8 }} />
-        <Text style={[commonStyles.text, { color: currentColors.backgroundAlt, textAlign: 'center', fontWeight: '600' }]}>
-          {title}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
-
   return (
     <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
       <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
         <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Budget Tracker</Text>
-        <TouchableOpacity onPress={() => router.push('/settings')}>
-          <Icon name="settings-outline" size={24} style={{ color: currentColors.text }} />
-        </TouchableOpacity>
+        <View style={{ width: 24 }} />
       </View>
 
       <ScrollView style={commonStyles.content} contentContainerStyle={commonStyles.scrollContent}>
@@ -142,49 +118,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Quick Actions */}
-        <View style={commonStyles.section}>
-          <Text style={[commonStyles.subtitle, { color: currentColors.text }]}>Quick Actions</Text>
-          
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-            <View style={{ flex: 1, marginRight: 6 }}>
-              <QuickActionCard
-                title="Add Expense"
-                icon="add-circle-outline"
-                color={currentColors.expense}
-                onPress={() => router.push('/add-expense')}
-              />
-            </View>
-            <View style={{ flex: 1, marginLeft: 6 }}>
-              <QuickActionCard
-                title="Manage People"
-                icon="people-outline"
-                color={currentColors.secondary}
-                onPress={() => router.push('/people')}
-              />
-            </View>
-          </View>
-          
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1, marginRight: 6 }}>
-              <QuickActionCard
-                title="View Expenses"
-                icon="list-outline"
-                color={currentColors.primary}
-                onPress={() => router.push('/expenses')}
-              />
-            </View>
-            <View style={{ flex: 1, marginLeft: 6 }}>
-              <QuickActionCard
-                title="Income & Settings"
-                icon="settings-outline"
-                color={currentColors.income}
-                onPress={() => router.push('/settings')}
-              />
-            </View>
-          </View>
-        </View>
-
         {/* Recent Activity */}
         <View style={commonStyles.section}>
           <Text style={[commonStyles.subtitle, { color: currentColors.text }]}>Recent Expenses</Text>
@@ -193,7 +126,7 @@ export default function HomeScreen() {
             <View style={commonStyles.emptyState}>
               <Icon name="receipt-outline" size={48} style={{ color: currentColors.textSecondary }} />
               <Text style={[commonStyles.emptyStateText, { color: currentColors.textSecondary }]}>
-                No expenses yet.{'\n'}Tap "Add Expense" to get started!
+                No expenses yet.{'\n'}Use the navigation below to get started!
               </Text>
             </View>
           ) : (
@@ -228,6 +161,26 @@ export default function HomeScreen() {
             })
           )}
         </View>
+
+        {/* Getting Started */}
+        {data.people.length === 0 && (
+          <View style={commonStyles.section}>
+            <Text style={[commonStyles.subtitle, { color: currentColors.text }]}>Getting Started</Text>
+            
+            <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
+              <View style={commonStyles.centerContent}>
+                <Icon name="information-circle-outline" size={48} style={{ color: currentColors.primary, marginBottom: 12 }} />
+                <Text style={[commonStyles.text, { textAlign: 'center', color: currentColors.text, marginBottom: 8 }]}>
+                  Welcome to Budget Tracker!
+                </Text>
+                <Text style={[commonStyles.textSecondary, { textAlign: 'center', color: currentColors.textSecondary }]}>
+                  Start by adding people and their income sources, then track your expenses.
+                  Use the navigation bar below to get started.
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </View>
   );

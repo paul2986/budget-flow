@@ -33,17 +33,24 @@ export default function EditPersonScreen() {
   });
 
   useEffect(() => {
+    console.log('EditPersonScreen: Looking for person with ID:', personId);
+    console.log('EditPersonScreen: Available people:', data.people);
+    
     const foundPerson = data.people.find(p => p.id === personId);
     if (foundPerson) {
+      console.log('EditPersonScreen: Found person:', foundPerson);
       setPerson(foundPerson);
       setPersonName(foundPerson.name);
     } else {
+      console.log('EditPersonScreen: Person not found');
       Alert.alert('Error', 'Person not found');
       router.back();
     }
   }, [personId, data.people]);
 
   const handleSavePerson = async () => {
+    console.log('EditPersonScreen: Saving person...');
+    
     if (!person || !personName.trim()) {
       Alert.alert('Error', 'Please enter a name');
       return;
@@ -55,16 +62,21 @@ export default function EditPersonScreen() {
         name: personName.trim(),
       };
 
+      console.log('EditPersonScreen: Updating person:', updatedPerson);
       await updatePerson(updatedPerson);
+      console.log('EditPersonScreen: Person updated successfully');
+      
       Alert.alert('Success', 'Person updated successfully!');
       router.back();
     } catch (error) {
-      console.error('Error updating person:', error);
+      console.error('EditPersonScreen: Error updating person:', error);
       Alert.alert('Error', 'Failed to update person. Please try again.');
     }
   };
 
   const handleAddIncome = async () => {
+    console.log('EditPersonScreen: Adding income...');
+    
     if (!person || !newIncome.amount || !newIncome.label.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -85,19 +97,24 @@ export default function EditPersonScreen() {
         personId: person.id,
       };
 
+      console.log('EditPersonScreen: Adding income:', income);
       await addIncome(person.id, income);
+      
       setNewIncome({ amount: '', label: '', frequency: 'monthly' });
       setShowAddIncome(false);
       
+      console.log('EditPersonScreen: Income added successfully');
       Alert.alert('Success', 'Income source added successfully!');
     } catch (error) {
-      console.error('Error adding income:', error);
+      console.error('EditPersonScreen: Error adding income:', error);
       Alert.alert('Error', 'Failed to add income. Please try again.');
     }
   };
 
   const handleRemoveIncome = (incomeId: string, incomeLabel: string) => {
     if (!person) return;
+    
+    console.log('EditPersonScreen: Removing income:', incomeId, incomeLabel);
     
     Alert.alert(
       'Remove Income',
@@ -107,7 +124,16 @@ export default function EditPersonScreen() {
         { 
           text: 'Remove', 
           style: 'destructive',
-          onPress: () => removeIncome(person.id, incomeId)
+          onPress: async () => {
+            try {
+              console.log('EditPersonScreen: Calling removeIncome with:', person.id, incomeId);
+              await removeIncome(person.id, incomeId);
+              console.log('EditPersonScreen: Income removed successfully');
+            } catch (error) {
+              console.error('EditPersonScreen: Error removing income:', error);
+              Alert.alert('Error', 'Failed to remove income. Please try again.');
+            }
+          }
         },
       ]
     );

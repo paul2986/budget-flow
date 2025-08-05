@@ -325,9 +325,9 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Quick Actions */}
+        {/* Navigation Actions */}
         <View style={commonStyles.section}>
-          <Text style={[commonStyles.subtitle, { color: currentColors.text }]}>Quick Actions</Text>
+          <Text style={[commonStyles.subtitle, { color: currentColors.text }]}>Navigation</Text>
           
           <Button
             text="Manage People & Income"
