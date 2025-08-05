@@ -76,10 +76,13 @@ export default function ExpensesScreen() {
         commonStyles.badge,
         { 
           backgroundColor: filter === filterType ? currentColors.primary : currentColors.border,
-          marginRight: 12,
-          paddingHorizontal: 16,
-          paddingVertical: 10,
+          flex: 1,
+          marginHorizontal: 4,
+          paddingHorizontal: 12,
+          paddingVertical: 12,
           borderRadius: 24,
+          alignItems: 'center',
+          justifyContent: 'center',
         }
       ]}
       onPress={() => {
@@ -95,6 +98,7 @@ export default function ExpensesScreen() {
         { 
           color: filter === filterType ? '#FFFFFF' : currentColors.text,
           fontWeight: '600',
+          textAlign: 'center',
         }
       ]}>
         {label}
@@ -185,18 +189,21 @@ export default function ExpensesScreen() {
 
         {/* Filters */}
         <View style={[commonStyles.section, { paddingBottom: 0, paddingTop: 16 }]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-            <View style={{ paddingHorizontal: 4 }}>
-              <FilterButton filterType="all" label="All Expenses" />
-              <FilterButton filterType="household" label="Household" />
-              <FilterButton filterType="personal" label="Personal" />
-            </View>
-          </ScrollView>
+          {/* Main filter buttons - distributed horizontally */}
+          <View style={{ 
+            flexDirection: 'row', 
+            marginBottom: 16, 
+            paddingHorizontal: 16,
+          }}>
+            <FilterButton filterType="all" label="All Expenses" />
+            <FilterButton filterType="household" label="Household" />
+            <FilterButton filterType="personal" label="Personal" />
+          </View>
           
           {/* Person filter for personal expenses */}
           {filter === 'personal' && data.people.length > 0 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ paddingHorizontal: 4 }}>
+              <View style={{ paddingHorizontal: 4, flexDirection: 'row' }}>
                 <TouchableOpacity
                   style={[
                     commonStyles.badge,
