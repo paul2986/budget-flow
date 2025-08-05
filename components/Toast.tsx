@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import Icon from './Icon';
@@ -16,6 +16,23 @@ export default function Toast({ message, type, visible, onHide, duration = 3000 
   const { currentColors } = useTheme();
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(-100));
+
+  const hideToast = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: -100,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onHide();
+    });
+  }, [fadeAnim, slideAnim, onHide]);
 
   useEffect(() => {
     if (visible) {
@@ -40,24 +57,7 @@ export default function Toast({ message, type, visible, onHide, duration = 3000 
 
       return () => clearTimeout(timer);
     }
-  }, [visible]);
-
-  const hideToast = () => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: -100,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onHide();
-    });
-  };
+  }, [visible, duration, fadeAnim, slideAnim, hideToast]);
 
   if (!visible) return null;
 

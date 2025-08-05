@@ -403,7 +403,7 @@ export default function PeopleScreen() {
                   disabled={saving}
                 />
               </View>
-            </div>
+            </View>
           </View>
         )}
 
