@@ -1,8 +1,8 @@
 
-import { Stack, useGlobalSearchParams } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Platform, SafeAreaView, View, TouchableOpacity, Text, useColorScheme } from 'react-native';
+import { Platform, SafeAreaView, View, TouchableOpacity, Text } from 'react-native';
 import { commonStyles, colors, darkColors } from '../styles/commonStyles';
 import { useEffect, useState } from 'react';
 import { setupErrorLogging } from '../utils/errorLogger';
@@ -12,7 +12,7 @@ import { useTheme } from '../hooks/useTheme';
 
 const STORAGE_KEY = 'emulated_device';
 
-function BottomNavigation() {
+function CustomTabBar() {
   const pathname = usePathname();
   const { isDarkMode, currentColors } = useTheme();
 
@@ -51,7 +51,7 @@ function BottomNavigation() {
               borderRadius: 12,
               backgroundColor: isActive ? currentColors.primary + '15' : 'transparent',
             }}
-            onPress={() => router.push(item.route)}
+            onPress={() => router.replace(item.route)}
             activeOpacity={0.7}
           >
             <Icon
@@ -78,28 +78,12 @@ function BottomNavigation() {
 
 export default function RootLayout() {
   const actualInsets = useSafeAreaInsets();
-  const { emulate } = useGlobalSearchParams<{ emulate?: string }>();
-  const [storedEmulate, setStoredEmulate] = useState<string | null>(null);
   const { isDarkMode } = useTheme();
 
   useEffect(() => {
     // Set up global error logging
     setupErrorLogging();
-
-    if (Platform.OS === 'web') {
-      // If there's a new emulate parameter, store it
-      if (emulate) {
-        localStorage.setItem(STORAGE_KEY, emulate);
-        setStoredEmulate(emulate);
-      } else {
-        // If no emulate parameter, try to get from localStorage
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          setStoredEmulate(stored);
-        }
-      }
-    }
-  }, [emulate]);
+  }, []);
 
   let insetsToUse = actualInsets;
 
@@ -109,8 +93,15 @@ export default function RootLayout() {
       android: { top: 40, bottom: 0, left: 0, right: 0 },
     };
 
-    // Use stored emulate value if available, otherwise use the current emulate parameter
-    const deviceToEmulate = storedEmulate || emulate;
+    // Check for device emulation in URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const emulate = urlParams.get('emulate');
+    
+    if (emulate) {
+      localStorage.setItem(STORAGE_KEY, emulate);
+    }
+    
+    const deviceToEmulate = emulate || localStorage.getItem(STORAGE_KEY);
     insetsToUse = deviceToEmulate ? simulatedInsets[deviceToEmulate as keyof typeof simulatedInsets] || actualInsets : actualInsets;
   }
 
@@ -123,13 +114,56 @@ export default function RootLayout() {
        }]}>
         <StatusBar style={isDarkMode ? "light" : "dark"} />
         <View style={{ flex: 1 }}>
-          <Stack
+          <Tabs
             screenOptions={{
               headerShown: false,
-              animation: 'default',
+              tabBarStyle: { display: 'none' }, // Hide the default tab bar
             }}
-          />
-          <BottomNavigation />
+            tabBar={() => <CustomTabBar />}
+          >
+            <Tabs.Screen 
+              name="index" 
+              options={{ 
+                title: 'Home',
+                href: '/',
+              }} 
+            />
+            <Tabs.Screen 
+              name="expenses" 
+              options={{ 
+                title: 'Expenses',
+                href: '/expenses',
+              }} 
+            />
+            <Tabs.Screen 
+              name="people" 
+              options={{ 
+                title: 'People',
+                href: '/people',
+              }} 
+            />
+            <Tabs.Screen 
+              name="settings" 
+              options={{ 
+                title: 'Settings',
+                href: '/settings',
+              }} 
+            />
+            <Tabs.Screen 
+              name="add-expense" 
+              options={{ 
+                title: 'Add Expense',
+                href: null, // This makes it not appear in tabs but still accessible via navigation
+              }} 
+            />
+            <Tabs.Screen 
+              name="edit-person" 
+              options={{ 
+                title: 'Edit Person',
+                href: null, // This makes it not appear in tabs but still accessible via navigation
+              }} 
+            />
+          </Tabs>
         </View>
       </SafeAreaView>
     </SafeAreaProvider>

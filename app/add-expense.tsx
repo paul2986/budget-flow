@@ -1,15 +1,15 @@
 
 import { useState, useEffect } from 'react';
-import { commonStyles, buttonStyles } from '../styles/commonStyles';
-import { Expense } from '../types/budget';
-import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useBudgetData } from '../hooks/useBudgetData';
-import { useTheme } from '../hooks/useTheme';
-import { useCurrency } from '../hooks/useCurrency';
-import Icon from '../components/Icon';
 import { router, useLocalSearchParams } from 'expo-router';
+import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { useTheme } from '../hooks/useTheme';
+import { commonStyles, buttonStyles } from '../styles/commonStyles';
+import { useCurrency } from '../hooks/useCurrency';
 import Button from '../components/Button';
+import Icon from '../components/Icon';
 import Toast from '../components/Toast';
+import { Expense } from '../types/budget';
 
 export default function AddExpenseScreen() {
   const { data, addExpense, updateExpense, saving } = useBudgetData();
@@ -20,33 +20,32 @@ export default function AddExpenseScreen() {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<'household' | 'personal'>('household');
-  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly' | 'one-time'>('monthly');
-  const [selectedPersonId, setSelectedPersonId] = useState<string>('');
+  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
+  const [personId, setPersonId] = useState<string>('');
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({
     visible: false,
     message: '',
     type: 'info'
   });
-  
+
   const isEditMode = !!params.id;
-  const expenseToEdit = data.expenses.find(e => e.id === params.id);
+  const expenseToEdit = isEditMode ? data.expenses.find(e => e.id === params.id) : null;
 
   useEffect(() => {
-    console.log('AddExpenseScreen: Edit mode:', isEditMode);
-    console.log('AddExpenseScreen: Expense ID:', params.id);
-    console.log('AddExpenseScreen: Found expense:', expenseToEdit);
-    
     if (isEditMode && expenseToEdit) {
-      console.log('AddExpenseScreen: Pre-filling form with expense data');
+      console.log('AddExpenseScreen: Loading expense for editing:', expenseToEdit);
       setDescription(expenseToEdit.description);
       setAmount(expenseToEdit.amount.toString());
       setCategory(expenseToEdit.category);
       setFrequency(expenseToEdit.frequency);
-      setSelectedPersonId(expenseToEdit.personId || '');
-    } else if (isEditMode && !expenseToEdit) {
-      console.log('AddExpenseScreen: Expense not found for editing');
-      showToast('Expense not found', 'error');
-      setTimeout(() => router.back(), 2000);
+      setPersonId(expenseToEdit.personId || '');
+    } else if (!isEditMode) {
+      // Reset form for new expense
+      setDescription('');
+      setAmount('');
+      setCategory('household');
+      setFrequency('monthly');
+      setPersonId('');
     }
   }, [isEditMode, expenseToEdit, data.people, params.id]);
 
@@ -59,38 +58,35 @@ export default function AddExpenseScreen() {
   };
 
   const handleSaveExpense = async () => {
-    console.log('AddExpenseScreen: Save expense button pressed');
-    console.log('AddExpenseScreen: Form data:', { description, amount, category, frequency, selectedPersonId });
-    
     if (!description.trim()) {
       showToast('Please enter a description', 'error');
       return;
     }
-    
+
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
       showToast('Please enter a valid amount', 'error');
       return;
     }
-    
-    if (category === 'personal' && !selectedPersonId) {
+
+    if (category === 'personal' && !personId) {
       showToast('Please select a person for personal expenses', 'error');
       return;
     }
 
     try {
       const expenseData: Expense = {
-        id: isEditMode ? params.id! : `expense_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: isEditMode ? expenseToEdit!.id : '',
         description: description.trim(),
         amount: numAmount,
         category,
         frequency,
-        personId: category === 'personal' ? selectedPersonId : undefined,
+        personId: category === 'personal' ? personId : undefined,
         date: isEditMode ? expenseToEdit!.date : new Date().toISOString(),
       };
 
       console.log('AddExpenseScreen: Saving expense:', expenseData);
-      
+
       let result;
       if (isEditMode) {
         result = await updateExpense(expenseData);
@@ -101,13 +97,15 @@ export default function AddExpenseScreen() {
       }
 
       if (result.success) {
-        const successMessage = isEditMode ? 'Expense updated successfully!' : 'Expense added successfully!';
-        showToast(successMessage, 'success');
+        showToast(
+          isEditMode ? 'Expense updated successfully!' : 'Expense added successfully!',
+          'success'
+        );
         
-        // Navigate back after a short delay to show the success message
+        // Navigate back to expenses screen after a short delay
         setTimeout(() => {
           router.back();
-        }, 1500);
+        }, 1000);
       } else {
         showToast('Failed to save expense. Please try again.', 'error');
       }
@@ -118,135 +116,141 @@ export default function AddExpenseScreen() {
   };
 
   const CategoryPicker = () => (
-    <View style={{ flexDirection: 'row', marginBottom: 12 }}>
-      <TouchableOpacity
-        style={[
-          commonStyles.badge,
-          { 
-            backgroundColor: category === 'household' ? currentColors.household : currentColors.border,
-            marginRight: 8,
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            flex: 1,
-            alignItems: 'center',
-          }
-        ]}
-        onPress={() => {
-          setCategory('household');
-          setSelectedPersonId('');
-        }}
-        disabled={saving}
-      >
-        <Text style={[
-          commonStyles.badgeText,
-          { color: category === 'household' ? currentColors.backgroundAlt : currentColors.text }
-        ]}>
-          Household
-        </Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity
-        style={[
-          commonStyles.badge,
-          { 
-            backgroundColor: category === 'personal' ? currentColors.personal : currentColors.border,
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            flex: 1,
-            alignItems: 'center',
-          }
-        ]}
-        onPress={() => setCategory('personal')}
-        disabled={saving}
-      >
-        <Text style={[
-          commonStyles.badgeText,
-          { color: category === 'personal' ? currentColors.backgroundAlt : currentColors.text }
-        ]}>
-          Personal
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const FrequencyPicker = () => (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
-      {['daily', 'weekly', 'monthly', 'yearly', 'one-time'].map((freq) => (
+    <View style={[commonStyles.section, { paddingTop: 0 }]}>
+      <Text style={[commonStyles.label, { color: currentColors.text }]}>Category</Text>
+      <View style={[commonStyles.row, { marginTop: 8 }]}>
         <TouchableOpacity
-          key={freq}
           style={[
             commonStyles.badge,
             { 
-              backgroundColor: frequency === freq ? currentColors.primary : currentColors.border,
-              marginRight: 8,
-              marginBottom: 8,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
+              backgroundColor: category === 'household' ? currentColors.household : currentColors.border,
+              marginRight: 12,
+              paddingHorizontal: 20,
+              paddingVertical: 12,
+              borderRadius: 24,
+              flex: 1,
             }
           ]}
-          onPress={() => setFrequency(freq as any)}
+          onPress={() => {
+            setCategory('household');
+            setPersonId('');
+          }}
           disabled={saving}
         >
           <Text style={[
             commonStyles.badgeText,
-            { color: frequency === freq ? currentColors.backgroundAlt : currentColors.text }
+            { 
+              color: category === 'household' ? '#FFFFFF' : currentColors.text,
+              fontWeight: '600',
+              textAlign: 'center',
+            }
           ]}>
-            {freq.charAt(0).toUpperCase() + freq.slice(1)}
+            Household
           </Text>
         </TouchableOpacity>
-      ))}
+        
+        <TouchableOpacity
+          style={[
+            commonStyles.badge,
+            { 
+              backgroundColor: category === 'personal' ? currentColors.personal : currentColors.border,
+              paddingHorizontal: 20,
+              paddingVertical: 12,
+              borderRadius: 24,
+              flex: 1,
+            }
+          ]}
+          onPress={() => setCategory('personal')}
+          disabled={saving}
+        >
+          <Text style={[
+            commonStyles.badgeText,
+            { 
+              color: category === 'personal' ? '#FFFFFF' : currentColors.text,
+              fontWeight: '600',
+              textAlign: 'center',
+            }
+          ]}>
+            Personal
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  const FrequencyPicker = () => (
+    <View style={commonStyles.section}>
+      <Text style={[commonStyles.label, { color: currentColors.text }]}>Frequency</Text>
+      <View style={[commonStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
+        {(['daily', 'weekly', 'monthly', 'yearly'] as const).map((freq) => (
+          <TouchableOpacity
+            key={freq}
+            style={[
+              commonStyles.badge,
+              { 
+                backgroundColor: frequency === freq ? currentColors.primary : currentColors.border,
+                marginRight: 8,
+                marginBottom: 8,
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                borderRadius: 20,
+              }
+            ]}
+            onPress={() => setFrequency(freq)}
+            disabled={saving}
+          >
+            <Text style={[
+              commonStyles.badgeText,
+              { 
+                color: frequency === freq ? '#FFFFFF' : currentColors.text,
+                fontWeight: '600',
+                textTransform: 'capitalize',
+              }
+            ]}>
+              {freq}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
     </View>
   );
 
   const PersonPicker = () => {
-    if (category !== 'personal') return null;
-    
+    if (category !== 'personal' || data.people.length === 0) return null;
+
     return (
-      <View style={{ marginBottom: 12 }}>
-        <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
-          Select Person:
-        </Text>
-        
-        {data.people.length === 0 ? (
-          <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
-            <Text style={[commonStyles.textSecondary, { textAlign: 'center', color: currentColors.textSecondary }]}>
-              No people added yet. Add people first to assign personal expenses.
-            </Text>
-            <Button
-              text="Add People"
-              onPress={() => router.push('/people')}
-              style={[buttonStyles.primary, { backgroundColor: currentColors.secondary, marginTop: 12 }]}
+      <View style={commonStyles.section}>
+        <Text style={[commonStyles.label, { color: currentColors.text }]}>Person</Text>
+        <View style={[commonStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
+          {data.people.map((person) => (
+            <TouchableOpacity
+              key={person.id}
+              style={[
+                commonStyles.badge,
+                { 
+                  backgroundColor: personId === person.id ? currentColors.secondary : currentColors.border,
+                  marginRight: 8,
+                  marginBottom: 8,
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 20,
+                }
+              ]}
+              onPress={() => setPersonId(person.id)}
               disabled={saving}
-            />
-          </View>
-        ) : (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-            {data.people.map((person) => (
-              <TouchableOpacity
-                key={person.id}
-                style={[
-                  commonStyles.badge,
-                  { 
-                    backgroundColor: selectedPersonId === person.id ? currentColors.primary : currentColors.border,
-                    marginRight: 8,
-                    marginBottom: 8,
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                  }
-                ]}
-                onPress={() => setSelectedPersonId(person.id)}
-                disabled={saving}
-              >
-                <Text style={[
-                  commonStyles.badgeText,
-                  { color: selectedPersonId === person.id ? currentColors.backgroundAlt : currentColors.text }
-                ]}>
-                  {person.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+            >
+              <Text style={[
+                commonStyles.badgeText,
+                { 
+                  color: personId === person.id ? '#FFFFFF' : currentColors.text,
+                  fontWeight: '600',
+                }
+              ]}>
+                {person.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
     );
   };
@@ -261,82 +265,91 @@ export default function AddExpenseScreen() {
       />
       
       <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} disabled={saving}>
-          <Icon name="arrow-back" size={24} style={{ color: saving ? currentColors.textSecondary : currentColors.text }} />
+        <TouchableOpacity 
+          onPress={() => router.back()}
+          disabled={saving}
+          style={{
+            backgroundColor: currentColors.border,
+            borderRadius: 20,
+            padding: 8,
+          }}
+        >
+          <Icon name="arrow-back" size={20} style={{ color: currentColors.text }} />
         </TouchableOpacity>
         <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>
           {isEditMode ? 'Edit Expense' : 'Add Expense'}
         </Text>
-        <TouchableOpacity onPress={handleSaveExpense} disabled={saving}>
-          {saving ? (
-            <ActivityIndicator size="small" color={currentColors.primary} />
-          ) : (
-            <Icon name="checkmark" size={24} style={{ color: currentColors.primary }} />
-          )}
-        </TouchableOpacity>
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView style={commonStyles.content} contentContainerStyle={commonStyles.scrollContent}>
         <View style={commonStyles.section}>
-          <Text style={[commonStyles.subtitle, { color: currentColors.text }]}>
-            {isEditMode ? 'Edit Expense Details' : 'Expense Details'}
-          </Text>
-          
-          <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
-            <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
-              Description:
-            </Text>
-            <TextInput
-              style={[commonStyles.input, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border, color: currentColors.text }]}
-              placeholder="What did you spend money on?"
-              placeholderTextColor={currentColors.textSecondary}
-              value={description}
-              onChangeText={setDescription}
-              autoFocus={!isEditMode}
-              editable={!saving}
-            />
-            
-            <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
-              Amount:
-            </Text>
-            <TextInput
-              style={[commonStyles.input, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border, color: currentColors.text }]}
-              placeholder="0.00"
-              placeholderTextColor={currentColors.textSecondary}
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="numeric"
-              editable={!saving}
-            />
-            
-            <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
-              Category:
-            </Text>
-            <CategoryPicker />
-            
-            <PersonPicker />
-            
-            <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
-              Frequency:
-            </Text>
-            <FrequencyPicker />
-          </View>
+          <Text style={[commonStyles.label, { color: currentColors.text }]}>Description</Text>
+          <TextInput
+            style={[
+              commonStyles.input,
+              { 
+                backgroundColor: currentColors.backgroundAlt,
+                borderColor: currentColors.border,
+                color: currentColors.text,
+              }
+            ]}
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Enter expense description"
+            placeholderTextColor={currentColors.textSecondary}
+            editable={!saving}
+          />
         </View>
 
         <View style={commonStyles.section}>
+          <Text style={[commonStyles.label, { color: currentColors.text }]}>Amount</Text>
+          <TextInput
+            style={[
+              commonStyles.input,
+              { 
+                backgroundColor: currentColors.backgroundAlt,
+                borderColor: currentColors.border,
+                color: currentColors.text,
+              }
+            ]}
+            value={amount}
+            onChangeText={setAmount}
+            placeholder="0.00"
+            placeholderTextColor={currentColors.textSecondary}
+            keyboardType="numeric"
+            editable={!saving}
+          />
+        </View>
+
+        <CategoryPicker />
+        <FrequencyPicker />
+        <PersonPicker />
+
+        {category === 'personal' && data.people.length === 0 && (
+          <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
+            <View style={commonStyles.centerContent}>
+              <Icon name="people-outline" size={48} style={{ color: currentColors.textSecondary, marginBottom: 12 }} />
+              <Text style={[commonStyles.subtitle, { textAlign: 'center', marginBottom: 8, color: currentColors.text }]}>
+                No People Added
+              </Text>
+              <Text style={[commonStyles.textSecondary, { textAlign: 'center', color: currentColors.textSecondary }]}>
+                Add people in the People tab to assign personal expenses
+              </Text>
+            </View>
+          </View>
+        )}
+
+        <View style={[commonStyles.section, { paddingTop: 32 }]}>
           <Button
             text={saving ? 'Saving...' : (isEditMode ? 'Update Expense' : 'Add Expense')}
             onPress={handleSaveExpense}
-            style={[buttonStyles.primary, { backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }]}
             disabled={saving}
-          />
-          
-          <Button
-            text="Cancel"
-            onPress={() => router.back()}
-            style={[buttonStyles.outline, { borderColor: currentColors.textSecondary, marginTop: 12 }]}
-            textStyle={{ color: currentColors.textSecondary }}
-            disabled={saving}
+            style={[
+              buttonStyles.primary,
+              { backgroundColor: currentColors.primary },
+              saving && { opacity: 0.7 }
+            ]}
           />
         </View>
       </ScrollView>
