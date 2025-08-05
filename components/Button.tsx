@@ -1,6 +1,7 @@
 
 import { Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { colors } from '../styles/commonStyles';
+import { useTheme } from '../hooks/useTheme';
 
 interface ButtonProps {
   text: string;
@@ -10,52 +11,47 @@ interface ButtonProps {
   disabled?: boolean;
 }
 
-export default function Button({ text, onPress, style, textStyle, disabled = false }: ButtonProps) {
+const styles = StyleSheet.create({
+  button: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  text: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.backgroundAlt,
+  },
+  disabled: {
+    opacity: 0.6,
+  },
+});
+
+export default function Button({ text, onPress, style, textStyle, disabled }: ButtonProps) {
+  const { currentColors } = useTheme();
+  
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[
-        styles.button, 
+        styles.button,
+        { backgroundColor: currentColors.primary },
         style,
-        disabled && styles.disabled
-      ]} 
-      onPress={onPress} 
-      activeOpacity={0.7}
+        disabled && styles.disabled,
+      ]}
+      onPress={onPress}
       disabled={disabled}
+      activeOpacity={0.7}
     >
       <Text style={[
-        styles.buttonText, 
+        styles.text,
+        { color: currentColors.backgroundAlt },
         textStyle,
-        disabled && styles.disabledText
       ]}>
         {text}
       </Text>
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  button: {
-    backgroundColor: colors.primary,
-    padding: 14,
-    borderRadius: 8,
-    marginTop: 10,
-    width: '100%',
-    boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
-    elevation: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  disabled: {
-    backgroundColor: colors.border,
-    opacity: 0.6,
-  },
-  disabledText: {
-    color: colors.textSecondary,
-  },
-});

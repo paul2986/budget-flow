@@ -1,24 +1,33 @@
-import { View, StyleSheet } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet } from 'react-native';
 import { colors } from '../styles/commonStyles';
+import { useTheme } from '../hooks/useTheme';
 
 interface IconProps {
   name: keyof typeof Ionicons.glyphMap;
   size?: number;
-  style?: object;
-}
-
-export default function Icon({ name, size = 40, style }: IconProps) {
-  return (
-    <View style={[styles.iconContainer, style]}>
-      <Ionicons name={name} size={size} color={"white"} />
-    </View>
-  );
+  style?: any;
 }
 
 const styles = StyleSheet.create({
-  iconContainer: {
+  container: {
     alignItems: 'center',
     justifyContent: 'center',
   },
 });
+
+export default function Icon({ name, size = 24, style }: IconProps) {
+  const { currentColors } = useTheme();
+  
+  return (
+    <View style={styles.container}>
+      <Ionicons
+        name={name}
+        size={size}
+        color={style?.color || currentColors.text}
+        style={style}
+      />
+    </View>
+  );
+}

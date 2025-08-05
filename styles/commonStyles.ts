@@ -19,6 +19,24 @@ export const colors = {
   error: '#F44336',        // Error red
 };
 
+export const darkColors = {
+  primary: '#4CAF50',      // Brighter green for dark mode
+  secondary: '#2196F3',    // Brighter blue for dark mode
+  accent: '#FF7043',       // Softer orange for dark mode
+  income: '#66BB6A',       // Lighter green for income
+  expense: '#EF5350',      // Lighter red for expenses
+  household: '#AB47BC',    // Lighter purple for household
+  personal: '#FFA726',     // Lighter orange for personal
+  background: '#121212',   // Dark background
+  backgroundAlt: '#1E1E1E', // Slightly lighter dark for cards
+  text: '#FFFFFF',         // White text
+  textSecondary: '#B0B0B0', // Light grey text
+  border: '#333333',       // Dark border
+  success: '#66BB6A',      // Success green
+  warning: '#FFA726',      // Warning orange
+  error: '#EF5350',        // Error red
+};
+
 export const buttonStyles = StyleSheet.create({
   primary: {
     backgroundColor: colors.primary,

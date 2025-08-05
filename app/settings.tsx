@@ -1,8 +1,10 @@
 
 import { Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { commonStyles, colors, buttonStyles } from '../styles/commonStyles';
+import { commonStyles, buttonStyles } from '../styles/commonStyles';
 import { useBudgetData } from '../hooks/useBudgetData';
+import { useTheme } from '../hooks/useTheme';
+import { useCurrency, CURRENCIES } from '../hooks/useCurrency';
 import { 
   calculateTotalIncome, 
   calculateTotalExpenses, 
@@ -15,13 +17,8 @@ import Icon from '../components/Icon';
 
 export default function SettingsScreen() {
   const { data, updateHouseholdSettings } = useBudgetData();
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
+  const { currentColors, themeMode, setThemeMode } = useTheme();
+  const { currency, setCurrency, formatCurrency } = useCurrency();
 
   const handleDistributionMethodChange = (method: 'even' | 'income-based') => {
     updateHouseholdSettings({ distributionMethod: method });
@@ -43,7 +40,6 @@ export default function SettingsScreen() {
               householdSettings: { distributionMethod: 'even' as const },
             };
             await updateHouseholdSettings(emptyData.householdSettings);
-            // Note: In a real app, you'd want a more comprehensive clear function
             Alert.alert('Success', 'All data has been cleared.');
           }
         },
@@ -56,22 +52,124 @@ export default function SettingsScreen() {
   const householdExpenses = calculateHouseholdExpenses(data.expenses);
 
   return (
-    <View style={commonStyles.container}>
-      <View style={commonStyles.header}>
-        <TouchableOpacity onPress={() => router.push('/')}>
-          <Icon name="home" size={24} style={{ color: colors.text }} />
-        </TouchableOpacity>
-        <Text style={commonStyles.headerTitle}>Settings</Text>
+    <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
+      <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
+        <View style={{ width: 24 }} />
+        <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Settings</Text>
         <View style={{ width: 24 }} />
       </View>
 
       <ScrollView style={commonStyles.content} contentContainerStyle={commonStyles.scrollContent}>
+        {/* Theme Settings */}
+        <View style={commonStyles.section}>
+          <Text style={[commonStyles.subtitle, { color: currentColors.text }]}>Appearance</Text>
+          
+          <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
+            <Text style={[commonStyles.text, { marginBottom: 12, color: currentColors.text }]}>
+              Choose your preferred theme
+            </Text>
+            
+            {[
+              { key: 'system', label: 'System Default', icon: 'phone-portrait-outline' },
+              { key: 'light', label: 'Light Mode', icon: 'sunny-outline' },
+              { key: 'dark', label: 'Dark Mode', icon: 'moon-outline' },
+            ].map((theme) => (
+              <TouchableOpacity
+                key={theme.key}
+                style={[
+                  commonStyles.card,
+                  { 
+                    backgroundColor: themeMode === theme.key 
+                      ? currentColors.primary + '20' 
+                      : currentColors.border + '20',
+                    borderWidth: 2,
+                    borderColor: themeMode === theme.key 
+                      ? currentColors.primary 
+                      : currentColors.border,
+                    marginBottom: 8,
+                  }
+                ]}
+                onPress={() => setThemeMode(theme.key as any)}
+              >
+                <View style={commonStyles.rowStart}>
+                  <Icon 
+                    name={themeMode === theme.key ? 'radio-button-on' : 'radio-button-off'} 
+                    size={20} 
+                    style={{ 
+                      color: themeMode === theme.key ? currentColors.primary : currentColors.textSecondary,
+                      marginRight: 12 
+                    }} 
+                  />
+                  <Icon 
+                    name={theme.icon} 
+                    size={20} 
+                    style={{ 
+                      color: currentColors.text,
+                      marginRight: 12 
+                    }} 
+                  />
+                  <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>
+                    {theme.label}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Currency Settings */}
+        <View style={commonStyles.section}>
+          <Text style={[commonStyles.subtitle, { color: currentColors.text }]}>Currency</Text>
+          
+          <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
+            <Text style={[commonStyles.text, { marginBottom: 12, color: currentColors.text }]}>
+              Current: {currency.name} ({currency.symbol})
+            </Text>
+            
+            <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
+              {CURRENCIES.map((curr) => (
+                <TouchableOpacity
+                  key={curr.code}
+                  style={[
+                    commonStyles.row,
+                    { 
+                      paddingVertical: 12,
+                      borderBottomWidth: 1,
+                      borderBottomColor: currentColors.border,
+                    }
+                  ]}
+                  onPress={() => setCurrency(curr)}
+                >
+                  <View style={commonStyles.rowStart}>
+                    <Icon 
+                      name={currency.code === curr.code ? 'radio-button-on' : 'radio-button-off'} 
+                      size={20} 
+                      style={{ 
+                        color: currency.code === curr.code ? currentColors.primary : currentColors.textSecondary,
+                        marginRight: 12 
+                      }} 
+                    />
+                    <View>
+                      <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>
+                        {curr.symbol} {curr.code}
+                      </Text>
+                      <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                        {curr.name}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+
         {/* Household Distribution Settings */}
         <View style={commonStyles.section}>
-          <Text style={commonStyles.subtitle}>Household Expense Distribution</Text>
+          <Text style={[commonStyles.subtitle, { color: currentColors.text }]}>Household Expense Distribution</Text>
           
-          <View style={commonStyles.card}>
-            <Text style={[commonStyles.text, { marginBottom: 12 }]}>
+          <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
+            <Text style={[commonStyles.text, { marginBottom: 12, color: currentColors.text }]}>
               How should household expenses be split among people?
             </Text>
             
@@ -80,12 +178,12 @@ export default function SettingsScreen() {
                 commonStyles.card,
                 { 
                   backgroundColor: data.householdSettings.distributionMethod === 'even' 
-                    ? colors.primary + '20' 
-                    : colors.border + '20',
+                    ? currentColors.primary + '20' 
+                    : currentColors.border + '20',
                   borderWidth: 2,
                   borderColor: data.householdSettings.distributionMethod === 'even' 
-                    ? colors.primary 
-                    : colors.border,
+                    ? currentColors.primary 
+                    : currentColors.border,
                   marginBottom: 12,
                 }
               ]}
@@ -96,13 +194,13 @@ export default function SettingsScreen() {
                   name={data.householdSettings.distributionMethod === 'even' ? 'radio-button-on' : 'radio-button-off'} 
                   size={20} 
                   style={{ 
-                    color: data.householdSettings.distributionMethod === 'even' ? colors.primary : colors.textSecondary,
+                    color: data.householdSettings.distributionMethod === 'even' ? currentColors.primary : currentColors.textSecondary,
                     marginRight: 12 
                   }} 
                 />
                 <View style={commonStyles.flex1}>
-                  <Text style={[commonStyles.text, { fontWeight: '600' }]}>Even Split</Text>
-                  <Text style={commonStyles.textSecondary}>
+                  <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>Even Split</Text>
+                  <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
                     Each person pays an equal share of household expenses
                   </Text>
                 </View>
@@ -114,12 +212,12 @@ export default function SettingsScreen() {
                 commonStyles.card,
                 { 
                   backgroundColor: data.householdSettings.distributionMethod === 'income-based' 
-                    ? colors.primary + '20' 
-                    : colors.border + '20',
+                    ? currentColors.primary + '20' 
+                    : currentColors.border + '20',
                   borderWidth: 2,
                   borderColor: data.householdSettings.distributionMethod === 'income-based' 
-                    ? colors.primary 
-                    : colors.border,
+                    ? currentColors.primary 
+                    : currentColors.border,
                 }
               ]}
               onPress={() => handleDistributionMethodChange('income-based')}
@@ -129,13 +227,13 @@ export default function SettingsScreen() {
                   name={data.householdSettings.distributionMethod === 'income-based' ? 'radio-button-on' : 'radio-button-off'} 
                   size={20} 
                   style={{ 
-                    color: data.householdSettings.distributionMethod === 'income-based' ? colors.primary : colors.textSecondary,
+                    color: data.householdSettings.distributionMethod === 'income-based' ? currentColors.primary : currentColors.textSecondary,
                     marginRight: 12 
                   }} 
                 />
                 <View style={commonStyles.flex1}>
-                  <Text style={[commonStyles.text, { fontWeight: '600' }]}>Income-Based Split</Text>
-                  <Text style={commonStyles.textSecondary}>
+                  <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>Income-Based Split</Text>
+                  <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
                     Each person pays proportionally based on their income
                   </Text>
                 </View>
@@ -147,10 +245,10 @@ export default function SettingsScreen() {
         {/* Household Share Breakdown */}
         {data.people.length > 0 && householdExpenses > 0 && (
           <View style={commonStyles.section}>
-            <Text style={commonStyles.subtitle}>Household Share Breakdown</Text>
+            <Text style={[commonStyles.subtitle, { color: currentColors.text }]}>Household Share Breakdown</Text>
             
-            <View style={commonStyles.card}>
-              <Text style={[commonStyles.text, { marginBottom: 12, fontWeight: '600' }]}>
+            <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
+              <Text style={[commonStyles.text, { marginBottom: 12, fontWeight: '600', color: currentColors.text }]}>
                 Monthly household expenses: {formatCurrency(calculateMonthlyAmount(householdExpenses, 'yearly'))}
               </Text>
               
@@ -165,8 +263,8 @@ export default function SettingsScreen() {
                 
                 return (
                   <View key={person.id} style={[commonStyles.row, { marginBottom: 8 }]}>
-                    <Text style={commonStyles.text}>{person.name}</Text>
-                    <Text style={[commonStyles.text, { fontWeight: '600' }]}>
+                    <Text style={[commonStyles.text, { color: currentColors.text }]}>{person.name}</Text>
+                    <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>
                       {formatCurrency(monthlyShare)}
                     </Text>
                   </View>
@@ -178,46 +276,46 @@ export default function SettingsScreen() {
 
         {/* Budget Summary */}
         <View style={commonStyles.section}>
-          <Text style={commonStyles.subtitle}>Budget Summary</Text>
+          <Text style={[commonStyles.subtitle, { color: currentColors.text }]}>Budget Summary</Text>
           
-          <View style={commonStyles.card}>
+          <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
             <View style={[commonStyles.row, { marginBottom: 8 }]}>
-              <Text style={commonStyles.text}>Total People:</Text>
-              <Text style={[commonStyles.text, { fontWeight: '600' }]}>
+              <Text style={[commonStyles.text, { color: currentColors.text }]}>Total People:</Text>
+              <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>
                 {data.people.length}
               </Text>
             </View>
             
             <View style={[commonStyles.row, { marginBottom: 8 }]}>
-              <Text style={commonStyles.text}>Total Expenses:</Text>
-              <Text style={[commonStyles.text, { fontWeight: '600' }]}>
+              <Text style={[commonStyles.text, { color: currentColors.text }]}>Total Expenses:</Text>
+              <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>
                 {data.expenses.length}
               </Text>
             </View>
             
             <View style={[commonStyles.row, { marginBottom: 8 }]}>
-              <Text style={commonStyles.text}>Annual Income:</Text>
-              <Text style={[commonStyles.text, { color: colors.income, fontWeight: '600' }]}>
+              <Text style={[commonStyles.text, { color: currentColors.text }]}>Annual Income:</Text>
+              <Text style={[commonStyles.text, { color: currentColors.income, fontWeight: '600' }]}>
                 {formatCurrency(totalIncome)}
               </Text>
             </View>
             
             <View style={[commonStyles.row, { marginBottom: 8 }]}>
-              <Text style={commonStyles.text}>Annual Expenses:</Text>
-              <Text style={[commonStyles.text, { color: colors.expense, fontWeight: '600' }]}>
+              <Text style={[commonStyles.text, { color: currentColors.text }]}>Annual Expenses:</Text>
+              <Text style={[commonStyles.text, { color: currentColors.expense, fontWeight: '600' }]}>
                 {formatCurrency(totalExpenses)}
               </Text>
             </View>
             
             <View style={[
               commonStyles.row, 
-              { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 }
+              { borderTopWidth: 1, borderTopColor: currentColors.border, paddingTop: 8 }
             ]}>
-              <Text style={[commonStyles.text, { fontWeight: '600' }]}>Net Annual:</Text>
+              <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>Net Annual:</Text>
               <Text style={[
                 commonStyles.text, 
                 { 
-                  color: totalIncome - totalExpenses >= 0 ? colors.success : colors.error,
+                  color: totalIncome - totalExpenses >= 0 ? currentColors.success : currentColors.error,
                   fontWeight: '700' 
                 }
               ]}>
@@ -229,40 +327,40 @@ export default function SettingsScreen() {
 
         {/* Quick Actions */}
         <View style={commonStyles.section}>
-          <Text style={commonStyles.subtitle}>Quick Actions</Text>
+          <Text style={[commonStyles.subtitle, { color: currentColors.text }]}>Quick Actions</Text>
           
           <Button
             text="Manage People & Income"
             onPress={() => router.push('/people')}
-            style={[buttonStyles.primary, { backgroundColor: colors.secondary }]}
+            style={[buttonStyles.primary, { backgroundColor: currentColors.secondary }]}
           />
           
           <Button
             text="View All Expenses"
             onPress={() => router.push('/expenses')}
-            style={[buttonStyles.primary]}
+            style={[buttonStyles.primary, { backgroundColor: currentColors.primary }]}
           />
           
           <Button
             text="Add New Expense"
             onPress={() => router.push('/add-expense')}
-            style={[buttonStyles.primary, { backgroundColor: colors.expense }]}
+            style={[buttonStyles.primary, { backgroundColor: currentColors.expense }]}
           />
         </View>
 
         {/* Danger Zone */}
         <View style={commonStyles.section}>
-          <Text style={[commonStyles.subtitle, { color: colors.error }]}>Danger Zone</Text>
+          <Text style={[commonStyles.subtitle, { color: currentColors.error }]}>Danger Zone</Text>
           
-          <View style={[commonStyles.card, { borderColor: colors.error, borderWidth: 1 }]}>
-            <Text style={[commonStyles.text, { marginBottom: 12 }]}>
+          <View style={[commonStyles.card, { borderColor: currentColors.error, borderWidth: 1, backgroundColor: currentColors.backgroundAlt }]}>
+            <Text style={[commonStyles.text, { marginBottom: 12, color: currentColors.text }]}>
               This will permanently delete all your data including people, income, and expenses.
             </Text>
             
             <Button
               text="Clear All Data"
               onPress={clearAllData}
-              style={[buttonStyles.danger]}
+              style={[buttonStyles.danger, { backgroundColor: currentColors.error }]}
             />
           </View>
         </View>
