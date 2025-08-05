@@ -11,9 +11,12 @@ import {
   calculateTotalExpenses, 
   calculateHouseholdExpenses,
   calculatePersonalExpenses,
-  calculateMonthlyAmount 
+  calculateMonthlyAmount,
+  calculatePersonIncome,
+  calculateHouseholdShare
 } from '../utils/calculations';
 import Icon from '../components/Icon';
+import PersonBreakdownChart from '../components/PersonBreakdownChart';
 
 export default function HomeScreen() {
   const { data } = useBudgetData();
@@ -147,16 +150,192 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Expense Breakdown */}
+        {/* Individual Person Breakdowns */}
+        {data.people.length > 0 && (
+          <View style={commonStyles.section}>
+            <Text style={[commonStyles.subtitle, { color: currentColors.text, marginBottom: 20 }]}>
+              Individual Breakdowns
+            </Text>
+            
+            {data.people.map((person) => {
+              const personIncome = calculatePersonIncome(person);
+              const personPersonalExpenses = calculatePersonalExpenses(data.expenses, person.id);
+              const personHouseholdShare = calculateHouseholdShare(
+                householdExpenses,
+                data.people,
+                data.householdSettings.distributionMethod,
+                person.id
+              );
+              const totalPersonExpenses = personPersonalExpenses + personHouseholdShare;
+              const remainingIncome = personIncome - totalPersonExpenses;
+
+              const monthlyPersonIncome = calculateMonthlyAmount(personIncome, 'yearly');
+              const monthlyPersonalExpenses = calculateMonthlyAmount(personPersonalExpenses, 'yearly');
+              const monthlyHouseholdShare = calculateMonthlyAmount(personHouseholdShare, 'yearly');
+              const monthlyRemaining = calculateMonthlyAmount(remainingIncome, 'yearly');
+
+              return (
+                <View 
+                  key={person.id} 
+                  style={[
+                    commonStyles.card, 
+                    { 
+                      backgroundColor: currentColors.backgroundAlt, 
+                      borderColor: currentColors.border,
+                      marginBottom: 20,
+                    }
+                  ]}
+                >
+                  {/* Person Header */}
+                  <View style={[commonStyles.row, { marginBottom: 20 }]}>
+                    <View style={commonStyles.rowStart}>
+                      <Icon name="person-circle" size={32} style={{ color: currentColors.primary, marginRight: 12 }} />
+                      <View>
+                        <Text style={[commonStyles.text, { fontWeight: '700', fontSize: 18, color: currentColors.text }]}>
+                          {person.name}
+                        </Text>
+                        <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                          Monthly Income: {formatCurrency(monthlyPersonIncome)}
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity onPress={() => router.push(`/edit-person?id=${person.id}`)}>
+                      <Icon name="create-outline" size={24} style={{ color: currentColors.primary }} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Visual Breakdown Chart */}
+                  <PersonBreakdownChart
+                    income={monthlyPersonIncome}
+                    personalExpenses={monthlyPersonalExpenses}
+                    householdShare={monthlyHouseholdShare}
+                    remaining={monthlyRemaining}
+                  />
+
+                  {/* Detailed Breakdown */}
+                  <View style={{ marginTop: 20 }}>
+                    {/* Income Row */}
+                    <View style={[commonStyles.row, { marginBottom: 12 }]}>
+                      <View style={commonStyles.rowStart}>
+                        <View style={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: 6,
+                          backgroundColor: currentColors.income,
+                          marginRight: 8,
+                        }} />
+                        <Text style={[commonStyles.text, { color: currentColors.text }]}>Total Income</Text>
+                      </View>
+                      <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.income }]}>
+                        {formatCurrency(monthlyPersonIncome)}
+                      </Text>
+                    </View>
+
+                    {/* Personal Expenses Row */}
+                    <View style={[commonStyles.row, { marginBottom: 12 }]}>
+                      <View style={commonStyles.rowStart}>
+                        <View style={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: 6,
+                          backgroundColor: currentColors.personal,
+                          marginRight: 8,
+                        }} />
+                        <Text style={[commonStyles.text, { color: currentColors.text }]}>Personal Expenses</Text>
+                      </View>
+                      <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.personal }]}>
+                        {formatCurrency(monthlyPersonalExpenses)}
+                      </Text>
+                    </View>
+
+                    {/* Household Share Row */}
+                    <View style={[commonStyles.row, { marginBottom: 12 }]}>
+                      <View style={commonStyles.rowStart}>
+                        <View style={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: 6,
+                          backgroundColor: currentColors.household,
+                          marginRight: 8,
+                        }} />
+                        <Text style={[commonStyles.text, { color: currentColors.text }]}>
+                          Household Share ({data.householdSettings.distributionMethod === 'even' ? 'Even' : 'Income-based'})
+                        </Text>
+                      </View>
+                      <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.household }]}>
+                        {formatCurrency(monthlyHouseholdShare)}
+                      </Text>
+                    </View>
+
+                    {/* Remaining Income Row */}
+                    <View style={[
+                      commonStyles.row, 
+                      { 
+                        borderTopWidth: 1, 
+                        borderTopColor: currentColors.border, 
+                        paddingTop: 12,
+                        marginTop: 8,
+                      }
+                    ]}>
+                      <View style={commonStyles.rowStart}>
+                        <View style={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: 6,
+                          backgroundColor: monthlyRemaining >= 0 ? currentColors.success : currentColors.error,
+                          marginRight: 8,
+                        }} />
+                        <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>
+                          {monthlyRemaining >= 0 ? 'Remaining' : 'Over Budget'}
+                        </Text>
+                      </View>
+                      <Text style={[
+                        commonStyles.text, 
+                        { 
+                          fontWeight: '700', 
+                          color: monthlyRemaining >= 0 ? currentColors.success : currentColors.error,
+                          fontSize: 18,
+                        }
+                      ]}>
+                        {formatCurrency(Math.abs(monthlyRemaining))}
+                      </Text>
+                    </View>
+
+                    {/* Budget Status */}
+                    <View style={{ marginTop: 12 }}>
+                      <Text style={[
+                        commonStyles.textSecondary, 
+                        { 
+                          color: currentColors.textSecondary,
+                          textAlign: 'center',
+                          fontStyle: 'italic',
+                        }
+                      ]}>
+                        {monthlyRemaining >= 0 
+                          ? `${((monthlyRemaining / monthlyPersonIncome) * 100).toFixed(1)}% of income remaining`
+                          : `${((Math.abs(monthlyRemaining) / monthlyPersonIncome) * 100).toFixed(1)}% over budget`
+                        }
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Overall Expense Breakdown */}
         {data.expenses.length > 0 && (
           <View style={commonStyles.section}>
-            <Text style={[commonStyles.subtitle, { color: currentColors.text, marginBottom: 20 }]}>Expense Breakdown</Text>
+            <Text style={[commonStyles.subtitle, { color: currentColors.text, marginBottom: 20 }]}>
+              Overall Expense Breakdown
+            </Text>
             
             <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
               <View style={[commonStyles.row, { marginBottom: 16 }]}>
                 <View style={commonStyles.rowStart}>
                   <Icon name="home" size={20} style={{ color: currentColors.household, marginRight: 8 }} />
-                  <Text style={[commonStyles.text, { color: currentColors.text }]}>Household</Text>
+                  <Text style={[commonStyles.text, { color: currentColors.text }]}>Household Expenses</Text>
                 </View>
                 <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.household }]}>
                   {formatCurrency(calculateMonthlyAmount(householdExpenses, 'yearly'))}
@@ -166,7 +345,7 @@ export default function HomeScreen() {
               <View style={[commonStyles.row, { borderTopWidth: 1, borderTopColor: currentColors.border, paddingTop: 16 }]}>
                 <View style={commonStyles.rowStart}>
                   <Icon name="person" size={20} style={{ color: currentColors.personal, marginRight: 8 }} />
-                  <Text style={[commonStyles.text, { color: currentColors.text }]}>Personal</Text>
+                  <Text style={[commonStyles.text, { color: currentColors.text }]}>Personal Expenses</Text>
                 </View>
                 <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.personal }]}>
                   {formatCurrency(calculateMonthlyAmount(personalExpenses, 'yearly'))}
@@ -261,7 +440,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Quick Actions */}
+        {/* Quick Actions / Empty States */}
         {data.expenses.length === 0 && data.people.length === 0 && (
           <View style={commonStyles.section}>
             <Text style={[commonStyles.subtitle, { color: currentColors.text, marginBottom: 20 }]}>Get Started</Text>
@@ -327,6 +506,78 @@ export default function HomeScreen() {
                     </View>
                   </TouchableOpacity>
                 </View>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Encourage adding people when there are expenses but no people */}
+        {data.expenses.length > 0 && data.people.length === 0 && (
+          <View style={commonStyles.section}>
+            <View style={[commonStyles.card, { backgroundColor: currentColors.warning + '15', borderColor: currentColors.warning + '30', borderWidth: 2 }]}>
+              <View style={commonStyles.centerContent}>
+                <Icon name="people-outline" size={32} style={{ color: currentColors.warning, marginBottom: 12 }} />
+                <Text style={[commonStyles.text, { fontWeight: '700', textAlign: 'center', marginBottom: 8, color: currentColors.text }]}>
+                  Add People for Better Insights
+                </Text>
+                <Text style={[commonStyles.textSecondary, { textAlign: 'center', marginBottom: 16, color: currentColors.textSecondary }]}>
+                  Add household members and their income to see detailed breakdowns and track personal vs household expenses.
+                </Text>
+                <TouchableOpacity
+                  style={[
+                    commonStyles.card,
+                    { 
+                      backgroundColor: currentColors.primary + '15',
+                      borderColor: currentColors.primary + '30',
+                      borderWidth: 2,
+                      marginBottom: 0,
+                      padding: 12,
+                      width: '100%',
+                    }
+                  ]}
+                  onPress={() => router.push('/people')}
+                >
+                  <View style={[commonStyles.row, { alignItems: 'center', justifyContent: 'center' }]}>
+                    <Icon name="people" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                    <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.primary }]}>Add People</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Encourage adding expenses when there are people but no expenses */}
+        {data.people.length > 0 && data.expenses.length === 0 && (
+          <View style={commonStyles.section}>
+            <View style={[commonStyles.card, { backgroundColor: currentColors.secondary + '15', borderColor: currentColors.secondary + '30', borderWidth: 2 }]}>
+              <View style={commonStyles.centerContent}>
+                <Icon name="receipt-outline" size={32} style={{ color: currentColors.secondary, marginBottom: 12 }} />
+                <Text style={[commonStyles.text, { fontWeight: '700', textAlign: 'center', marginBottom: 8, color: currentColors.text }]}>
+                  Start Tracking Expenses
+                </Text>
+                <Text style={[commonStyles.textSecondary, { textAlign: 'center', marginBottom: 16, color: currentColors.textSecondary }]}>
+                  You have {data.people.length} {data.people.length === 1 ? 'person' : 'people'} set up. Now start adding expenses to see your budget breakdown.
+                </Text>
+                <TouchableOpacity
+                  style={[
+                    commonStyles.card,
+                    { 
+                      backgroundColor: currentColors.secondary + '15',
+                      borderColor: currentColors.secondary + '30',
+                      borderWidth: 2,
+                      marginBottom: 0,
+                      padding: 12,
+                      width: '100%',
+                    }
+                  ]}
+                  onPress={() => router.push('/add-expense')}
+                >
+                  <View style={[commonStyles.row, { alignItems: 'center', justifyContent: 'center' }]}>
+                    <Icon name="add-circle" size={20} style={{ color: currentColors.secondary, marginRight: 8 }} />
+                    <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.secondary }]}>Add Expense</Text>
+                  </View>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
