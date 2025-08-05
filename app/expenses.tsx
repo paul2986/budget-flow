@@ -1,47 +1,74 @@
 
-import { Text, View, ScrollView, TouchableOpacity, Alert, Animated } from 'react-native';
 import { useState } from 'react';
-import { commonStyles } from '../styles/commonStyles';
-import { router } from 'expo-router';
 import { useBudgetData } from '../hooks/useBudgetData';
+import { router } from 'expo-router';
+import { Text, View, ScrollView, TouchableOpacity, Alert, Animated, ActivityIndicator } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
-import { useCurrency } from '../hooks/useCurrency';
 import { calculateMonthlyAmount } from '../utils/calculations';
-import Icon from '../components/Icon';
 import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
+import { commonStyles } from '../styles/commonStyles';
+import { useCurrency } from '../hooks/useCurrency';
+import Icon from '../components/Icon';
+import Toast from '../components/Toast';
 
 export default function ExpensesScreen() {
-  const { data, removeExpense } = useBudgetData();
+  const { data, removeExpense, saving } = useBudgetData();
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
   const [filter, setFilter] = useState<'all' | 'household' | 'personal'>('all');
+  const [personFilter, setPersonFilter] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({
+    visible: false,
+    message: '',
+    type: 'info'
+  });
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
+    setToast({ visible: true, message, type });
+  };
+
+  const hideToast = () => {
+    setToast({ visible: false, message: '', type: 'info' });
+  };
 
   const handleRemoveExpense = (expenseId: string, description: string) => {
+    console.log('ExpensesScreen: Attempting to remove expense:', expenseId, description);
     Alert.alert(
-      'Delete Expense',
-      `Are you sure you want to delete "${description}"?`,
+      'Remove Expense',
+      `Are you sure you want to remove "${description}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Delete', 
+          text: 'Remove', 
           style: 'destructive',
-          onPress: () => removeExpense(expenseId)
+          onPress: async () => {
+            try {
+              console.log('ExpensesScreen: Removing expense:', expenseId);
+              const result = await removeExpense(expenseId);
+              console.log('ExpensesScreen: Expense removed successfully');
+              
+              if (result.success) {
+                showToast(`"${description}" has been removed.`, 'success');
+              } else {
+                showToast('Failed to remove expense. Please try again.', 'error');
+              }
+            } catch (error) {
+              console.error('ExpensesScreen: Error removing expense:', error);
+              showToast('Failed to remove expense. Please try again.', 'error');
+            }
+          }
         },
       ]
     );
   };
 
   const handleEditExpense = (expense: any) => {
+    console.log('ExpensesScreen: Navigating to edit expense:', expense);
     router.push({
       pathname: '/add-expense',
       params: { id: expense.id }
     });
   };
-
-  const filteredExpenses = data.expenses.filter(expense => {
-    if (filter === 'all') return true;
-    return expense.category === filter;
-  });
 
   const FilterButton = ({ filterType, label }: { filterType: typeof filter, label: string }) => (
     <TouchableOpacity
@@ -50,11 +77,17 @@ export default function ExpensesScreen() {
         { 
           backgroundColor: filter === filterType ? currentColors.primary : currentColors.border,
           marginRight: 8,
-          paddingHorizontal: 16,
+          paddingHorizontal: 12,
           paddingVertical: 8,
         }
       ]}
-      onPress={() => setFilter(filterType)}
+      onPress={() => {
+        setFilter(filterType);
+        if (filterType !== 'personal') {
+          setPersonFilter(null);
+        }
+      }}
+      disabled={saving}
     >
       <Text style={[
         commonStyles.badgeText,
@@ -67,137 +100,229 @@ export default function ExpensesScreen() {
 
   const renderRightActions = (expenseId: string, description: string) => {
     return (
-      <View style={{
+      <Animated.View style={{
+        flex: 1,
         backgroundColor: currentColors.error,
         justifyContent: 'center',
         alignItems: 'center',
-        width: 80,
-        borderRadius: 12,
-        marginBottom: 12,
+        paddingHorizontal: 20,
+        marginVertical: 4,
+        borderRadius: 8,
       }}>
         <TouchableOpacity
+          onPress={() => handleRemoveExpense(expenseId, description)}
           style={{
             justifyContent: 'center',
             alignItems: 'center',
-            width: '100%',
+            width: 80,
             height: '100%',
           }}
-          onPress={() => handleRemoveExpense(expenseId, description)}
+          disabled={saving}
         >
-          <Icon name="trash-outline" size={24} style={{ color: currentColors.backgroundAlt }} />
-          <Text style={{ color: currentColors.backgroundAlt, fontSize: 12, fontWeight: '600' }}>
-            Delete
-          </Text>
+          {saving ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <>
+              <Icon name="trash-outline" size={24} style={{ color: 'white' }} />
+              <Text style={{ color: 'white', fontSize: 12, marginTop: 4 }}>Delete</Text>
+            </>
+          )}
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     );
   };
+
+  // Filter expenses
+  let filteredExpenses = data.expenses;
+  
+  if (filter === 'household') {
+    filteredExpenses = filteredExpenses.filter(e => e.category === 'household');
+  } else if (filter === 'personal') {
+    filteredExpenses = filteredExpenses.filter(e => e.category === 'personal');
+    
+    if (personFilter) {
+      filteredExpenses = filteredExpenses.filter(e => e.personId === personFilter);
+    }
+  }
+
+  // Sort by date (newest first)
+  filteredExpenses = filteredExpenses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          visible={toast.visible}
+          onHide={hideToast}
+        />
+        
         <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
           <View style={{ width: 24 }} />
           <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Expenses</Text>
-          <TouchableOpacity onPress={() => router.push('/add-expense')}>
-            <Icon name="add" size={24} style={{ color: currentColors.text }} />
+          <TouchableOpacity onPress={() => router.push('/add-expense')} disabled={saving}>
+            {saving ? (
+              <ActivityIndicator size="small" color={currentColors.primary} />
+            ) : (
+              <Icon name="add" size={24} style={{ color: currentColors.text }} />
+            )}
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={commonStyles.content} contentContainerStyle={commonStyles.scrollContent}>
-          {/* Filter Buttons */}
-          <View style={[commonStyles.section, { marginBottom: 16 }]}>
+        {/* Filters */}
+        <View style={[commonStyles.section, { paddingBottom: 0 }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+            <FilterButton filterType="all" label="All Expenses" />
+            <FilterButton filterType="household" label="Household" />
+            <FilterButton filterType="personal" label="Personal" />
+          </ScrollView>
+          
+          {/* Person filter for personal expenses */}
+          {filter === 'personal' && data.people.length > 0 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ flexDirection: 'row', paddingHorizontal: 4 }}>
-                <FilterButton filterType="all" label="All Expenses" />
-                <FilterButton filterType="household" label="Household" />
-                <FilterButton filterType="personal" label="Personal" />
-              </View>
+              <TouchableOpacity
+                style={[
+                  commonStyles.badge,
+                  { 
+                    backgroundColor: personFilter === null ? currentColors.secondary : currentColors.border,
+                    marginRight: 8,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                  }
+                ]}
+                onPress={() => setPersonFilter(null)}
+                disabled={saving}
+              >
+                <Text style={[
+                  commonStyles.badgeText,
+                  { color: personFilter === null ? currentColors.backgroundAlt : currentColors.text }
+                ]}>
+                  All People
+                </Text>
+              </TouchableOpacity>
+              
+              {data.people.map((person) => (
+                <TouchableOpacity
+                  key={person.id}
+                  style={[
+                    commonStyles.badge,
+                    { 
+                      backgroundColor: personFilter === person.id ? currentColors.secondary : currentColors.border,
+                      marginRight: 8,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                    }
+                  ]}
+                  onPress={() => setPersonFilter(person.id)}
+                  disabled={saving}
+                >
+                  <Text style={[
+                    commonStyles.badgeText,
+                    { color: personFilter === person.id ? currentColors.backgroundAlt : currentColors.text }
+                  ]}>
+                    {person.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </ScrollView>
-          </View>
+          )}
+        </View>
 
-          {/* Expenses List */}
+        <ScrollView style={commonStyles.content} contentContainerStyle={commonStyles.scrollContent}>
           {filteredExpenses.length === 0 ? (
-            <View style={commonStyles.emptyState}>
-              <Icon name="receipt-outline" size={48} style={{ color: currentColors.textSecondary }} />
-              <Text style={[commonStyles.emptyStateText, { color: currentColors.textSecondary }]}>
-                {filter === 'all' 
-                  ? 'No expenses yet.\nTap the + button to add your first expense!'
-                  : `No ${filter} expenses found.\nTry changing the filter or add a new expense.`
-                }
-              </Text>
+            <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
+              <View style={commonStyles.centerContent}>
+                <Icon name="receipt-outline" size={48} style={{ color: currentColors.textSecondary, marginBottom: 12 }} />
+                <Text style={[commonStyles.subtitle, { textAlign: 'center', marginBottom: 8, color: currentColors.text }]}>
+                  No Expenses Found
+                </Text>
+                <Text style={[commonStyles.textSecondary, { textAlign: 'center', color: currentColors.textSecondary }]}>
+                  {filter === 'all' 
+                    ? 'Add your first expense to get started'
+                    : `No ${filter} expenses found`
+                  }
+                </Text>
+              </View>
             </View>
           ) : (
-            <View>
-              <Text style={[commonStyles.textSecondary, { marginBottom: 12, color: currentColors.textSecondary }]}>
-                Swipe left to delete • Tap to edit
-              </Text>
+            filteredExpenses.map((expense) => {
+              const person = expense.personId ? data.people.find(p => p.id === expense.personId) : null;
+              const monthlyAmount = calculateMonthlyAmount(expense.amount, expense.frequency);
               
-              {filteredExpenses.map((expense) => {
-                const person = data.people.find(p => p.id === expense.personId);
-                const monthlyAmount = calculateMonthlyAmount(expense.amount, expense.frequency);
-                
-                return (
-                  <Swipeable
-                    key={expense.id}
-                    renderRightActions={() => renderRightActions(expense.id, expense.description)}
+              return (
+                <Swipeable
+                  key={expense.id}
+                  renderRightActions={() => renderRightActions(expense.id, expense.description)}
+                  enabled={!saving}
+                >
+                  <TouchableOpacity
+                    style={[
+                      commonStyles.card,
+                      { 
+                        backgroundColor: currentColors.backgroundAlt, 
+                        borderColor: currentColors.border,
+                        marginBottom: 4,
+                      }
+                    ]}
+                    onPress={() => handleEditExpense(expense)}
+                    activeOpacity={0.7}
+                    disabled={saving}
                   >
-                    <TouchableOpacity
-                      style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}
-                      onPress={() => handleEditExpense(expense)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={[commonStyles.row, { marginBottom: 8 }]}>
-                        <View style={commonStyles.flex1}>
-                          <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>
-                            {expense.description}
-                          </Text>
-                          <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
-                            {expense.category === 'household' ? 'Household' : person?.name || 'Personal'}
-                            {' • '}
-                            {expense.frequency}
-                          </Text>
-                        </View>
-                        <View style={{ alignItems: 'flex-end' }}>
-                          <Text style={[
-                            commonStyles.text, 
-                            { 
-                              color: currentColors.expense, 
-                              fontWeight: '600',
-                              fontSize: 16 
-                            }
-                          ]}>
-                            {formatCurrency(expense.amount)}
-                          </Text>
-                          {expense.frequency !== 'monthly' && (
-                            <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, fontSize: 12 }]}>
-                              {formatCurrency(monthlyAmount)}/month
-                            </Text>
-                          )}
-                        </View>
+                    <View style={[commonStyles.row, { marginBottom: 8 }]}>
+                      <View style={commonStyles.flex1}>
+                        <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>
+                          {expense.description}
+                        </Text>
+                        <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                          {expense.category === 'personal' && person ? `${person.name} • ` : ''}
+                          {expense.frequency} • {new Date(expense.date).toLocaleDateString()}
+                        </Text>
                       </View>
-                      
-                      <View style={[commonStyles.row, { alignItems: 'center' }]}>
-                        <View style={[
-                          commonStyles.badge, 
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={[
+                          commonStyles.text, 
                           { 
-                            backgroundColor: expense.category === 'household' 
-                              ? currentColors.household 
-                              : currentColors.personal 
+                            fontWeight: '700', 
+                            color: expense.category === 'household' ? currentColors.household : currentColors.personal 
                           }
                         ]}>
-                          <Text style={[commonStyles.badgeText, { color: currentColors.backgroundAlt }]}>
-                            {expense.category === 'household' ? 'Household' : 'Personal'}
-                          </Text>
-                        </View>
-                        <View style={{ flex: 1 }} />
-                        <Icon name="chevron-forward-outline" size={16} style={{ color: currentColors.textSecondary }} />
+                          {formatCurrency(expense.amount)}
+                        </Text>
+                        <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                          {formatCurrency(monthlyAmount)}/mo
+                        </Text>
                       </View>
-                    </TouchableOpacity>
-                  </Swipeable>
-                );
-              })}
-            </View>
+                    </View>
+                    
+                    <View style={[commonStyles.row, { alignItems: 'center' }]}>
+                      <View style={[
+                        commonStyles.badge,
+                        { 
+                          backgroundColor: expense.category === 'household' ? currentColors.household : currentColors.personal,
+                          marginRight: 8,
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                        }
+                      ]}>
+                        <Text style={[
+                          commonStyles.badgeText,
+                          { color: currentColors.backgroundAlt, fontSize: 12 }
+                        ]}>
+                          {expense.category}
+                        </Text>
+                      </View>
+                      
+                      <Text style={[commonStyles.textSecondary, { flex: 1, color: currentColors.textSecondary }]}>
+                        Swipe left to delete • Tap to edit
+                      </Text>
+                      
+                      <Icon name="chevron-forward-outline" size={16} style={{ color: currentColors.textSecondary }} />
+                    </View>
+                  </TouchableOpacity>
+                </Swipeable>
+              );
+            })
           )}
         </ScrollView>
       </View>

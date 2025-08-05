@@ -1,7 +1,7 @@
 
-import { Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { colors } from '../styles/commonStyles';
 import { useTheme } from '../hooks/useTheme';
+import { colors } from '../styles/commonStyles';
+import { Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 
 interface ButtonProps {
   text: string;
@@ -18,15 +18,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
+    marginTop: 16,
   },
   text: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.backgroundAlt,
-  },
-  disabled: {
-    opacity: 0.6,
   },
 });
 
@@ -37,18 +33,18 @@ export default function Button({ text, onPress, style, textStyle, disabled }: Bu
     <TouchableOpacity
       style={[
         styles.button,
-        { backgroundColor: currentColors.primary },
         style,
-        disabled && styles.disabled,
+        disabled && { opacity: 0.6 }
       ]}
       onPress={onPress}
       disabled={disabled}
-      activeOpacity={0.7}
+      activeOpacity={disabled ? 1 : 0.7}
     >
       <Text style={[
         styles.text,
         { color: currentColors.backgroundAlt },
         textStyle,
+        disabled && { color: currentColors.textSecondary }
       ]}>
         {text}
       </Text>

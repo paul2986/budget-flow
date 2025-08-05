@@ -10,6 +10,7 @@ export const useBudgetData = () => {
     householdSettings: { distributionMethod: 'even' },
   });
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -31,12 +32,25 @@ export const useBudgetData = () => {
   const saveData = async (newData: BudgetData) => {
     try {
       console.log('useBudgetData: Saving data:', newData);
-      await saveBudgetData(newData);
+      setSaving(true);
+      
+      // Optimistically update the UI first
       setData(newData);
+      
+      // Then save to storage
+      await saveBudgetData(newData);
       console.log('useBudgetData: Data saved successfully');
+      
+      return { success: true };
     } catch (error) {
       console.error('useBudgetData: Error saving budget data:', error);
-      throw error;
+      
+      // Revert the optimistic update on error
+      await loadData();
+      
+      return { success: false, error: error as Error };
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -44,8 +58,9 @@ export const useBudgetData = () => {
     console.log('useBudgetData: Adding person:', person);
     try {
       const newData = { ...data, people: [...data.people, person] };
-      await saveData(newData);
+      const result = await saveData(newData);
       console.log('useBudgetData: Person added successfully');
+      return result;
     } catch (error) {
       console.error('useBudgetData: Error adding person:', error);
       throw error;
@@ -60,8 +75,9 @@ export const useBudgetData = () => {
         people: data.people.filter(p => p.id !== personId),
         expenses: data.expenses.filter(e => e.personId !== personId),
       };
-      await saveData(newData);
+      const result = await saveData(newData);
       console.log('useBudgetData: Person removed successfully');
+      return result;
     } catch (error) {
       console.error('useBudgetData: Error removing person:', error);
       throw error;
@@ -75,8 +91,9 @@ export const useBudgetData = () => {
         ...data,
         people: data.people.map(p => p.id === updatedPerson.id ? updatedPerson : p),
       };
-      await saveData(newData);
+      const result = await saveData(newData);
       console.log('useBudgetData: Person updated successfully');
+      return result;
     } catch (error) {
       console.error('useBudgetData: Error updating person:', error);
       throw error;
@@ -103,8 +120,9 @@ export const useBudgetData = () => {
       };
       
       console.log('useBudgetData: New data after adding income:', newData);
-      await saveData(newData);
+      const result = await saveData(newData);
       console.log('useBudgetData: Income added successfully');
+      return result;
     } catch (error) {
       console.error('useBudgetData: Error adding income:', error);
       throw error;
@@ -139,8 +157,9 @@ export const useBudgetData = () => {
       };
       
       console.log('useBudgetData: New data after removing income:', newData);
-      await saveData(newData);
+      const result = await saveData(newData);
       console.log('useBudgetData: Income removed successfully');
+      return result;
     } catch (error) {
       console.error('useBudgetData: Error removing income:', error);
       throw error;
@@ -151,8 +170,9 @@ export const useBudgetData = () => {
     console.log('useBudgetData: Adding expense:', expense);
     try {
       const newData = { ...data, expenses: [...data.expenses, expense] };
-      await saveData(newData);
+      const result = await saveData(newData);
       console.log('useBudgetData: Expense added successfully');
+      return result;
     } catch (error) {
       console.error('useBudgetData: Error adding expense:', error);
       throw error;
@@ -166,8 +186,9 @@ export const useBudgetData = () => {
         ...data,
         expenses: data.expenses.filter(e => e.id !== expenseId),
       };
-      await saveData(newData);
+      const result = await saveData(newData);
       console.log('useBudgetData: Expense removed successfully');
+      return result;
     } catch (error) {
       console.error('useBudgetData: Error removing expense:', error);
       throw error;
@@ -181,8 +202,9 @@ export const useBudgetData = () => {
         ...data,
         expenses: data.expenses.map(e => e.id === updatedExpense.id ? updatedExpense : e),
       };
-      await saveData(newData);
+      const result = await saveData(newData);
       console.log('useBudgetData: Expense updated successfully');
+      return result;
     } catch (error) {
       console.error('useBudgetData: Error updating expense:', error);
       throw error;
@@ -193,8 +215,9 @@ export const useBudgetData = () => {
     console.log('useBudgetData: Updating household settings:', settings);
     try {
       const newData = { ...data, householdSettings: settings };
-      await saveData(newData);
+      const result = await saveData(newData);
       console.log('useBudgetData: Household settings updated successfully');
+      return result;
     } catch (error) {
       console.error('useBudgetData: Error updating household settings:', error);
       throw error;
@@ -204,6 +227,7 @@ export const useBudgetData = () => {
   return {
     data,
     loading,
+    saving,
     addPerson,
     removePerson,
     updatePerson,

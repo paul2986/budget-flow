@@ -2,16 +2,17 @@
 import { useState, useEffect } from 'react';
 import { commonStyles, buttonStyles } from '../styles/commonStyles';
 import { Expense } from '../types/budget';
-import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
 import { useCurrency } from '../hooks/useCurrency';
 import Icon from '../components/Icon';
 import { router, useLocalSearchParams } from 'expo-router';
 import Button from '../components/Button';
+import Toast from '../components/Toast';
 
 export default function AddExpenseScreen() {
-  const { data, addExpense, updateExpense } = useBudgetData();
+  const { data, addExpense, updateExpense, saving } = useBudgetData();
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
   const params = useLocalSearchParams<{ id?: string }>();
@@ -21,6 +22,11 @@ export default function AddExpenseScreen() {
   const [category, setCategory] = useState<'household' | 'personal'>('household');
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly' | 'one-time'>('monthly');
   const [selectedPersonId, setSelectedPersonId] = useState<string>('');
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({
+    visible: false,
+    message: '',
+    type: 'info'
+  });
   
   const isEditMode = !!params.id;
   const expenseToEdit = data.expenses.find(e => e.id === params.id);
@@ -39,29 +45,36 @@ export default function AddExpenseScreen() {
       setSelectedPersonId(expenseToEdit.personId || '');
     } else if (isEditMode && !expenseToEdit) {
       console.log('AddExpenseScreen: Expense not found for editing');
-      Alert.alert('Error', 'Expense not found', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
+      showToast('Expense not found', 'error');
+      setTimeout(() => router.back(), 2000);
     }
   }, [isEditMode, expenseToEdit, data.people, params.id]);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
+    setToast({ visible: true, message, type });
+  };
+
+  const hideToast = () => {
+    setToast({ visible: false, message: '', type: 'info' });
+  };
 
   const handleSaveExpense = async () => {
     console.log('AddExpenseScreen: Save expense button pressed');
     console.log('AddExpenseScreen: Form data:', { description, amount, category, frequency, selectedPersonId });
     
     if (!description.trim()) {
-      Alert.alert('Error', 'Please enter a description');
+      showToast('Please enter a description', 'error');
       return;
     }
     
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
+      showToast('Please enter a valid amount', 'error');
       return;
     }
     
     if (category === 'personal' && !selectedPersonId) {
-      Alert.alert('Error', 'Please select a person for personal expenses');
+      showToast('Please select a person for personal expenses', 'error');
       return;
     }
 
@@ -78,22 +91,29 @@ export default function AddExpenseScreen() {
 
       console.log('AddExpenseScreen: Saving expense:', expenseData);
       
+      let result;
       if (isEditMode) {
-        await updateExpense(expenseData);
+        result = await updateExpense(expenseData);
         console.log('AddExpenseScreen: Expense updated successfully');
-        Alert.alert('Success', 'Expense updated successfully!', [
-          { text: 'OK', onPress: () => router.back() }
-        ]);
       } else {
-        await addExpense(expenseData);
+        result = await addExpense(expenseData);
         console.log('AddExpenseScreen: Expense added successfully');
-        Alert.alert('Success', 'Expense added successfully!', [
-          { text: 'OK', onPress: () => router.back() }
-        ]);
+      }
+
+      if (result.success) {
+        const successMessage = isEditMode ? 'Expense updated successfully!' : 'Expense added successfully!';
+        showToast(successMessage, 'success');
+        
+        // Navigate back after a short delay to show the success message
+        setTimeout(() => {
+          router.back();
+        }, 1500);
+      } else {
+        showToast('Failed to save expense. Please try again.', 'error');
       }
     } catch (error) {
       console.error('AddExpenseScreen: Error saving expense:', error);
-      Alert.alert('Error', 'Failed to save expense. Please try again.');
+      showToast('Failed to save expense. Please try again.', 'error');
     }
   };
 
@@ -115,6 +135,7 @@ export default function AddExpenseScreen() {
           setCategory('household');
           setSelectedPersonId('');
         }}
+        disabled={saving}
       >
         <Text style={[
           commonStyles.badgeText,
@@ -136,6 +157,7 @@ export default function AddExpenseScreen() {
           }
         ]}
         onPress={() => setCategory('personal')}
+        disabled={saving}
       >
         <Text style={[
           commonStyles.badgeText,
@@ -163,6 +185,7 @@ export default function AddExpenseScreen() {
             }
           ]}
           onPress={() => setFrequency(freq as any)}
+          disabled={saving}
         >
           <Text style={[
             commonStyles.badgeText,
@@ -193,6 +216,7 @@ export default function AddExpenseScreen() {
               text="Add People"
               onPress={() => router.push('/people')}
               style={[buttonStyles.primary, { backgroundColor: currentColors.secondary, marginTop: 12 }]}
+              disabled={saving}
             />
           </View>
         ) : (
@@ -211,6 +235,7 @@ export default function AddExpenseScreen() {
                   }
                 ]}
                 onPress={() => setSelectedPersonId(person.id)}
+                disabled={saving}
               >
                 <Text style={[
                   commonStyles.badgeText,
@@ -228,15 +253,26 @@ export default function AddExpenseScreen() {
 
   return (
     <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        visible={toast.visible}
+        onHide={hideToast}
+      />
+      
       <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Icon name="arrow-back" size={24} style={{ color: currentColors.text }} />
+        <TouchableOpacity onPress={() => router.back()} disabled={saving}>
+          <Icon name="arrow-back" size={24} style={{ color: saving ? currentColors.textSecondary : currentColors.text }} />
         </TouchableOpacity>
         <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>
           {isEditMode ? 'Edit Expense' : 'Add Expense'}
         </Text>
-        <TouchableOpacity onPress={handleSaveExpense}>
-          <Icon name="checkmark" size={24} style={{ color: currentColors.primary }} />
+        <TouchableOpacity onPress={handleSaveExpense} disabled={saving}>
+          {saving ? (
+            <ActivityIndicator size="small" color={currentColors.primary} />
+          ) : (
+            <Icon name="checkmark" size={24} style={{ color: currentColors.primary }} />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -257,6 +293,7 @@ export default function AddExpenseScreen() {
               value={description}
               onChangeText={setDescription}
               autoFocus={!isEditMode}
+              editable={!saving}
             />
             
             <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
@@ -269,6 +306,7 @@ export default function AddExpenseScreen() {
               value={amount}
               onChangeText={setAmount}
               keyboardType="numeric"
+              editable={!saving}
             />
             
             <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
@@ -287,9 +325,10 @@ export default function AddExpenseScreen() {
 
         <View style={commonStyles.section}>
           <Button
-            text={isEditMode ? 'Update Expense' : 'Add Expense'}
+            text={saving ? 'Saving...' : (isEditMode ? 'Update Expense' : 'Add Expense')}
             onPress={handleSaveExpense}
-            style={[buttonStyles.primary, { backgroundColor: currentColors.primary }]}
+            style={[buttonStyles.primary, { backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }]}
+            disabled={saving}
           />
           
           <Button
@@ -297,6 +336,7 @@ export default function AddExpenseScreen() {
             onPress={() => router.back()}
             style={[buttonStyles.outline, { borderColor: currentColors.textSecondary, marginTop: 12 }]}
             textStyle={{ color: currentColors.textSecondary }}
+            disabled={saving}
           />
         </View>
       </ScrollView>

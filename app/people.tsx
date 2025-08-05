@@ -1,5 +1,5 @@
 
-import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { commonStyles, buttonStyles } from '../styles/commonStyles';
@@ -16,9 +16,10 @@ import {
 } from '../utils/calculations';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
+import Toast from '../components/Toast';
 
 export default function PeopleScreen() {
-  const { data, addPerson, removePerson, addIncome, removeIncome } = useBudgetData();
+  const { data, addPerson, removePerson, addIncome, removeIncome, saving } = useBudgetData();
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
   const [showAddPerson, setShowAddPerson] = useState(false);
@@ -30,13 +31,26 @@ export default function PeopleScreen() {
     label: '',
     frequency: 'monthly' as const,
   });
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({
+    visible: false,
+    message: '',
+    type: 'info'
+  });
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
+    setToast({ visible: true, message, type });
+  };
+
+  const hideToast = () => {
+    setToast({ visible: false, message: '', type: 'info' });
+  };
 
   const handleAddPerson = async () => {
     console.log('PeopleScreen: Add person button pressed');
     console.log('PeopleScreen: New person name:', newPersonName);
     
     if (!newPersonName.trim()) {
-      Alert.alert('Error', 'Please enter a name');
+      showToast('Please enter a name', 'error');
       return;
     }
 
@@ -48,16 +62,19 @@ export default function PeopleScreen() {
       };
 
       console.log('PeopleScreen: Adding new person:', person);
-      await addPerson(person);
+      const result = await addPerson(person);
       console.log('PeopleScreen: Person added successfully');
       
-      setNewPersonName('');
-      setShowAddPerson(false);
-      
-      Alert.alert('Success', `${person.name} has been added successfully!`);
+      if (result.success) {
+        setNewPersonName('');
+        setShowAddPerson(false);
+        showToast(`${person.name} has been added successfully!`, 'success');
+      } else {
+        showToast('Failed to add person. Please try again.', 'error');
+      }
     } catch (error) {
       console.error('PeopleScreen: Error adding person:', error);
-      Alert.alert('Error', 'Failed to add person. Please try again.');
+      showToast('Failed to add person. Please try again.', 'error');
     }
   };
 
@@ -74,12 +91,17 @@ export default function PeopleScreen() {
           onPress: async () => {
             try {
               console.log('PeopleScreen: Removing person:', person.id);
-              await removePerson(person.id);
+              const result = await removePerson(person.id);
               console.log('PeopleScreen: Person removed successfully');
-              Alert.alert('Success', `${person.name} has been removed.`);
+              
+              if (result.success) {
+                showToast(`${person.name} has been removed.`, 'success');
+              } else {
+                showToast('Failed to remove person. Please try again.', 'error');
+              }
             } catch (error) {
               console.error('PeopleScreen: Error removing person:', error);
-              Alert.alert('Error', 'Failed to remove person. Please try again.');
+              showToast('Failed to remove person. Please try again.', 'error');
             }
           }
         },
@@ -100,13 +122,13 @@ export default function PeopleScreen() {
     console.log('PeopleScreen: New income data:', newIncome);
     
     if (!selectedPersonId || !newIncome.amount || !newIncome.label.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showToast('Please fill in all fields', 'error');
       return;
     }
 
     const amount = parseFloat(newIncome.amount);
     if (isNaN(amount) || amount <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
+      showToast('Please enter a valid amount', 'error');
       return;
     }
 
@@ -120,17 +142,20 @@ export default function PeopleScreen() {
       };
 
       console.log('PeopleScreen: Adding new income:', income);
-      await addIncome(selectedPersonId, income);
+      const result = await addIncome(selectedPersonId, income);
       console.log('PeopleScreen: Income added successfully');
       
-      setNewIncome({ amount: '', label: '', frequency: 'monthly' });
-      setShowAddIncome(false);
-      setSelectedPersonId(null);
-      
-      Alert.alert('Success', 'Income source added successfully!');
+      if (result.success) {
+        setNewIncome({ amount: '', label: '', frequency: 'monthly' });
+        setShowAddIncome(false);
+        setSelectedPersonId(null);
+        showToast('Income source added successfully!', 'success');
+      } else {
+        showToast('Failed to add income. Please try again.', 'error');
+      }
     } catch (error) {
       console.error('PeopleScreen: Error adding income:', error);
-      Alert.alert('Error', 'Failed to add income. Please try again.');
+      showToast('Failed to add income. Please try again.', 'error');
     }
   };
 
@@ -147,12 +172,17 @@ export default function PeopleScreen() {
           onPress: async () => {
             try {
               console.log('PeopleScreen: Removing income:', personId, incomeId);
-              await removeIncome(personId, incomeId);
+              const result = await removeIncome(personId, incomeId);
               console.log('PeopleScreen: Income removed successfully');
-              Alert.alert('Success', `"${incomeLabel}" has been removed.`);
+              
+              if (result.success) {
+                showToast(`"${incomeLabel}" has been removed.`, 'success');
+              } else {
+                showToast('Failed to remove income. Please try again.', 'error');
+              }
             } catch (error) {
               console.error('PeopleScreen: Error removing income:', error);
-              Alert.alert('Error', 'Failed to remove income. Please try again.');
+              showToast('Failed to remove income. Please try again.', 'error');
             }
           }
         },
@@ -190,6 +220,7 @@ export default function PeopleScreen() {
             }
           ]}
           onPress={() => onChange(freq)}
+          disabled={saving}
         >
           <Text style={[
             commonStyles.badgeText,
@@ -204,11 +235,22 @@ export default function PeopleScreen() {
 
   return (
     <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        visible={toast.visible}
+        onHide={hideToast}
+      />
+      
       <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
         <View style={{ width: 24 }} />
         <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Manage People</Text>
-        <TouchableOpacity onPress={() => setShowAddPerson(true)}>
-          <Icon name="add" size={24} style={{ color: currentColors.text }} />
+        <TouchableOpacity onPress={() => setShowAddPerson(true)} disabled={saving}>
+          {saving ? (
+            <ActivityIndicator size="small" color={currentColors.primary} />
+          ) : (
+            <Icon name="add" size={24} style={{ color: currentColors.text }} />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -228,6 +270,7 @@ export default function PeopleScreen() {
                 text="Add Your First Person"
                 onPress={() => setShowAddPerson(true)}
                 style={[buttonStyles.primary, { backgroundColor: currentColors.primary }]}
+                disabled={saving}
               />
             </View>
           </View>
@@ -249,6 +292,7 @@ export default function PeopleScreen() {
                 text="Add Person"
                 onPress={() => setShowAddPerson(true)}
                 style={[buttonStyles.primary, { backgroundColor: currentColors.primary, marginTop: 0 }]}
+                disabled={saving}
               />
             </View>
           </View>
@@ -269,6 +313,7 @@ export default function PeopleScreen() {
               value={newPersonName}
               onChangeText={setNewPersonName}
               autoFocus
+              editable={!saving}
             />
             
             <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -281,13 +326,15 @@ export default function PeopleScreen() {
                   }}
                   style={[buttonStyles.outline, { marginTop: 0, borderColor: currentColors.primary }]}
                   textStyle={{ color: currentColors.primary }}
+                  disabled={saving}
                 />
               </View>
               <View style={{ flex: 1 }}>
                 <Button
-                  text="Add Person"
+                  text={saving ? 'Adding...' : 'Add Person'}
                   onPress={handleAddPerson}
-                  style={[buttonStyles.primary, { marginTop: 0, backgroundColor: currentColors.primary }]}
+                  style={[buttonStyles.primary, { marginTop: 0, backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }]}
+                  disabled={saving}
                 />
               </View>
             </View>
@@ -310,6 +357,7 @@ export default function PeopleScreen() {
               placeholderTextColor={currentColors.textSecondary}
               value={newIncome.label}
               onChangeText={(text) => setNewIncome({ ...newIncome, label: text })}
+              editable={!saving}
             />
             
             <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
@@ -322,6 +370,7 @@ export default function PeopleScreen() {
               value={newIncome.amount}
               onChangeText={(text) => setNewIncome({ ...newIncome, amount: text })}
               keyboardType="numeric"
+              editable={!saving}
             />
             
             <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
@@ -343,16 +392,18 @@ export default function PeopleScreen() {
                   }}
                   style={[buttonStyles.outline, { marginTop: 0, borderColor: currentColors.income }]}
                   textStyle={{ color: currentColors.income }}
+                  disabled={saving}
                 />
               </View>
               <View style={{ flex: 1 }}>
                 <Button
-                  text="Add Income"
+                  text={saving ? 'Adding...' : 'Add Income'}
                   onPress={handleAddIncome}
-                  style={[buttonStyles.primary, { marginTop: 0, backgroundColor: currentColors.income }]}
+                  style={[buttonStyles.primary, { marginTop: 0, backgroundColor: saving ? currentColors.textSecondary : currentColors.income }]}
+                  disabled={saving}
                 />
               </View>
-            </View>
+            </div>
           </View>
         )}
 
@@ -370,6 +421,7 @@ export default function PeopleScreen() {
                 style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}
                 onPress={() => handleEditPerson(person)}
                 activeOpacity={0.7}
+                disabled={saving}
               >
                 <View style={[commonStyles.row, { marginBottom: 12 }]}>
                   <Text style={[commonStyles.subtitle, { marginBottom: 0, color: currentColors.text }]}>
@@ -380,8 +432,9 @@ export default function PeopleScreen() {
                       e.stopPropagation(); // Prevent triggering the edit action
                       handleRemovePerson(person);
                     }}
+                    disabled={saving}
                   >
-                    <Icon name="trash-outline" size={20} style={{ color: currentColors.error }} />
+                    <Icon name="trash-outline" size={20} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
                   </TouchableOpacity>
                 </View>
                 
@@ -415,8 +468,9 @@ export default function PeopleScreen() {
                         setSelectedPersonId(person.id);
                         setShowAddIncome(true);
                       }}
+                      disabled={saving}
                     >
-                      <Icon name="add-circle-outline" size={20} style={{ color: currentColors.income }} />
+                      <Icon name="add-circle-outline" size={20} style={{ color: saving ? currentColors.textSecondary : currentColors.income }} />
                     </TouchableOpacity>
                   </View>
                   
@@ -436,8 +490,9 @@ export default function PeopleScreen() {
                             e.stopPropagation(); // Prevent triggering the edit action
                             handleRemoveIncome(person.id, income.id, income.label);
                           }}
+                          disabled={saving}
                         >
-                          <Icon name="close-circle-outline" size={16} style={{ color: currentColors.error }} />
+                          <Icon name="close-circle-outline" size={16} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
                         </TouchableOpacity>
                       </View>
                     ))

@@ -1,5 +1,5 @@
 
-import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { commonStyles, buttonStyles } from '../styles/commonStyles';
@@ -16,10 +16,11 @@ import {
 } from '../utils/calculations';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
+import Toast from '../components/Toast';
 
 export default function EditPersonScreen() {
   const { personId } = useLocalSearchParams<{ personId: string }>();
-  const { data, updatePerson, addIncome, removeIncome } = useBudgetData();
+  const { data, updatePerson, addIncome, removeIncome, saving } = useBudgetData();
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
   
@@ -30,6 +31,11 @@ export default function EditPersonScreen() {
     amount: '',
     label: '',
     frequency: 'monthly' as const,
+  });
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({
+    visible: false,
+    message: '',
+    type: 'info'
   });
 
   useEffect(() => {
@@ -43,17 +49,24 @@ export default function EditPersonScreen() {
       setPersonName(foundPerson.name);
     } else {
       console.log('EditPersonScreen: Person not found');
-      Alert.alert('Error', 'Person not found', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
+      showToast('Person not found', 'error');
+      setTimeout(() => router.back(), 2000);
     }
   }, [personId, data.people]);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
+    setToast({ visible: true, message, type });
+  };
+
+  const hideToast = () => {
+    setToast({ visible: false, message: '', type: 'info' });
+  };
 
   const handleSavePerson = async () => {
     console.log('EditPersonScreen: Saving person...');
     
     if (!person || !personName.trim()) {
-      Alert.alert('Error', 'Please enter a name');
+      showToast('Please enter a name', 'error');
       return;
     }
 
@@ -64,15 +77,18 @@ export default function EditPersonScreen() {
       };
 
       console.log('EditPersonScreen: Updating person:', updatedPerson);
-      await updatePerson(updatedPerson);
+      const result = await updatePerson(updatedPerson);
       console.log('EditPersonScreen: Person updated successfully');
       
-      Alert.alert('Success', 'Person updated successfully!', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
+      if (result.success) {
+        showToast('Person updated successfully!', 'success');
+        setTimeout(() => router.back(), 1500);
+      } else {
+        showToast('Failed to update person. Please try again.', 'error');
+      }
     } catch (error) {
       console.error('EditPersonScreen: Error updating person:', error);
-      Alert.alert('Error', 'Failed to update person. Please try again.');
+      showToast('Failed to update person. Please try again.', 'error');
     }
   };
 
@@ -80,13 +96,13 @@ export default function EditPersonScreen() {
     console.log('EditPersonScreen: Adding income...');
     
     if (!person || !newIncome.amount || !newIncome.label.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showToast('Please fill in all fields', 'error');
       return;
     }
 
     const amount = parseFloat(newIncome.amount);
     if (isNaN(amount) || amount <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
+      showToast('Please enter a valid amount', 'error');
       return;
     }
 
@@ -100,16 +116,19 @@ export default function EditPersonScreen() {
       };
 
       console.log('EditPersonScreen: Adding income:', income);
-      await addIncome(person.id, income);
+      const result = await addIncome(person.id, income);
       
-      setNewIncome({ amount: '', label: '', frequency: 'monthly' });
-      setShowAddIncome(false);
-      
-      console.log('EditPersonScreen: Income added successfully');
-      Alert.alert('Success', 'Income source added successfully!');
+      if (result.success) {
+        setNewIncome({ amount: '', label: '', frequency: 'monthly' });
+        setShowAddIncome(false);
+        console.log('EditPersonScreen: Income added successfully');
+        showToast('Income source added successfully!', 'success');
+      } else {
+        showToast('Failed to add income. Please try again.', 'error');
+      }
     } catch (error) {
       console.error('EditPersonScreen: Error adding income:', error);
-      Alert.alert('Error', 'Failed to add income. Please try again.');
+      showToast('Failed to add income. Please try again.', 'error');
     }
   };
 
@@ -129,12 +148,17 @@ export default function EditPersonScreen() {
           onPress: async () => {
             try {
               console.log('EditPersonScreen: Calling removeIncome with:', person.id, incomeId);
-              await removeIncome(person.id, incomeId);
+              const result = await removeIncome(person.id, incomeId);
               console.log('EditPersonScreen: Income removed successfully');
-              Alert.alert('Success', `"${incomeLabel}" has been removed.`);
+              
+              if (result.success) {
+                showToast(`"${incomeLabel}" has been removed.`, 'success');
+              } else {
+                showToast('Failed to remove income. Please try again.', 'error');
+              }
             } catch (error) {
               console.error('EditPersonScreen: Error removing income:', error);
-              Alert.alert('Error', 'Failed to remove income. Please try again.');
+              showToast('Failed to remove income. Please try again.', 'error');
             }
           }
         },
@@ -174,6 +198,7 @@ export default function EditPersonScreen() {
             }
           ]}
           onPress={() => onChange(freq)}
+          disabled={saving}
         >
           <Text style={[
             commonStyles.badgeText,
@@ -189,7 +214,8 @@ export default function EditPersonScreen() {
   if (!person) {
     return (
       <View style={[commonStyles.container, commonStyles.centerContent, { backgroundColor: currentColors.background }]}>
-        <Text style={[commonStyles.text, { color: currentColors.text }]}>Loading...</Text>
+        <ActivityIndicator size="large" color={currentColors.primary} />
+        <Text style={[commonStyles.text, { color: currentColors.text, marginTop: 16 }]}>Loading...</Text>
       </View>
     );
   }
@@ -201,13 +227,24 @@ export default function EditPersonScreen() {
 
   return (
     <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        visible={toast.visible}
+        onHide={hideToast}
+      />
+      
       <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Icon name="arrow-back" size={24} style={{ color: currentColors.text }} />
+        <TouchableOpacity onPress={() => router.back()} disabled={saving}>
+          <Icon name="arrow-back" size={24} style={{ color: saving ? currentColors.textSecondary : currentColors.text }} />
         </TouchableOpacity>
         <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Edit Person</Text>
-        <TouchableOpacity onPress={handleSavePerson}>
-          <Icon name="checkmark" size={24} style={{ color: currentColors.primary }} />
+        <TouchableOpacity onPress={handleSavePerson} disabled={saving}>
+          {saving ? (
+            <ActivityIndicator size="small" color={currentColors.primary} />
+          ) : (
+            <Icon name="checkmark" size={24} style={{ color: currentColors.primary }} />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -226,6 +263,7 @@ export default function EditPersonScreen() {
               placeholderTextColor={currentColors.textSecondary}
               value={personName}
               onChangeText={setPersonName}
+              editable={!saving}
             />
           </View>
         </View>
@@ -274,6 +312,7 @@ export default function EditPersonScreen() {
               value={newIncome.label}
               onChangeText={(text) => setNewIncome({ ...newIncome, label: text })}
               autoFocus
+              editable={!saving}
             />
             
             <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
@@ -286,6 +325,7 @@ export default function EditPersonScreen() {
               value={newIncome.amount}
               onChangeText={(text) => setNewIncome({ ...newIncome, amount: text })}
               keyboardType="numeric"
+              editable={!saving}
             />
             
             <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
@@ -306,13 +346,15 @@ export default function EditPersonScreen() {
                   }}
                   style={[buttonStyles.outline, { marginTop: 0, borderColor: currentColors.income }]}
                   textStyle={{ color: currentColors.income }}
+                  disabled={saving}
                 />
               </View>
               <View style={{ flex: 1 }}>
                 <Button
-                  text="Add Income"
+                  text={saving ? 'Adding...' : 'Add Income'}
                   onPress={handleAddIncome}
-                  style={[buttonStyles.primary, { marginTop: 0, backgroundColor: currentColors.income }]}
+                  style={[buttonStyles.primary, { marginTop: 0, backgroundColor: saving ? currentColors.textSecondary : currentColors.income }]}
+                  disabled={saving}
                 />
               </View>
             </View>
@@ -323,8 +365,8 @@ export default function EditPersonScreen() {
         <View style={commonStyles.section}>
           <View style={[commonStyles.row, { marginBottom: 12 }]}>
             <Text style={[commonStyles.subtitle, { marginBottom: 0, color: currentColors.text }]}>Income Sources</Text>
-            <TouchableOpacity onPress={() => setShowAddIncome(true)}>
-              <Icon name="add-circle-outline" size={24} style={{ color: currentColors.income }} />
+            <TouchableOpacity onPress={() => setShowAddIncome(true)} disabled={saving}>
+              <Icon name="add-circle-outline" size={24} style={{ color: saving ? currentColors.textSecondary : currentColors.income }} />
             </TouchableOpacity>
           </View>
           
@@ -349,8 +391,9 @@ export default function EditPersonScreen() {
                   </View>
                   <TouchableOpacity 
                     onPress={() => handleRemoveIncome(income.id, income.label)}
+                    disabled={saving}
                   >
-                    <Icon name="trash-outline" size={20} style={{ color: currentColors.error }} />
+                    <Icon name="trash-outline" size={20} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -361,9 +404,10 @@ export default function EditPersonScreen() {
         {/* Save Button */}
         <View style={commonStyles.section}>
           <Button
-            text="Save Changes"
+            text={saving ? 'Saving...' : 'Save Changes'}
             onPress={handleSavePerson}
-            style={[buttonStyles.primary, { backgroundColor: currentColors.primary }]}
+            style={[buttonStyles.primary, { backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }]}
+            disabled={saving}
           />
           
           <Button
@@ -371,6 +415,7 @@ export default function EditPersonScreen() {
             onPress={() => router.back()}
             style={[buttonStyles.outline, { borderColor: currentColors.textSecondary, marginTop: 12 }]}
             textStyle={{ color: currentColors.textSecondary }}
+            disabled={saving}
           />
         </View>
       </ScrollView>
