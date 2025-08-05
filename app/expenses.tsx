@@ -76,9 +76,10 @@ export default function ExpensesScreen() {
         commonStyles.badge,
         { 
           backgroundColor: filter === filterType ? currentColors.primary : currentColors.border,
-          marginRight: 8,
-          paddingHorizontal: 12,
-          paddingVertical: 8,
+          marginRight: 12,
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+          borderRadius: 24,
         }
       ]}
       onPress={() => {
@@ -91,7 +92,10 @@ export default function ExpensesScreen() {
     >
       <Text style={[
         commonStyles.badgeText,
-        { color: filter === filterType ? currentColors.backgroundAlt : currentColors.text }
+        { 
+          color: filter === filterType ? '#FFFFFF' : currentColors.text,
+          fontWeight: '600',
+        }
       ]}>
         {label}
       </Text>
@@ -106,8 +110,9 @@ export default function ExpensesScreen() {
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 20,
-        marginVertical: 4,
-        borderRadius: 8,
+        marginVertical: 8,
+        borderRadius: 16,
+        marginLeft: 8,
       }}>
         <TouchableOpacity
           onPress={() => handleRemoveExpense(expenseId, description)}
@@ -124,7 +129,7 @@ export default function ExpensesScreen() {
           ) : (
             <>
               <Icon name="trash-outline" size={24} style={{ color: 'white' }} />
-              <Text style={{ color: 'white', fontSize: 12, marginTop: 4 }}>Delete</Text>
+              <Text style={{ color: 'white', fontSize: 12, marginTop: 4, fontWeight: '600' }}>Delete</Text>
             </>
           )}
         </TouchableOpacity>
@@ -161,70 +166,90 @@ export default function ExpensesScreen() {
         <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
           <View style={{ width: 24 }} />
           <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Expenses</Text>
-          <TouchableOpacity onPress={() => router.push('/add-expense')} disabled={saving}>
+          <TouchableOpacity 
+            onPress={() => router.push('/add-expense')} 
+            disabled={saving}
+            style={{
+              backgroundColor: currentColors.primary,
+              borderRadius: 20,
+              padding: 8,
+            }}
+          >
             {saving ? (
-              <ActivityIndicator size="small" color={currentColors.primary} />
+              <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Icon name="add" size={24} style={{ color: currentColors.text }} />
+              <Icon name="add" size={20} style={{ color: '#FFFFFF' }} />
             )}
           </TouchableOpacity>
         </View>
 
         {/* Filters */}
-        <View style={[commonStyles.section, { paddingBottom: 0 }]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-            <FilterButton filterType="all" label="All Expenses" />
-            <FilterButton filterType="household" label="Household" />
-            <FilterButton filterType="personal" label="Personal" />
+        <View style={[commonStyles.section, { paddingBottom: 0, paddingTop: 16 }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+            <View style={{ paddingHorizontal: 4 }}>
+              <FilterButton filterType="all" label="All Expenses" />
+              <FilterButton filterType="household" label="Household" />
+              <FilterButton filterType="personal" label="Personal" />
+            </View>
           </ScrollView>
           
           {/* Person filter for personal expenses */}
           {filter === 'personal' && data.people.length > 0 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <TouchableOpacity
-                style={[
-                  commonStyles.badge,
-                  { 
-                    backgroundColor: personFilter === null ? currentColors.secondary : currentColors.border,
-                    marginRight: 8,
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                  }
-                ]}
-                onPress={() => setPersonFilter(null)}
-                disabled={saving}
-              >
-                <Text style={[
-                  commonStyles.badgeText,
-                  { color: personFilter === null ? currentColors.backgroundAlt : currentColors.text }
-                ]}>
-                  All People
-                </Text>
-              </TouchableOpacity>
-              
-              {data.people.map((person) => (
+              <View style={{ paddingHorizontal: 4 }}>
                 <TouchableOpacity
-                  key={person.id}
                   style={[
                     commonStyles.badge,
                     { 
-                      backgroundColor: personFilter === person.id ? currentColors.secondary : currentColors.border,
-                      marginRight: 8,
-                      paddingHorizontal: 12,
-                      paddingVertical: 8,
+                      backgroundColor: personFilter === null ? currentColors.secondary : currentColors.border,
+                      marginRight: 12,
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderRadius: 24,
                     }
                   ]}
-                  onPress={() => setPersonFilter(person.id)}
+                  onPress={() => setPersonFilter(null)}
                   disabled={saving}
                 >
                   <Text style={[
                     commonStyles.badgeText,
-                    { color: personFilter === person.id ? currentColors.backgroundAlt : currentColors.text }
+                    { 
+                      color: personFilter === null ? '#FFFFFF' : currentColors.text,
+                      fontWeight: '600',
+                    }
                   ]}>
-                    {person.name}
+                    All People
                   </Text>
                 </TouchableOpacity>
-              ))}
+                
+                {data.people.map((person) => (
+                  <TouchableOpacity
+                    key={person.id}
+                    style={[
+                      commonStyles.badge,
+                      { 
+                        backgroundColor: personFilter === person.id ? currentColors.secondary : currentColors.border,
+                        marginRight: 12,
+                        paddingHorizontal: 16,
+                        paddingVertical: 10,
+                        borderRadius: 24,
+                      }
+                    ]}
+                    onPress={() => setPersonFilter(person.id)}
+                    disabled={saving}
+                  >
+                    <Text style={[
+                      commonStyles.badgeText,
+                      { 
+                        color: personFilter === person.id ? '#FFFFFF' : currentColors.text,
+                        fontWeight: '600',
+                      }
+                    ]}>
+                      {person.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </ScrollView>
           )}
         </View>
@@ -233,8 +258,8 @@ export default function ExpensesScreen() {
           {filteredExpenses.length === 0 ? (
             <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
               <View style={commonStyles.centerContent}>
-                <Icon name="receipt-outline" size={48} style={{ color: currentColors.textSecondary, marginBottom: 12 }} />
-                <Text style={[commonStyles.subtitle, { textAlign: 'center', marginBottom: 8, color: currentColors.text }]}>
+                <Icon name="receipt-outline" size={64} style={{ color: currentColors.textSecondary, marginBottom: 16 }} />
+                <Text style={[commonStyles.subtitle, { textAlign: 'center', marginBottom: 12, color: currentColors.text }]}>
                   No Expenses Found
                 </Text>
                 <Text style={[commonStyles.textSecondary, { textAlign: 'center', color: currentColors.textSecondary }]}>
@@ -262,19 +287,19 @@ export default function ExpensesScreen() {
                       { 
                         backgroundColor: currentColors.backgroundAlt, 
                         borderColor: currentColors.border,
-                        marginBottom: 4,
+                        marginBottom: 8,
                       }
                     ]}
                     onPress={() => handleEditExpense(expense)}
                     activeOpacity={0.7}
                     disabled={saving}
                   >
-                    <View style={[commonStyles.row, { marginBottom: 8 }]}>
+                    <View style={[commonStyles.row, { marginBottom: 12 }]}>
                       <View style={commonStyles.flex1}>
-                        <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>
+                        <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.text, fontSize: 18 }]}>
                           {expense.description}
                         </Text>
-                        <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                        <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, marginTop: 4 }]}>
                           {expense.category === 'personal' && person ? `${person.name} • ` : ''}
                           {expense.frequency} • {new Date(expense.date).toLocaleDateString()}
                         </Text>
@@ -283,13 +308,14 @@ export default function ExpensesScreen() {
                         <Text style={[
                           commonStyles.text, 
                           { 
-                            fontWeight: '700', 
-                            color: expense.category === 'household' ? currentColors.household : currentColors.personal 
+                            fontWeight: '800', 
+                            color: expense.category === 'household' ? currentColors.household : currentColors.personal,
+                            fontSize: 18,
                           }
                         ]}>
                           {formatCurrency(expense.amount)}
                         </Text>
-                        <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                        <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, marginTop: 2 }]}>
                           {formatCurrency(monthlyAmount)}/mo
                         </Text>
                       </View>
@@ -300,16 +326,17 @@ export default function ExpensesScreen() {
                         commonStyles.badge,
                         { 
                           backgroundColor: expense.category === 'household' ? currentColors.household : currentColors.personal,
-                          marginRight: 8,
-                          paddingHorizontal: 8,
-                          paddingVertical: 4,
+                          marginRight: 12,
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 16,
                         }
                       ]}>
                         <Text style={[
                           commonStyles.badgeText,
-                          { color: currentColors.backgroundAlt, fontSize: 12 }
+                          { color: '#FFFFFF', fontSize: 12, fontWeight: '700' }
                         ]}>
-                          {expense.category}
+                          {expense.category.toUpperCase()}
                         </Text>
                       </View>
                       

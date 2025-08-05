@@ -29,9 +29,14 @@ function BottomNavigation() {
       backgroundColor: currentColors.backgroundAlt,
       borderTopWidth: 1,
       borderTopColor: currentColors.border,
-      paddingVertical: 8,
+      paddingVertical: 12,
       paddingHorizontal: 16,
-      paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+      paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+      elevation: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
     }}>
       {navItems.map((item) => {
         const isActive = pathname === item.route;
@@ -42,6 +47,9 @@ function BottomNavigation() {
               flex: 1,
               alignItems: 'center',
               paddingVertical: 8,
+              paddingHorizontal: 4,
+              borderRadius: 12,
+              backgroundColor: isActive ? currentColors.primary + '15' : 'transparent',
             }}
             onPress={() => router.push(item.route)}
             activeOpacity={0.7}
@@ -56,7 +64,7 @@ function BottomNavigation() {
             />
             <Text style={{
               fontSize: 12,
-              fontWeight: isActive ? '600' : '400',
+              fontWeight: isActive ? '700' : '500',
               color: isActive ? currentColors.primary : currentColors.textSecondary,
             }}>
               {item.name}
