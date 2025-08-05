@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { commonStyles } from '../styles/commonStyles';
@@ -19,9 +19,107 @@ import Icon from '../components/Icon';
 import PersonBreakdownChart from '../components/PersonBreakdownChart';
 
 export default function HomeScreen() {
-  const { data } = useBudgetData();
+  const { data, loading } = useBudgetData();
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
+
+  // Add console logs to track when data changes
+  useEffect(() => {
+    console.log('HomeScreen: Data changed - People:', data.people.length, 'Expenses:', data.expenses.length);
+    console.log('HomeScreen: People data:', data.people);
+    console.log('HomeScreen: Household settings:', data.householdSettings);
+  }, [data.people, data.expenses, data.householdSettings]);
+
+  // Memoize calculations to ensure they update when data changes
+  const calculations = useMemo(() => {
+    console.log('HomeScreen: Recalculating budget data...');
+    
+    const totalIncome = calculateTotalIncome(data.people);
+    const totalExpenses = calculateTotalExpenses(data.expenses);
+    const householdExpenses = calculateHouseholdExpenses(data.expenses);
+    const personalExpenses = totalExpenses - householdExpenses;
+    const remainingBudget = totalIncome - totalExpenses;
+
+    const monthlyIncome = calculateMonthlyAmount(totalIncome, 'yearly');
+    const monthlyExpenses = calculateMonthlyAmount(totalExpenses, 'yearly');
+    const monthlyRemaining = calculateMonthlyAmount(remainingBudget, 'yearly');
+
+    console.log('HomeScreen: Calculated values:', {
+      totalIncome,
+      totalExpenses,
+      householdExpenses,
+      personalExpenses,
+      remainingBudget,
+      monthlyIncome,
+      monthlyExpenses,
+      monthlyRemaining
+    });
+
+    return {
+      totalIncome,
+      totalExpenses,
+      householdExpenses,
+      personalExpenses,
+      remainingBudget,
+      monthlyIncome,
+      monthlyExpenses,
+      monthlyRemaining
+    };
+  }, [data.people, data.expenses]);
+
+  // Memoize recent expenses
+  const recentExpenses = useMemo(() => {
+    return data.expenses
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5);
+  }, [data.expenses]);
+
+  // Memoize person breakdowns
+  const personBreakdowns = useMemo(() => {
+    console.log('HomeScreen: Recalculating person breakdowns...');
+    
+    return data.people.map((person) => {
+      const personIncome = calculatePersonIncome(person);
+      const personPersonalExpenses = calculatePersonalExpenses(data.expenses, person.id);
+      const personHouseholdShare = calculateHouseholdShare(
+        calculations.householdExpenses,
+        data.people,
+        data.householdSettings.distributionMethod,
+        person.id
+      );
+      const totalPersonExpenses = personPersonalExpenses + personHouseholdShare;
+      const remainingIncome = personIncome - totalPersonExpenses;
+
+      const monthlyPersonIncome = calculateMonthlyAmount(personIncome, 'yearly');
+      const monthlyPersonalExpenses = calculateMonthlyAmount(personPersonalExpenses, 'yearly');
+      const monthlyHouseholdShare = calculateMonthlyAmount(personHouseholdShare, 'yearly');
+      const monthlyRemaining = calculateMonthlyAmount(remainingIncome, 'yearly');
+
+      console.log(`HomeScreen: Person ${person.name} breakdown:`, {
+        personIncome,
+        personPersonalExpenses,
+        personHouseholdShare,
+        remainingIncome,
+        monthlyPersonIncome,
+        monthlyPersonalExpenses,
+        monthlyHouseholdShare,
+        monthlyRemaining
+      });
+
+      return {
+        person,
+        personIncome,
+        personPersonalExpenses,
+        personHouseholdShare,
+        totalPersonExpenses,
+        remainingIncome,
+        monthlyPersonIncome,
+        monthlyPersonalExpenses,
+        monthlyHouseholdShare,
+        monthlyRemaining
+      };
+    });
+  }, [data.people, data.expenses, data.householdSettings.distributionMethod, calculations.householdExpenses]);
 
   const handleEditExpense = (expenseId: string) => {
     console.log('HomeScreen: Navigating to edit expense:', expenseId);
@@ -31,20 +129,21 @@ export default function HomeScreen() {
     });
   };
 
-  const totalIncome = calculateTotalIncome(data.people);
-  const totalExpenses = calculateTotalExpenses(data.expenses);
-  const householdExpenses = calculateHouseholdExpenses(data.expenses);
-  const personalExpenses = totalExpenses - householdExpenses;
-  const remainingBudget = totalIncome - totalExpenses;
-
-  const monthlyIncome = calculateMonthlyAmount(totalIncome, 'yearly');
-  const monthlyExpenses = calculateMonthlyAmount(totalExpenses, 'yearly');
-  const monthlyRemaining = calculateMonthlyAmount(remainingBudget, 'yearly');
-
-  // Get recent expenses (last 5)
-  const recentExpenses = data.expenses
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5);
+  // Show loading state if data is still loading
+  if (loading) {
+    return (
+      <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
+        <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
+          <View style={{ width: 24 }} />
+          <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Budget Overview</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={[commonStyles.centerContent, { flex: 1 }]}>
+          <Text style={[commonStyles.text, { color: currentColors.textSecondary }]}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
@@ -76,7 +175,7 @@ export default function HomeScreen() {
                 <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.text }]}>Total Income</Text>
               </View>
               <Text style={[commonStyles.text, { fontWeight: '800', color: currentColors.income, fontSize: 20 }]}>
-                {formatCurrency(monthlyIncome)}
+                {formatCurrency(calculations.monthlyIncome)}
               </Text>
             </View>
             <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
@@ -99,7 +198,7 @@ export default function HomeScreen() {
                 <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.text }]}>Total Expenses</Text>
               </View>
               <Text style={[commonStyles.text, { fontWeight: '800', color: currentColors.expense, fontSize: 20 }]}>
-                {formatCurrency(monthlyExpenses)}
+                {formatCurrency(calculations.monthlyExpenses)}
               </Text>
             </View>
             <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
@@ -111,38 +210,38 @@ export default function HomeScreen() {
           <View style={[
             commonStyles.card, 
             { 
-              backgroundColor: monthlyRemaining >= 0 ? currentColors.success + '15' : currentColors.error + '15',
-              borderColor: monthlyRemaining >= 0 ? currentColors.success + '30' : currentColors.error + '30',
+              backgroundColor: calculations.monthlyRemaining >= 0 ? currentColors.success + '15' : currentColors.error + '15',
+              borderColor: calculations.monthlyRemaining >= 0 ? currentColors.success + '30' : currentColors.error + '30',
               borderWidth: 2,
             }
           ]}>
             <View style={[commonStyles.row, { marginBottom: 8 }]}>
               <View style={commonStyles.rowStart}>
                 <Icon 
-                  name={monthlyRemaining >= 0 ? "checkmark-circle" : "alert-circle"} 
+                  name={calculations.monthlyRemaining >= 0 ? "checkmark-circle" : "alert-circle"} 
                   size={24} 
                   style={{ 
-                    color: monthlyRemaining >= 0 ? currentColors.success : currentColors.error, 
+                    color: calculations.monthlyRemaining >= 0 ? currentColors.success : currentColors.error, 
                     marginRight: 12 
                   }} 
                 />
                 <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.text }]}>
-                  {monthlyRemaining >= 0 ? 'Remaining Budget' : 'Over Budget'}
+                  {calculations.monthlyRemaining >= 0 ? 'Remaining Budget' : 'Over Budget'}
                 </Text>
               </View>
               <Text style={[
                 commonStyles.text, 
                 { 
                   fontWeight: '800', 
-                  color: monthlyRemaining >= 0 ? currentColors.success : currentColors.error,
+                  color: calculations.monthlyRemaining >= 0 ? currentColors.success : currentColors.error,
                   fontSize: 20,
                 }
               ]}>
-                {formatCurrency(Math.abs(monthlyRemaining))}
+                {formatCurrency(Math.abs(calculations.monthlyRemaining))}
               </Text>
             </View>
             <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
-              {monthlyRemaining >= 0 
+              {calculations.monthlyRemaining >= 0 
                 ? 'You\'re within budget this month' 
                 : 'Consider reducing expenses'
               }
@@ -157,22 +256,8 @@ export default function HomeScreen() {
               Individual Breakdowns
             </Text>
             
-            {data.people.map((person) => {
-              const personIncome = calculatePersonIncome(person);
-              const personPersonalExpenses = calculatePersonalExpenses(data.expenses, person.id);
-              const personHouseholdShare = calculateHouseholdShare(
-                householdExpenses,
-                data.people,
-                data.householdSettings.distributionMethod,
-                person.id
-              );
-              const totalPersonExpenses = personPersonalExpenses + personHouseholdShare;
-              const remainingIncome = personIncome - totalPersonExpenses;
-
-              const monthlyPersonIncome = calculateMonthlyAmount(personIncome, 'yearly');
-              const monthlyPersonalExpenses = calculateMonthlyAmount(personPersonalExpenses, 'yearly');
-              const monthlyHouseholdShare = calculateMonthlyAmount(personHouseholdShare, 'yearly');
-              const monthlyRemaining = calculateMonthlyAmount(remainingIncome, 'yearly');
+            {personBreakdowns.map((breakdown) => {
+              const { person, monthlyPersonIncome, monthlyPersonalExpenses, monthlyHouseholdShare, monthlyRemaining } = breakdown;
 
               return (
                 <View 
@@ -338,7 +423,7 @@ export default function HomeScreen() {
                   <Text style={[commonStyles.text, { color: currentColors.text }]}>Household Expenses</Text>
                 </View>
                 <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.household }]}>
-                  {formatCurrency(calculateMonthlyAmount(householdExpenses, 'yearly'))}
+                  {formatCurrency(calculateMonthlyAmount(calculations.householdExpenses, 'yearly'))}
                 </Text>
               </View>
               
@@ -348,7 +433,7 @@ export default function HomeScreen() {
                   <Text style={[commonStyles.text, { color: currentColors.text }]}>Personal Expenses</Text>
                 </View>
                 <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.personal }]}>
-                  {formatCurrency(calculateMonthlyAmount(personalExpenses, 'yearly'))}
+                  {formatCurrency(calculateMonthlyAmount(calculations.personalExpenses, 'yearly'))}
                 </Text>
               </View>
             </View>
