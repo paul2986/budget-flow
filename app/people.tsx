@@ -29,20 +29,33 @@ export default function PeopleScreen() {
   };
 
   const handleAddPerson = async () => {
+    console.log('Add person button pressed');
+    console.log('New person name:', newPersonName);
+    
     if (!newPersonName.trim()) {
       Alert.alert('Error', 'Please enter a name');
       return;
     }
 
-    const person: Person = {
-      id: Date.now().toString(),
-      name: newPersonName.trim(),
-      income: [],
-    };
+    try {
+      const person: Person = {
+        id: `person_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name: newPersonName.trim(),
+        income: [],
+      };
 
-    await addPerson(person);
-    setNewPersonName('');
-    setShowAddPerson(false);
+      console.log('Adding new person:', person);
+      await addPerson(person);
+      console.log('Person added successfully');
+      
+      setNewPersonName('');
+      setShowAddPerson(false);
+      
+      Alert.alert('Success', `${person.name} has been added successfully!`);
+    } catch (error) {
+      console.error('Error adding person:', error);
+      Alert.alert('Error', 'Failed to add person. Please try again.');
+    }
   };
 
   const handleRemovePerson = (person: Person) => {
@@ -61,23 +74,42 @@ export default function PeopleScreen() {
   };
 
   const handleAddIncome = async () => {
+    console.log('Add income button pressed');
+    console.log('New income data:', newIncome);
+    
     if (!selectedPersonId || !newIncome.amount || !newIncome.label.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
-    const income: Income = {
-      id: Date.now().toString(),
-      amount: parseFloat(newIncome.amount),
-      label: newIncome.label.trim(),
-      frequency: newIncome.frequency,
-      personId: selectedPersonId,
-    };
+    const amount = parseFloat(newIncome.amount);
+    if (isNaN(amount) || amount <= 0) {
+      Alert.alert('Error', 'Please enter a valid amount');
+      return;
+    }
 
-    await addIncome(selectedPersonId, income);
-    setNewIncome({ amount: '', label: '', frequency: 'monthly' });
-    setShowAddIncome(false);
-    setSelectedPersonId(null);
+    try {
+      const income: Income = {
+        id: `income_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        amount: amount,
+        label: newIncome.label.trim(),
+        frequency: newIncome.frequency,
+        personId: selectedPersonId,
+      };
+
+      console.log('Adding new income:', income);
+      await addIncome(selectedPersonId, income);
+      console.log('Income added successfully');
+      
+      setNewIncome({ amount: '', label: '', frequency: 'monthly' });
+      setShowAddIncome(false);
+      setSelectedPersonId(null);
+      
+      Alert.alert('Success', 'Income source added successfully!');
+    } catch (error) {
+      console.error('Error adding income:', error);
+      Alert.alert('Error', 'Failed to add income. Please try again.');
+    }
   };
 
   const handleRemoveIncome = (personId: string, incomeId: string, incomeLabel: string) => {
@@ -136,14 +168,58 @@ export default function PeopleScreen() {
       </View>
 
       <ScrollView style={commonStyles.content} contentContainerStyle={commonStyles.scrollContent}>
+        {/* Prominent Add Person Button */}
+        {data.people.length === 0 && !showAddPerson && (
+          <View style={commonStyles.card}>
+            <View style={commonStyles.centerContent}>
+              <Icon name="people-outline" size={48} style={{ color: colors.primary, marginBottom: 12 }} />
+              <Text style={[commonStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>
+                No People Added Yet
+              </Text>
+              <Text style={[commonStyles.textSecondary, { textAlign: 'center', marginBottom: 16 }]}>
+                Add people to track personal expenses and income
+              </Text>
+              <Button
+                text="Add Your First Person"
+                onPress={() => setShowAddPerson(true)}
+                style={[buttonStyles.primary, { backgroundColor: colors.primary }]}
+              />
+            </View>
+          </View>
+        )}
+
+        {/* Quick Add Person Button for existing users */}
+        {data.people.length > 0 && !showAddPerson && (
+          <View style={[commonStyles.card, { backgroundColor: colors.primary + '10' }]}>
+            <View style={[commonStyles.row, { alignItems: 'center' }]}>
+              <View style={commonStyles.flex1}>
+                <Text style={[commonStyles.text, { fontWeight: '600' }]}>
+                  Add Another Person
+                </Text>
+                <Text style={commonStyles.textSecondary}>
+                  Track expenses for family members or roommates
+                </Text>
+              </View>
+              <Button
+                text="Add Person"
+                onPress={() => setShowAddPerson(true)}
+                style={[buttonStyles.primary, { backgroundColor: colors.primary, marginTop: 0 }]}
+              />
+            </View>
+          </View>
+        )}
+
         {/* Add Person Form */}
         {showAddPerson && (
           <View style={[commonStyles.card, { backgroundColor: colors.primary + '10' }]}>
             <Text style={[commonStyles.subtitle, { marginBottom: 12 }]}>Add New Person</Text>
             
+            <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
+              Name:
+            </Text>
             <TextInput
               style={commonStyles.input}
-              placeholder="Enter name"
+              placeholder="Enter person's name"
               value={newPersonName}
               onChangeText={setNewPersonName}
               autoFocus
@@ -179,22 +255,30 @@ export default function PeopleScreen() {
               Add Income for {data.people.find(p => p.id === selectedPersonId)?.name}
             </Text>
             
+            <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
+              Income Source:
+            </Text>
             <TextInput
               style={commonStyles.input}
-              placeholder="Income label (e.g., Salary, Freelance)"
+              placeholder="e.g., Salary, Freelance, Side Job"
               value={newIncome.label}
               onChangeText={(text) => setNewIncome({ ...newIncome, label: text })}
             />
             
+            <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
+              Amount:
+            </Text>
             <TextInput
               style={commonStyles.input}
-              placeholder="Amount"
+              placeholder="0.00"
               value={newIncome.amount}
               onChangeText={(text) => setNewIncome({ ...newIncome, amount: text })}
               keyboardType="numeric"
             />
             
-            <Text style={[commonStyles.text, { marginBottom: 8 }]}>Frequency:</Text>
+            <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
+              Frequency:
+            </Text>
             <FrequencyPicker
               value={newIncome.frequency}
               onChange={(freq) => setNewIncome({ ...newIncome, frequency: freq as any })}
@@ -225,14 +309,7 @@ export default function PeopleScreen() {
         )}
 
         {/* People List */}
-        {data.people.length === 0 ? (
-          <View style={commonStyles.emptyState}>
-            <Icon name="people-outline" size={48} style={{ color: colors.textSecondary }} />
-            <Text style={commonStyles.emptyStateText}>
-              No people added yet.{'\n'}Tap the + button to add someone!
-            </Text>
-          </View>
-        ) : (
+        {data.people.length > 0 && (
           data.people.map((person) => {
             const totalIncome = calculatePersonIncome(person);
             const monthlyIncome = calculateMonthlyAmount(totalIncome, 'yearly');

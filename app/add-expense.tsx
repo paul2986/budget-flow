@@ -19,8 +19,17 @@ export default function AddExpenseScreen() {
   });
 
   const handleAddExpense = async () => {
+    console.log('Add expense button pressed');
+    console.log('Current expense data:', expense);
+    
     if (!expense.amount || !expense.description.trim()) {
       Alert.alert('Error', 'Please fill in amount and description');
+      return;
+    }
+
+    const amount = parseFloat(expense.amount);
+    if (isNaN(amount) || amount <= 0) {
+      Alert.alert('Error', 'Please enter a valid amount');
       return;
     }
 
@@ -29,34 +38,41 @@ export default function AddExpenseScreen() {
       return;
     }
 
-    const newExpense: Expense = {
-      id: Date.now().toString(),
-      amount: parseFloat(expense.amount),
-      description: expense.description.trim(),
-      category: expense.category,
-      frequency: expense.frequency,
-      personId: expense.category === 'personal' ? expense.personId : undefined,
-      date: new Date().toISOString(),
-    };
+    try {
+      const newExpense: Expense = {
+        id: `expense_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        amount: amount,
+        description: expense.description.trim(),
+        category: expense.category,
+        frequency: expense.frequency,
+        personId: expense.category === 'personal' ? expense.personId : undefined,
+        date: new Date().toISOString(),
+      };
 
-    await addExpense(newExpense);
-    
-    Alert.alert(
-      'Success',
-      'Expense added successfully!',
-      [
-        { text: 'Add Another', onPress: () => {
-          setExpense({
-            amount: '',
-            description: '',
-            category: 'personal',
-            frequency: 'monthly',
-            personId: data.people[0]?.id || '',
-          });
-        }},
-        { text: 'Go Home', onPress: () => router.push('/') },
-      ]
-    );
+      console.log('Adding new expense:', newExpense);
+      await addExpense(newExpense);
+      console.log('Expense added successfully');
+      
+      Alert.alert(
+        'Success',
+        'Expense added successfully!',
+        [
+          { text: 'Add Another', onPress: () => {
+            setExpense({
+              amount: '',
+              description: '',
+              category: 'personal',
+              frequency: 'monthly',
+              personId: data.people[0]?.id || '',
+            });
+          }},
+          { text: 'Go Home', onPress: () => router.push('/') },
+        ]
+      );
+    } catch (error) {
+      console.error('Error adding expense:', error);
+      Alert.alert('Error', 'Failed to add expense. Please try again.');
+    }
   };
 
   const CategoryPicker = () => (
@@ -225,7 +241,7 @@ export default function AddExpenseScreen() {
                 ⚠️ No people added yet. Add people first to track personal expenses.
               </Text>
               <Button
-                text="Manage People"
+                text="Add People First"
                 onPress={() => router.push('/people')}
                 style={[buttonStyles.outline, { borderColor: colors.warning, marginTop: 8 }]}
                 textStyle={{ color: colors.warning }}
