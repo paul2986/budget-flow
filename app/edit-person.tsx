@@ -34,23 +34,29 @@ export default function EditPersonScreen() {
   
   const { data, updatePerson, addIncome, removeIncome, updateIncome, saving, refreshData } = useBudgetData();
 
-  // Update person state whenever data changes
+  // Update person state whenever data changes - FIXED: Removed 'person' from dependencies
   useEffect(() => {
+    console.log('EditPersonScreen: useEffect triggered');
+    console.log('EditPersonScreen: personId:', personId);
+    console.log('EditPersonScreen: data.people:', data.people);
+    
     if (personId && data.people.length > 0) {
       const foundPerson = data.people.find(p => p.id === personId);
       console.log('EditPersonScreen: Found person:', foundPerson);
-      console.log('EditPersonScreen: Current person state:', person);
       
-      // Always update the person state with fresh data
       if (foundPerson) {
+        console.log('EditPersonScreen: Setting person state to:', foundPerson);
         setPerson(foundPerson);
-        console.log('EditPersonScreen: Updated person state with fresh data');
       } else {
-        console.log('EditPersonScreen: Person not found in data');
+        console.log('EditPersonScreen: Person not found in data.people array');
+        console.log('EditPersonScreen: Available person IDs:', data.people.map(p => p.id));
         setPerson(null);
       }
+    } else {
+      console.log('EditPersonScreen: No personId or empty people array');
+      setPerson(null);
     }
-  }, [personId, data.people, data.expenses, person]); // Include person in dependencies
+  }, [personId, data.people]); // FIXED: Removed data.expenses and person from dependencies
 
   // Force refresh data when component mounts
   useEffect(() => {
@@ -209,6 +215,17 @@ export default function EditPersonScreen() {
         </View>
         <View style={[commonStyles.centerContent, { flex: 1 }]}>
           <Text style={[commonStyles.text, { color: currentColors.textSecondary }]}>Person not found</Text>
+          <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, marginTop: 8, textAlign: 'center' }]}>
+            The person you're trying to edit could not be found. They may have been deleted.
+          </Text>
+          <TouchableOpacity 
+            style={[buttonStyles.primary, { backgroundColor: currentColors.primary, marginTop: 16 }]}
+            onPress={() => router.replace('/people')}
+          >
+            <Text style={[buttonStyles.primaryText, { color: currentColors.backgroundAlt }]}>
+              Go Back to People
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
