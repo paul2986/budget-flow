@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { BudgetData, Person, Expense, Income, HouseholdSettings } from '../types/budget';
 import { loadBudgetData, saveBudgetData } from '../utils/storage';
+import { BudgetData, Person, Expense, Income, HouseholdSettings } from '../types/budget';
 
 export const useBudgetData = () => {
   const [data, setData] = useState<BudgetData>({
@@ -14,6 +14,7 @@ export const useBudgetData = () => {
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isLoadingRef = useRef(false);
   const lastSavedDataRef = useRef<string>('');
+  const pendingUpdatesRef = useRef<boolean>(false);
 
   const loadData = useCallback(async () => {
     if (isLoadingRef.current) {
@@ -36,6 +37,7 @@ export const useBudgetData = () => {
       lastSavedDataRef.current = dataString;
       
       setData(budgetData);
+      pendingUpdatesRef.current = false;
     } catch (error) {
       console.error('useBudgetData: Error loading budget data:', error);
     } finally {
@@ -62,6 +64,7 @@ export const useBudgetData = () => {
         distributionMethod: newData.householdSettings?.distributionMethod
       });
       setSaving(true);
+      pendingUpdatesRef.current = true;
       
       // Validate data integrity before saving
       if (!newData.people) newData.people = [];
@@ -79,15 +82,18 @@ export const useBudgetData = () => {
         
         // Immediately update the UI state
         setData(newData);
+        pendingUpdatesRef.current = false;
         console.log('useBudgetData: UI state updated successfully');
         
         return { success: true };
       } else {
         console.error('useBudgetData: Save failed:', saveResult.error);
+        pendingUpdatesRef.current = false;
         return { success: false, error: saveResult.error };
       }
     } catch (error) {
       console.error('useBudgetData: Error saving budget data:', error);
+      pendingUpdatesRef.current = false;
       return { success: false, error: error as Error };
     } finally {
       setSaving(false);
@@ -260,6 +266,7 @@ export const useBudgetData = () => {
         return { success: false, error: new Error('Income not found') };
       }
       
+      // Create the updated data with the income changes
       const newData = {
         ...data,
         people: data.people.map(p => 
@@ -393,18 +400,19 @@ export const useBudgetData = () => {
         ...settings
       };
       
+      // Create new data preserving ALL existing data, only updating household settings
       const newData = { 
-        ...data, 
-        householdSettings: newHouseholdSettings,
-        people: [...data.people], // Preserve existing people
-        expenses: [...data.expenses] // Preserve existing expenses
+        people: [...data.people], // Preserve existing people with their income
+        expenses: [...data.expenses], // Preserve existing expenses
+        householdSettings: newHouseholdSettings
       };
       
       console.log('useBudgetData: New data with updated household settings:', {
         oldSettings: data.householdSettings,
         newSettings: newHouseholdSettings,
         peopleCount: newData.people.length,
-        expensesCount: newData.expenses.length
+        expensesCount: newData.expenses.length,
+        totalIncomeCount: newData.people.reduce((total, person) => total + person.income.length, 0)
       });
       
       const result = await saveData(newData);
@@ -416,9 +424,15 @@ export const useBudgetData = () => {
     }
   }, [data, saveData]);
 
-  // Throttled refresh function that components can call
+  // Improved refresh function that avoids unnecessary reloads
   const refreshData = useCallback(() => {
     console.log('useBudgetData: Refresh requested...');
+    
+    // Don't refresh if we have pending updates or are currently saving
+    if (pendingUpdatesRef.current || saving) {
+      console.log('useBudgetData: Skipping refresh - pending updates or saving in progress');
+      return;
+    }
     
     // Clear any existing timeout
     if (refreshTimeoutRef.current) {
@@ -427,7 +441,7 @@ export const useBudgetData = () => {
     
     // Throttle refresh calls to prevent excessive loading
     refreshTimeoutRef.current = setTimeout(async () => {
-      if (!isLoadingRef.current && !saving) {
+      if (!isLoadingRef.current && !saving && !pendingUpdatesRef.current) {
         console.log('useBudgetData: Executing throttled refresh...');
         
         // Check if we need to refresh by comparing with last saved data
