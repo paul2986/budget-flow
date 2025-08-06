@@ -15,6 +15,7 @@ const STORAGE_KEY = 'emulated_device';
 function CustomTabBar() {
   const pathname = usePathname();
   const { isDarkMode, currentColors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const navItems = [
     { name: 'Home', icon: 'home-outline', activeIcon: 'home', route: '/' },
@@ -36,7 +37,7 @@ function CustomTabBar() {
       borderTopColor: currentColors.border,
       paddingVertical: 12,
       paddingHorizontal: 16,
-      paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+      paddingBottom: insets.bottom,
       elevation: 8,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: -2 },
@@ -61,19 +62,11 @@ function CustomTabBar() {
           >
             <Icon
               name={isActive ? item.activeIcon : item.icon}
-              size={24}
+              size={28}
               style={{ 
                 color: isActive ? currentColors.primary : currentColors.textSecondary,
-                marginBottom: 4 
               }}
             />
-            <Text style={{
-              fontSize: 12,
-              fontWeight: isActive ? '700' : '500',
-              color: isActive ? currentColors.primary : currentColors.textSecondary,
-            }}>
-              {item.name}
-            </Text>
           </TouchableOpacity>
         );
       })}
@@ -112,13 +105,14 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={[commonStyles.wrapper, {
-          paddingTop: insetsToUse.top,
+      <View style={[commonStyles.wrapper, {
+          paddingTop: 0,
           paddingLeft: insetsToUse.left,
           paddingRight: insetsToUse.right,
+          paddingBottom: 0,
        }]}>
         <StatusBar style={isDarkMode ? "light" : "dark"} />
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, paddingTop: insetsToUse.top }}>
           <Tabs
             screenOptions={{
               headerShown: false,
@@ -168,9 +162,16 @@ export default function RootLayout() {
                 href: null, // This makes it not appear in tabs but still accessible via navigation
               }} 
             />
+            <Tabs.Screen 
+              name="edit-income" 
+              options={{ 
+                title: 'Edit Income',
+                href: null, // This makes it not appear in tabs but still accessible via navigation
+              }} 
+            />
           </Tabs>
         </View>
-      </SafeAreaView>
+      </View>
     </SafeAreaProvider>
   );
 }
