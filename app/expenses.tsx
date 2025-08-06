@@ -9,6 +9,8 @@ import { commonStyles } from '../styles/commonStyles';
 import { useCurrency } from '../hooks/useCurrency';
 import Icon from '../components/Icon';
 
+type SortOption = 'date' | 'highest' | 'lowest';
+
 export default function ExpensesScreen() {
   const { data, removeExpense, saving, refreshData } = useBudgetData();
   const { currentColors } = useTheme();
@@ -16,6 +18,7 @@ export default function ExpensesScreen() {
   const [filter, setFilter] = useState<'all' | 'household' | 'personal'>('all');
   const [personFilter, setPersonFilter] = useState<string | null>(null);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>('date');
 
   // Refresh data when screen comes into focus (e.g., after adding an expense)
   useFocusEffect(
@@ -129,6 +132,44 @@ export default function ExpensesScreen() {
     </TouchableOpacity>
   ), [filter, currentColors, saving, deletingExpenseId]);
 
+  const SortButton = useCallback(({ sortType, label, icon }: { sortType: SortOption, label: string, icon: string }) => (
+    <TouchableOpacity
+      style={[
+        commonStyles.badge,
+        { 
+          backgroundColor: sortBy === sortType ? currentColors.secondary : currentColors.border,
+          marginRight: 8,
+          paddingHorizontal: 12,
+          paddingVertical: 6,
+          borderRadius: 16,
+          flexDirection: 'row',
+          alignItems: 'center',
+        }
+      ]}
+      onPress={() => setSortBy(sortType)}
+      disabled={saving || deletingExpenseId !== null}
+    >
+      <Icon 
+        name={icon} 
+        size={14} 
+        style={{ 
+          color: sortBy === sortType ? '#FFFFFF' : currentColors.text,
+          marginRight: 4,
+        }} 
+      />
+      <Text style={[
+        commonStyles.badgeText,
+        { 
+          color: sortBy === sortType ? '#FFFFFF' : currentColors.text,
+          fontWeight: '600',
+          fontSize: 12,
+        }
+      ]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  ), [sortBy, currentColors, saving, deletingExpenseId]);
+
   // Filter expenses
   let filteredExpenses = data.expenses;
   
@@ -146,8 +187,18 @@ export default function ExpensesScreen() {
 
   console.log('ExpensesScreen: Filtered expenses:', filteredExpenses.length);
 
-  // Sort by date (newest first)
-  filteredExpenses = filteredExpenses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  // Sort expenses based on selected sort option
+  filteredExpenses = filteredExpenses.sort((a, b) => {
+    switch (sortBy) {
+      case 'highest':
+        return b.amount - a.amount; // Highest to lowest
+      case 'lowest':
+        return a.amount - b.amount; // Lowest to highest
+      case 'date':
+      default:
+        return new Date(b.date).getTime() - new Date(a.date).getTime(); // Newest first
+    }
+  });
 
   return (
     <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
@@ -185,7 +236,7 @@ export default function ExpensesScreen() {
         
         {/* Person filter for personal expenses */}
         {filter === 'personal' && data.people.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
             <View style={{ paddingHorizontal: 4, flexDirection: 'row' }}>
               <TouchableOpacity
                 style={[
@@ -244,6 +295,15 @@ export default function ExpensesScreen() {
             </View>
           </ScrollView>
         )}
+
+        {/* Sort options */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={{ paddingHorizontal: 4, flexDirection: 'row' }}>
+            <SortButton sortType="date" label="Date" icon="calendar-outline" />
+            <SortButton sortType="highest" label="Highest Cost" icon="trending-up-outline" />
+            <SortButton sortType="lowest" label="Lowest Cost" icon="trending-down-outline" />
+          </View>
+        </ScrollView>
       </View>
 
       <ScrollView style={commonStyles.content} contentContainerStyle={[commonStyles.scrollContent, { paddingHorizontal: 12 }]}>
