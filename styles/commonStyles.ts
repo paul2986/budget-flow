@@ -84,7 +84,7 @@ export const commonStyles = StyleSheet.create({
     padding: 16,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 140, // Increased padding to account for floating nav bar
   },
   title: {
     fontSize: 28,

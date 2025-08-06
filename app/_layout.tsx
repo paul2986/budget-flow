@@ -41,30 +41,43 @@ function CustomTabBar() {
     router.replace(route);
   }, []);
 
-  // Memoize the tab bar style to ensure it updates when theme changes
+  // Modern floating tab bar style with equal spacing
+  const tabBarContainerStyle = useMemo(() => ({
+    position: 'absolute' as const,
+    bottom: 20, // Equal distance from bottom
+    left: 20,   // Equal distance from left
+    right: 20,  // Equal distance from right
+    paddingBottom: insets.bottom > 0 ? insets.bottom - 10 : 10, // Adjust for safe area
+  }), [insets.bottom]);
+
   const tabBarStyle = useMemo(() => ({
     flexDirection: 'row' as const,
     backgroundColor: currentColors.backgroundAlt,
-    borderTopWidth: 1,
-    borderTopColor: currentColors.border,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    paddingBottom: insets.bottom,
-    elevation: 8,
+    borderRadius: 28, // More rounded for modern iOS look
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    elevation: 12,
     shadowColor: isDarkMode ? '#000000' : '#000000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: isDarkMode ? 0.4 : 0.1,
-    shadowRadius: 8,
-  }), [currentColors.backgroundAlt, currentColors.border, insets.bottom, isDarkMode]);
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: isDarkMode ? 0.6 : 0.15,
+    shadowRadius: 16,
+    // Add subtle border for definition
+    borderWidth: isDarkMode ? 0 : 0.5,
+    borderColor: isDarkMode ? 'transparent' : currentColors.border,
+    // Add backdrop blur effect simulation
+    opacity: 0.95,
+  }), [currentColors.backgroundAlt, currentColors.border, isDarkMode]);
 
   // Pre-calculate styles for active and inactive states
   const getButtonStyle = useCallback((isActive: boolean) => ({
     flex: 1,
     alignItems: 'center' as const,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderRadius: 12,
-    backgroundColor: isActive ? currentColors.primary + (isDarkMode ? '30' : '15') : 'transparent',
+    justifyContent: 'center' as const,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 20,
+    backgroundColor: isActive ? currentColors.primary + (isDarkMode ? '25' : '12') : 'transparent',
+    minHeight: 56, // Ensure consistent height
   }), [currentColors.primary, isDarkMode]);
 
   const getIconColor = useCallback((isActive: boolean) => 
@@ -72,28 +85,40 @@ function CustomTabBar() {
     [currentColors.primary, currentColors.textSecondary]
   );
 
-  return (
-    <View style={tabBarStyle}>
-      {navItems.map((item) => {
-        const isActive = pathname === item.route;
-        const buttonStyle = getButtonStyle(isActive);
-        const iconColor = getIconColor(isActive);
+  const getTextStyle = useCallback((isActive: boolean) => ({
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: isActive ? currentColors.primary : currentColors.textSecondary,
+    marginTop: 4,
+    textAlign: 'center' as const,
+  }), [currentColors.primary, currentColors.textSecondary]);
 
-        return (
-          <TouchableOpacity
-            key={item.route}
-            style={buttonStyle}
-            onPress={() => handleNavigation(item.route)}
-            activeOpacity={0.7}
-          >
-            <Icon
-              name={isActive ? item.activeIcon : item.icon}
-              size={28}
-              style={{ color: iconColor }}
-            />
-          </TouchableOpacity>
-        );
-      })}
+  return (
+    <View style={tabBarContainerStyle}>
+      <View style={tabBarStyle}>
+        {navItems.map((item) => {
+          const isActive = pathname === item.route;
+          const buttonStyle = getButtonStyle(isActive);
+          const iconColor = getIconColor(isActive);
+          const textStyle = getTextStyle(isActive);
+
+          return (
+            <TouchableOpacity
+              key={item.route}
+              style={buttonStyle}
+              onPress={() => handleNavigation(item.route)}
+              activeOpacity={0.7}
+            >
+              <Icon
+                name={isActive ? item.activeIcon : item.icon}
+                size={24}
+                style={{ color: iconColor }}
+              />
+              <Text style={textStyle}>{item.name}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 }
