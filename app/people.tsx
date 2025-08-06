@@ -1,7 +1,7 @@
 
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
-import { router } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useState, useEffect, useCallback } from 'react';
 import { commonStyles, buttonStyles } from '../styles/commonStyles';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
@@ -38,6 +38,14 @@ export default function PeopleScreen() {
     console.log('PeopleScreen: Component mounted, refreshing data...');
     refreshData();
   }, []);
+
+  // Refresh data when screen becomes focused (e.g., after editing a person)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('PeopleScreen: Screen focused, refreshing data...');
+      refreshData();
+    }, [refreshData])
+  );
 
   const handleAddPerson = async () => {
     console.log('PeopleScreen: Add person button pressed');
