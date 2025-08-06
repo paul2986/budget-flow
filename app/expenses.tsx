@@ -13,7 +13,7 @@ import StandardHeader from '../components/StandardHeader';
 type SortOption = 'date' | 'highest' | 'lowest';
 
 export default function ExpensesScreen() {
-  const { data, removeExpense, saving, refreshData } = useBudgetData();
+  const { data, removeExpense, saving } = useBudgetData();
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
   const { formatCurrency } = useCurrency();
@@ -21,26 +21,15 @@ export default function ExpensesScreen() {
   const [personFilter, setPersonFilter] = useState<string | null>(null);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('date');
-  const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
 
-  // Refresh data when screen comes into focus, but only if enough time has passed
+  // Remove the refresh on focus - let the useBudgetData hook handle data consistency
   useFocusEffect(
     useCallback(() => {
-      const now = Date.now();
-      const timeSinceLastRefresh = now - lastRefreshTime;
-      
-      console.log('ExpensesScreen: Screen focused, time since last refresh:', timeSinceLastRefresh);
-      
-      // Only refresh if more than 2 seconds have passed since last refresh
-      // This prevents excessive refreshing when navigating between screens
-      if (timeSinceLastRefresh > 2000) {
-        console.log('ExpensesScreen: Refreshing data due to focus...');
-        refreshData();
-        setLastRefreshTime(now);
-      } else {
-        console.log('ExpensesScreen: Skipping refresh - too soon since last refresh');
-      }
-    }, [refreshData, lastRefreshTime])
+      console.log('ExpensesScreen: Screen focused, current expenses:', {
+        totalExpenses: data.expenses.length,
+        expenseIds: data.expenses.map(e => e.id)
+      });
+    }, [data.expenses])
   );
 
   const handleRemoveExpense = useCallback(async (expenseId: string, description: string) => {
@@ -68,8 +57,7 @@ export default function ExpensesScreen() {
       
       if (result.success) {
         console.log('ExpensesScreen: Expense removed successfully');
-        // Don't call refreshData here - the useBudgetData hook should handle state updates
-        // refreshData() could potentially reload stale data
+        // The useBudgetData hook will handle state updates automatically
       } else {
         console.error('ExpensesScreen: Expense removal failed:', result.error);
         Alert.alert('Error', 'Failed to remove expense. Please try again.');

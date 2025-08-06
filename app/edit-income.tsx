@@ -19,8 +19,6 @@ export default function EditIncomeScreen() {
     frequency: 'monthly' as const,
   });
   const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
   
   const { formatCurrency } = useCurrency();
   const { currentColors } = useTheme();
@@ -28,32 +26,17 @@ export default function EditIncomeScreen() {
   const params = useLocalSearchParams<{ personId: string; incomeId: string }>();
   const { personId, incomeId } = params;
   
-  const { data, updateIncome, removeIncome, saving, loading, refreshData } = useBudgetData();
+  const { data, updateIncome, removeIncome, saving, loading } = useBudgetData();
 
-  // Only refresh data on initial focus, not on subsequent focuses
+  // Remove the refresh on focus - let the useBudgetData hook handle data consistency
   useFocusEffect(
     useCallback(() => {
-      const now = Date.now();
-      const timeSinceLastRefresh = now - lastRefreshTime;
-      
-      console.log('EditIncomeScreen: Screen focused, isInitialLoad:', isInitialLoad, 'timeSinceLastRefresh:', timeSinceLastRefresh);
-      
-      if (isInitialLoad) {
-        console.log('EditIncomeScreen: Initial load, refreshing data...');
-        setIsDataLoaded(false);
-        refreshData();
-        setIsInitialLoad(false);
-        setLastRefreshTime(now);
-      } else if (timeSinceLastRefresh > 5000) {
-        // Only refresh if more than 5 seconds have passed since last refresh
-        console.log('EditIncomeScreen: Subsequent focus after long time, refreshing data...');
-        setIsDataLoaded(false);
-        refreshData();
-        setLastRefreshTime(now);
-      } else {
-        console.log('EditIncomeScreen: Subsequent focus, skipping refresh');
-      }
-    }, [refreshData, isInitialLoad, lastRefreshTime])
+      console.log('EditIncomeScreen: Screen focused, current data:', {
+        peopleCount: data.people.length,
+        expensesCount: data.expenses.length,
+        expenseIds: data.expenses.map(e => e.id)
+      });
+    }, [data.people, data.expenses])
   );
 
   // Find the income and person when data changes

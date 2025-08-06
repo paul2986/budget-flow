@@ -21,7 +21,7 @@ const validateBudgetData = (data: any): BudgetData => {
   // Ensure we have a valid object
   if (!data || typeof data !== 'object') {
     console.log('storage: Invalid data object, using defaults');
-    return { ...defaultData };
+    return JSON.parse(JSON.stringify(defaultData));
   }
   
   // Validate and sanitize people array
@@ -103,54 +103,28 @@ export const loadBudgetData = async (): Promise<BudgetData> => {
       } catch (parseError) {
         console.error('storage: Error parsing stored data:', parseError);
         console.log('storage: Returning default data due to parse error');
-        return { ...defaultData };
+        return JSON.parse(JSON.stringify(defaultData));
       }
     }
     
     console.log('storage: No existing data found, returning default data');
-    return { ...defaultData };
+    return JSON.parse(JSON.stringify(defaultData));
   } catch (error) {
     console.error('storage: Error loading budget data:', error);
     console.log('storage: Returning default data due to error');
-    return { ...defaultData };
+    return JSON.parse(JSON.stringify(defaultData));
   }
 };
 
-// Add a mutex-like mechanism to prevent concurrent saves
-let saveInProgress = false;
-let pendingSaveData: BudgetData | null = null;
-
+// Atomic save operation with proper error handling
 export const saveBudgetData = async (data: BudgetData): Promise<{ success: boolean; error?: Error }> => {
   try {
     console.log('storage: Save request received:', {
       peopleCount: data.people?.length || 0,
       expensesCount: data.expenses?.length || 0,
       distributionMethod: data.householdSettings?.distributionMethod,
-      expenseIds: data.expenses?.map(e => e.id) || [],
-      saveInProgress
+      expenseIds: data.expenses?.map(e => e.id) || []
     });
-    
-    // If a save is already in progress, queue this data
-    if (saveInProgress) {
-      console.log('storage: Save already in progress, queuing data...');
-      pendingSaveData = data;
-      
-      // Wait for the current save to complete
-      while (saveInProgress) {
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
-      
-      // If we have pending data and no save is in progress, save it
-      if (pendingSaveData && !saveInProgress) {
-        const dataToSave = pendingSaveData;
-        pendingSaveData = null;
-        return await saveBudgetData(dataToSave);
-      }
-      
-      return { success: true };
-    }
-    
-    saveInProgress = true;
     
     // Validate data before saving
     const validatedData = validateBudgetData(data);
@@ -178,12 +152,16 @@ export const saveBudgetData = async (data: BudgetData): Promise<{ success: boole
       expenseIds: validatedData.expenses?.map(e => e.id) || []
     });
     
-    const jsonData = JSON.stringify(validatedData);
+    // Create a deep copy to ensure immutability
+    const dataToSave = JSON.parse(JSON.stringify(validatedData));
+    const jsonData = JSON.stringify(dataToSave);
+    
+    // Perform the save operation
     await AsyncStorage.setItem(STORAGE_KEYS.BUDGET_DATA, jsonData);
     
     console.log('storage: Budget data saved successfully');
     
-    // Verify the save by reading it back
+    // Verify the save by reading it back immediately
     const verification = await AsyncStorage.getItem(STORAGE_KEYS.BUDGET_DATA);
     if (verification) {
       try {
@@ -196,31 +174,33 @@ export const saveBudgetData = async (data: BudgetData): Promise<{ success: boole
           expenseIds: revalidatedData.expenses?.map(e => e.id) || []
         });
         
-        // Double check that the data matches what we tried to save
-        if (revalidatedData.people?.length === validatedData.people?.length && 
-            revalidatedData.expenses?.length === validatedData.expenses?.length) {
-          
-          // Also verify that the expense IDs match
-          const originalExpenseIds = validatedData.expenses?.map(e => e.id).sort() || [];
-          const verifiedExpenseIds = revalidatedData.expenses?.map(e => e.id).sort() || [];
-          const expenseIdsMatch = originalExpenseIds.length === verifiedExpenseIds.length && 
-                                  originalExpenseIds.every((id, index) => id === verifiedExpenseIds[index]);
-          
-          if (expenseIdsMatch) {
-            return { success: true };
-          } else {
-            console.error('storage: Save verification failed - expense IDs mismatch', {
-              expected: originalExpenseIds,
-              actual: verifiedExpenseIds
-            });
-            return { success: false, error: new Error('Save verification failed - expense IDs mismatch') };
-          }
+        // Verify that the data matches what we tried to save
+        const originalExpenseIds = validatedData.expenses?.map(e => e.id).sort() || [];
+        const verifiedExpenseIds = revalidatedData.expenses?.map(e => e.id).sort() || [];
+        
+        const dataMatches = 
+          revalidatedData.people?.length === validatedData.people?.length && 
+          revalidatedData.expenses?.length === validatedData.expenses?.length &&
+          originalExpenseIds.length === verifiedExpenseIds.length &&
+          originalExpenseIds.every((id, index) => id === verifiedExpenseIds[index]);
+        
+        if (dataMatches) {
+          console.log('storage: Save verification passed - data integrity confirmed');
+          return { success: true };
         } else {
-          console.error('storage: Save verification failed - data count mismatch', {
-            expected: { people: validatedData.people?.length, expenses: validatedData.expenses?.length },
-            actual: { people: revalidatedData.people?.length, expenses: revalidatedData.expenses?.length }
+          console.error('storage: Save verification failed - data mismatch', {
+            expected: { 
+              people: validatedData.people?.length, 
+              expenses: validatedData.expenses?.length,
+              expenseIds: originalExpenseIds
+            },
+            actual: { 
+              people: revalidatedData.people?.length, 
+              expenses: revalidatedData.expenses?.length,
+              expenseIds: verifiedExpenseIds
+            }
           });
-          return { success: false, error: new Error('Save verification failed - data count mismatch') };
+          return { success: false, error: new Error('Save verification failed - data mismatch') };
         }
       } catch (parseError) {
         console.error('storage: Save verification failed - parse error:', parseError);
@@ -233,11 +213,10 @@ export const saveBudgetData = async (data: BudgetData): Promise<{ success: boole
   } catch (error) {
     console.error('storage: Error saving budget data:', error);
     return { success: false, error: error as Error };
-  } finally {
-    saveInProgress = false;
   }
 };
 
+// Legacy functions for backward compatibility
 export const addPerson = async (person: Person): Promise<void> => {
   const data = await loadBudgetData();
   data.people.push(person);
