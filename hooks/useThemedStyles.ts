@@ -26,7 +26,7 @@ export const useThemedStyles = () => {
         padding: 16,
       },
       scrollContent: {
-        paddingBottom: 120,
+        paddingBottom: 140, // Increased padding for the new nav bar position (moved down more)
       },
       title: {
         fontSize: 28,

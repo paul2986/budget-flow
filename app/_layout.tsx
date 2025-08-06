@@ -41,20 +41,20 @@ function CustomTabBar() {
     router.replace(route);
   }, []);
 
-  // Modern floating tab bar style with equal spacing - moved down slightly
+  // Modern floating tab bar style - moved down more significantly
   const tabBarContainerStyle = useMemo(() => ({
     position: 'absolute' as const,
-    bottom: 12, // Reduced from 20 to move nav bar down slightly
+    bottom: 8, // Moved down from 12 to 8 for more distance from bottom
     left: 20,   // Equal distance from left
     right: 20,  // Equal distance from right
-    paddingBottom: insets.bottom > 0 ? insets.bottom - 5 : 8, // Adjusted for moving down
+    paddingBottom: insets.bottom > 0 ? insets.bottom - 8 : 4, // Adjusted for moving down more
   }), [insets.bottom]);
 
   const tabBarStyle = useMemo(() => ({
     flexDirection: 'row' as const,
     backgroundColor: currentColors.backgroundAlt,
     borderRadius: 28, // More rounded for modern iOS look
-    paddingVertical: 12, // Reduced padding since no labels
+    paddingVertical: 16, // Increased padding for better icon centering
     paddingHorizontal: 20,
     elevation: 12,
     shadowColor: isDarkMode ? '#000000' : '#000000',
@@ -66,19 +66,19 @@ function CustomTabBar() {
     borderColor: isDarkMode ? 'transparent' : currentColors.border,
     // Add backdrop blur effect simulation
     opacity: 0.95,
-    height: 60, // Fixed height since no labels
+    height: 64, // Increased height for better icon centering
   }), [currentColors.backgroundAlt, currentColors.border, isDarkMode]);
 
-  // Pre-calculate styles for active and inactive states - no labels
+  // Pre-calculate styles for active and inactive states - properly centered icons
   const getButtonStyle = useCallback((isActive: boolean) => ({
     flex: 1,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    paddingVertical: 12,
+    paddingVertical: 16, // Increased padding for proper centering
     paddingHorizontal: 8,
     borderRadius: 20,
     backgroundColor: isActive ? currentColors.primary + (isDarkMode ? '25' : '12') : 'transparent',
-    height: 48, // Fixed height for consistency without labels
+    height: 52, // Fixed height for consistency - properly centered
   }), [currentColors.primary, isDarkMode]);
 
   const getIconColor = useCallback((isActive: boolean) => 
@@ -178,9 +178,6 @@ export default function RootLayout() {
     backgroundColor: currentColors.background 
   }), [currentColors.background]);
 
-  // Create a memoized CustomTabBar component that will re-render when theme changes
-  const MemoizedCustomTabBar = useCallback(() => <CustomTabBar />, []);
-
   return (
     <SafeAreaProvider>
       <View style={wrapperStyle}>
@@ -197,7 +194,7 @@ export default function RootLayout() {
               headerShown: false,
               tabBarStyle: { display: 'none' }, // Hide the default tab bar
             }}
-            tabBar={MemoizedCustomTabBar}
+            tabBar={() => <CustomTabBar />}
           >
             <Tabs.Screen 
               name="index" 
