@@ -279,7 +279,7 @@ export default function ExpensesScreen() {
                   }
                 ]}
               >
-                {/* Header row with delete button */}
+                {/* Top row with title, amount and delete button */}
                 <View style={[commonStyles.row, { marginBottom: 12, alignItems: 'flex-start' }]}>
                   <View style={commonStyles.flex1}>
                     <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.text, fontSize: 18 }]}>
@@ -293,7 +293,7 @@ export default function ExpensesScreen() {
                   
                   {/* Amount and delete button container */}
                   <View style={{ alignItems: 'flex-end' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                       <View style={{ alignItems: 'flex-end', marginRight: 12 }}>
                         <Text style={[
                           commonStyles.text, 
@@ -310,7 +310,7 @@ export default function ExpensesScreen() {
                         </Text>
                       </View>
                       
-                      {/* Delete button */}
+                      {/* Delete button - positioned absolutely to avoid touch conflicts */}
                       <TouchableOpacity
                         onPress={() => {
                           console.log('ExpensesScreen: Bin icon pressed for expense:', expense.id, expense.description);
@@ -338,7 +338,7 @@ export default function ExpensesScreen() {
                   </View>
                 </View>
                 
-                {/* Bottom row with category badge and edit button */}
+                {/* Bottom row with category badge and edit button - separate from delete button */}
                 <TouchableOpacity
                   onPress={() => handleEditExpense(expense)}
                   activeOpacity={0.7}
