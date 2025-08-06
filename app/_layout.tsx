@@ -14,9 +14,20 @@ const STORAGE_KEY = 'emulated_device';
 
 function CustomTabBar() {
   const pathname = usePathname();
-  const { isDarkMode, currentColors } = useTheme();
+  const { isDarkMode, currentColors, themeMode } = useTheme();
   const { themedStyles } = useThemedStyles();
   const insets = useSafeAreaInsets();
+
+  // Add debug logging for theme changes
+  useEffect(() => {
+    console.log('CustomTabBar: Theme changed', {
+      isDarkMode,
+      themeMode,
+      backgroundAlt: currentColors.backgroundAlt,
+      primary: currentColors.primary,
+      textSecondary: currentColors.textSecondary
+    });
+  }, [isDarkMode, themeMode, currentColors]);
 
   const navItems = [
     { name: 'Home', icon: 'home-outline', activeIcon: 'home', route: '/' },
@@ -77,8 +88,18 @@ function CustomTabBar() {
 
 export default function RootLayout() {
   const actualInsets = useSafeAreaInsets();
-  const { isDarkMode, currentColors } = useTheme();
+  const { isDarkMode, currentColors, themeMode } = useTheme();
   const { themedStyles } = useThemedStyles();
+
+  // Add debug logging for theme changes in root layout
+  useEffect(() => {
+    console.log('RootLayout: Theme changed', {
+      isDarkMode,
+      themeMode,
+      background: currentColors.background,
+      backgroundAlt: currentColors.backgroundAlt
+    });
+  }, [isDarkMode, themeMode, currentColors]);
 
   useEffect(() => {
     // Set up global error logging

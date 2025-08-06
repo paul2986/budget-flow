@@ -9,7 +9,7 @@ import Icon from '../components/Icon';
 
 export default function SettingsScreen() {
   const { data, updateHouseholdSettings } = useBudgetData();
-  const { currentColors, themeMode, setThemeMode } = useTheme();
+  const { currentColors, themeMode, setThemeMode, isDarkMode } = useTheme();
   const { currency, setCurrency } = useCurrency();
 
   const handleDistributionMethodChange = async (method: 'even' | 'income-based') => {
@@ -33,6 +33,17 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error('Settings: Error updating distribution method:', error);
       Alert.alert('Error', 'An unexpected error occurred while updating the distribution method.');
+    }
+  };
+
+  const handleThemeChange = async (newTheme: 'system' | 'light' | 'dark') => {
+    console.log('Settings: Changing theme from', themeMode, 'to', newTheme);
+    try {
+      await setThemeMode(newTheme);
+      console.log('Settings: Theme change completed');
+    } catch (error) {
+      console.error('Settings: Error changing theme:', error);
+      Alert.alert('Error', 'Failed to change theme.');
     }
   };
 
@@ -91,7 +102,7 @@ export default function SettingsScreen() {
           
           <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
             <Text style={[commonStyles.text, { marginBottom: 12, color: currentColors.text }]}>
-              Choose your preferred theme
+              Choose your preferred theme (Current: {themeMode}, Dark Mode: {isDarkMode ? 'Yes' : 'No'})
             </Text>
             
             {[
@@ -114,7 +125,7 @@ export default function SettingsScreen() {
                     marginBottom: 8,
                   }
                 ]}
-                onPress={() => setThemeMode(theme.key as any)}
+                onPress={() => handleThemeChange(theme.key as any)}
               >
                 <View style={commonStyles.rowStart}>
                   <Icon 

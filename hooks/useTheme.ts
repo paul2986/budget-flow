@@ -17,9 +17,20 @@ export const useTheme = () => {
     loadThemeMode();
   }, []);
 
+  // Add debug logging for system color scheme changes
+  useEffect(() => {
+    console.log('useTheme: System color scheme changed to:', systemColorScheme);
+  }, [systemColorScheme]);
+
+  // Add debug logging for theme mode changes
+  useEffect(() => {
+    console.log('useTheme: Theme mode changed to:', themeMode);
+  }, [themeMode]);
+
   const loadThemeMode = async () => {
     try {
       const savedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
+      console.log('useTheme: Loaded saved theme from storage:', savedTheme);
       if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
         setThemeMode(savedTheme as ThemeMode);
       }
@@ -32,8 +43,10 @@ export const useTheme = () => {
 
   const saveThemeMode = async (mode: ThemeMode) => {
     try {
+      console.log('useTheme: Saving theme mode to storage:', mode);
       await AsyncStorage.setItem(THEME_STORAGE_KEY, mode);
       setThemeMode(mode);
+      console.log('useTheme: Theme mode saved and state updated');
     } catch (error) {
       console.error('Error saving theme mode:', error);
     }
@@ -41,6 +54,16 @@ export const useTheme = () => {
 
   const isDarkMode = themeMode === 'dark' || (themeMode === 'system' && systemColorScheme === 'dark');
   const currentColors = isDarkMode ? darkColors : colors;
+
+  // Add debug logging for computed values
+  useEffect(() => {
+    console.log('useTheme: Computed values updated', {
+      themeMode,
+      systemColorScheme,
+      isDarkMode,
+      currentColorsType: isDarkMode ? 'dark' : 'light'
+    });
+  }, [themeMode, systemColorScheme, isDarkMode]);
 
   return {
     themeMode,
