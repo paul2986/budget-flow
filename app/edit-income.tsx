@@ -124,10 +124,17 @@ export default function EditIncomeScreen() {
         frequency: editedIncome.frequency,
       };
       
-      await updateIncome(personId, income.id, updates);
-      console.log('EditIncomeScreen: Income saved successfully, navigating to people page');
-      // Navigate specifically to the people page to show the updated data
-      router.replace('/people');
+      const result = await updateIncome(personId, income.id, updates);
+      console.log('EditIncomeScreen: Income save result:', result);
+      
+      if (result && result.success) {
+        console.log('EditIncomeScreen: Income saved successfully, navigating to people page');
+        // Navigate specifically to the people page to show the updated data
+        router.replace('/people');
+      } else {
+        console.error('EditIncomeScreen: Income save failed:', result?.error);
+        Alert.alert('Error', result?.error?.message || 'Failed to update income. Please try again.');
+      }
     } catch (error) {
       console.error('EditIncomeScreen: Error updating income:', error);
       Alert.alert('Error', 'Failed to update income. Please try again.');
@@ -154,10 +161,17 @@ export default function EditIncomeScreen() {
                 expenseIds: data.expenses.map(e => e.id)
               });
               
-              await removeIncome(personId, income.id);
-              console.log('EditIncomeScreen: Income deleted successfully, navigating to people page');
-              // Navigate specifically to the people page to show the updated data
-              router.replace('/people');
+              const result = await removeIncome(personId, income.id);
+              console.log('EditIncomeScreen: Income delete result:', result);
+              
+              if (result && result.success) {
+                console.log('EditIncomeScreen: Income deleted successfully, navigating to people page');
+                // Navigate specifically to the people page to show the updated data
+                router.replace('/people');
+              } else {
+                console.error('EditIncomeScreen: Income delete failed:', result?.error);
+                Alert.alert('Error', result?.error?.message || 'Failed to delete income. Please try again.');
+              }
             } catch (error) {
               console.error('EditIncomeScreen: Error deleting income:', error);
               Alert.alert('Error', 'Failed to delete income. Please try again.');

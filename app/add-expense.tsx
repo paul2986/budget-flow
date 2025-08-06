@@ -87,12 +87,13 @@ export default function AddExpenseScreen() {
         console.log('AddExpenseScreen: Expense added result:', result);
       }
 
-      if (result.success) {
+      if (result && result.success) {
         console.log('AddExpenseScreen: Expense saved successfully, navigating to expenses page');
         // Navigate to expenses screen to show the newly created/updated expense
         router.replace('/expenses');
       } else {
-        Alert.alert('Error', 'Failed to save expense. Please try again.');
+        console.error('AddExpenseScreen: Expense save failed:', result?.error);
+        Alert.alert('Error', result?.error?.message || 'Failed to save expense. Please try again.');
       }
     } catch (error) {
       console.error('AddExpenseScreen: Error saving expense:', error);
@@ -127,12 +128,12 @@ export default function AddExpenseScreen() {
               const result = await removeExpense(expenseToEdit.id);
               console.log('AddExpenseScreen: Expense deletion result:', result);
               
-              if (result.success) {
+              if (result && result.success) {
                 console.log('AddExpenseScreen: Expense deleted successfully, navigating to expenses page');
                 router.replace('/expenses');
               } else {
-                console.error('AddExpenseScreen: Expense deletion failed:', result.error);
-                Alert.alert('Error', 'Failed to delete expense. Please try again.');
+                console.error('AddExpenseScreen: Expense deletion failed:', result?.error);
+                Alert.alert('Error', result?.error?.message || 'Failed to delete expense. Please try again.');
               }
             } catch (error) {
               console.error('AddExpenseScreen: Error deleting expense:', error);

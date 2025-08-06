@@ -13,7 +13,7 @@ export const useBudgetData = () => {
   const [saving, setSaving] = useState(false);
   
   // Save operation queue to prevent concurrent saves
-  const saveQueue = useRef<(() => Promise<void>)[]>([]);
+  const saveQueue = useRef<(() => Promise<{ success: boolean; error?: Error }>)[]>([]);
   const isQueueRunning = useRef(false);
   const isLoadingRef = useRef(false);
   const lastRefreshTimeRef = useRef<number>(0);
@@ -80,12 +80,28 @@ export const useBudgetData = () => {
   }, [loadData]);
 
   // Queue save operations to prevent race conditions
-  const queueSave = useCallback((saveFn: () => Promise<void>) => {
+  const queueSave = useCallback((saveFn: () => Promise<{ success: boolean; error?: Error }>): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Queueing save operation');
-    saveQueue.current.push(saveFn);
-    if (!isQueueRunning.current) {
-      runQueue();
-    }
+    
+    return new Promise((resolve) => {
+      const wrappedSaveFn = async () => {
+        try {
+          const result = await saveFn();
+          resolve(result);
+          return result;
+        } catch (error) {
+          const errorResult = { success: false, error: error as Error };
+          resolve(errorResult);
+          return errorResult;
+        }
+      };
+      
+      saveQueue.current.push(wrappedSaveFn);
+      
+      if (!isQueueRunning.current) {
+        runQueue();
+      }
+    });
   }, []);
 
   const runQueue = useCallback(async () => {
@@ -144,18 +160,18 @@ export const useBudgetData = () => {
     }
   }, []);
 
-  const addPerson = useCallback(async (person: Person) => {
+  const addPerson = useCallback(async (person: Person): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Adding person:', person);
-    queueSave(async () => {
+    return queueSave(async () => {
       const newData = createDataCopy();
       newData.people.push(person);
-      await saveData(newData);
+      return await saveData(newData);
     });
   }, [queueSave, createDataCopy, saveData]);
 
-  const removePerson = useCallback(async (personId: string) => {
+  const removePerson = useCallback(async (personId: string): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Removing person:', personId);
-    queueSave(async () => {
+    return queueSave(async () => {
       const newData = createDataCopy();
       
       // Verify person exists before attempting removal
@@ -173,22 +189,22 @@ export const useBudgetData = () => {
         expensesCount: newData.expenses.length
       });
       
-      await saveData(newData);
+      return await saveData(newData);
     });
   }, [queueSave, createDataCopy, saveData]);
 
-  const updatePerson = useCallback(async (updatedPerson: Person) => {
+  const updatePerson = useCallback(async (updatedPerson: Person): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Updating person:', updatedPerson);
-    queueSave(async () => {
+    return queueSave(async () => {
       const newData = createDataCopy();
       newData.people = newData.people.map(p => p.id === updatedPerson.id ? updatedPerson : p);
-      await saveData(newData);
+      return await saveData(newData);
     });
   }, [queueSave, createDataCopy, saveData]);
 
-  const addIncome = useCallback(async (personId: string, income: Income) => {
+  const addIncome = useCallback(async (personId: string, income: Income): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Adding income to person:', personId, income);
-    queueSave(async () => {
+    return queueSave(async () => {
       const newData = createDataCopy();
       
       // Find the person first to verify they exist
@@ -206,13 +222,13 @@ export const useBudgetData = () => {
         incomeCount: newData.people[personIndex].income.length
       });
       
-      await saveData(newData);
+      return await saveData(newData);
     });
   }, [queueSave, createDataCopy, saveData]);
 
-  const removeIncome = useCallback(async (personId: string, incomeId: string) => {
+  const removeIncome = useCallback(async (personId: string, incomeId: string): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Removing income from person:', personId, incomeId);
-    queueSave(async () => {
+    return queueSave(async () => {
       const newData = createDataCopy();
       
       // Find the person first to verify they exist
@@ -240,13 +256,13 @@ export const useBudgetData = () => {
         remainingIncomeCount: newData.people[personIndex].income.length
       });
       
-      await saveData(newData);
+      return await saveData(newData);
     });
   }, [queueSave, createDataCopy, saveData]);
 
-  const updateIncome = useCallback(async (personId: string, incomeId: string, updates: Partial<Income>) => {
+  const updateIncome = useCallback(async (personId: string, incomeId: string, updates: Partial<Income>): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Updating income:', personId, incomeId, updates);
-    queueSave(async () => {
+    return queueSave(async () => {
       const newData = createDataCopy();
       
       console.log('useBudgetData: Current data for income update:', {
@@ -285,13 +301,13 @@ export const useBudgetData = () => {
         updatedIncome: newData.people[personIndex].income[incomeIndex]
       });
       
-      await saveData(newData);
+      return await saveData(newData);
     });
   }, [queueSave, createDataCopy, saveData]);
 
-  const addExpense = useCallback(async (expense: Expense) => {
+  const addExpense = useCallback(async (expense: Expense): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Adding expense:', expense);
-    queueSave(async () => {
+    return queueSave(async () => {
       const newData = createDataCopy();
       
       // Generate a proper ID if not provided
@@ -310,13 +326,13 @@ export const useBudgetData = () => {
         expenseIds: newData.expenses.map(e => e.id)
       });
       
-      await saveData(newData);
+      return await saveData(newData);
     });
   }, [queueSave, createDataCopy, saveData]);
 
-  const removeExpense = useCallback(async (expenseId: string) => {
+  const removeExpense = useCallback(async (expenseId: string): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Removing expense:', expenseId);
-    queueSave(async () => {
+    return queueSave(async () => {
       const newData = createDataCopy();
       
       console.log('useBudgetData: Current data before expense removal:', {
@@ -341,13 +357,13 @@ export const useBudgetData = () => {
         remainingExpenseIds: newData.expenses.map(e => e.id)
       });
       
-      await saveData(newData);
+      return await saveData(newData);
     });
   }, [queueSave, createDataCopy, saveData]);
 
-  const updateExpense = useCallback(async (updatedExpense: Expense) => {
+  const updateExpense = useCallback(async (updatedExpense: Expense): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Updating expense:', updatedExpense);
-    queueSave(async () => {
+    return queueSave(async () => {
       const newData = createDataCopy();
       newData.expenses = newData.expenses.map(e => e.id === updatedExpense.id ? updatedExpense : e);
       
@@ -357,13 +373,13 @@ export const useBudgetData = () => {
         expenseIds: newData.expenses.map(e => e.id)
       });
       
-      await saveData(newData);
+      return await saveData(newData);
     });
   }, [queueSave, createDataCopy, saveData]);
 
-  const updateHouseholdSettings = useCallback(async (settings: Partial<HouseholdSettings>) => {
+  const updateHouseholdSettings = useCallback(async (settings: Partial<HouseholdSettings>): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Updating household settings:', settings);
-    queueSave(async () => {
+    return queueSave(async () => {
       const newData = createDataCopy();
       
       console.log('useBudgetData: Current data before household settings update:', {
@@ -386,7 +402,7 @@ export const useBudgetData = () => {
         expenseIds: newData.expenses.map(e => e.id)
       });
       
-      await saveData(newData);
+      return await saveData(newData);
     });
   }, [queueSave, createDataCopy, saveData, getCurrentData]);
 
