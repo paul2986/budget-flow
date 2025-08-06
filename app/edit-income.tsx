@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { commonStyles, buttonStyles } from '../styles/commonStyles';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
@@ -17,6 +17,7 @@ export default function EditIncomeScreen() {
     label: '',
     frequency: 'monthly' as const,
   });
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   
   const { formatCurrency } = useCurrency();
   const { currentColors } = useTheme();
@@ -25,11 +26,29 @@ export default function EditIncomeScreen() {
   
   const { data, updateIncome, removeIncome, saving, refreshData } = useBudgetData();
 
+  // Force refresh data when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      console.log('EditIncomeScreen: Screen focused, refreshing data...');
+      setIsDataLoaded(false);
+      refreshData();
+    }, [refreshData])
+  );
+
   // Find the income and person when data changes
   useEffect(() => {
     if (personId && incomeId && data.people.length > 0) {
+      console.log('EditIncomeScreen: Looking for income in data:', {
+        personId,
+        incomeId,
+        peopleCount: data.people.length,
+        expensesCount: data.expenses.length
+      });
+      
       const person = data.people.find(p => p.id === personId);
       if (person) {
+        console.log('EditIncomeScreen: Found person:', person.name, 'with', person.income.length, 'income sources');
+        
         const foundIncome = person.income.find(i => i.id === incomeId);
         console.log('EditIncomeScreen: Found income:', foundIncome);
         
@@ -40,23 +59,23 @@ export default function EditIncomeScreen() {
             label: foundIncome.label,
             frequency: foundIncome.frequency,
           });
+          setIsDataLoaded(true);
           console.log('EditIncomeScreen: Updated income state with fresh data');
         } else {
           console.log('EditIncomeScreen: Income not found in data');
           setIncome(null);
+          setIsDataLoaded(true);
         }
       } else {
         console.log('EditIncomeScreen: Person not found in data');
         setIncome(null);
+        setIsDataLoaded(true);
       }
+    } else if (data.people.length === 0) {
+      console.log('EditIncomeScreen: No people in data yet, waiting...');
+      setIsDataLoaded(false);
     }
-  }, [personId, incomeId, data.people]);
-
-  // Force refresh data when component mounts
-  useEffect(() => {
-    console.log('EditIncomeScreen: Component mounted, refreshing data...');
-    refreshData();
-  }, [refreshData]);
+  }, [personId, incomeId, data.people, data.expenses]);
 
   const handleSaveIncome = useCallback(async () => {
     if (!income || !personId) return;
@@ -85,6 +104,7 @@ export default function EditIncomeScreen() {
         console.log('EditIncomeScreen: Income saved successfully, navigating back');
         router.back();
       } else {
+        console.error('EditIncomeScreen: Failed to save income:', result.error);
         Alert.alert('Error', 'Failed to update income. Please try again.');
       }
     } catch (error) {
@@ -112,6 +132,7 @@ export default function EditIncomeScreen() {
                 console.log('EditIncomeScreen: Income deleted successfully, navigating back');
                 router.back();
               } else {
+                console.error('EditIncomeScreen: Failed to delete income:', result.error);
                 Alert.alert('Error', 'Failed to delete income. Please try again.');
               }
             } catch (error) {
@@ -153,6 +174,28 @@ export default function EditIncomeScreen() {
     </View>
   );
 
+  // Show loading state while data is being loaded
+  if (!isDataLoaded) {
+    return (
+      <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
+        <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Icon name="arrow-back" size={24} style={{ color: currentColors.text }} />
+          </TouchableOpacity>
+          <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Edit Income</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={[commonStyles.centerContent, { flex: 1 }]}>
+          <ActivityIndicator size="large" color={currentColors.primary} />
+          <Text style={[commonStyles.text, { color: currentColors.textSecondary, marginTop: 16 }]}>
+            Loading income data...
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Show error state if income not found
   if (!income) {
     return (
       <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
@@ -164,7 +207,19 @@ export default function EditIncomeScreen() {
           <View style={{ width: 24 }} />
         </View>
         <View style={[commonStyles.centerContent, { flex: 1 }]}>
-          <Text style={[commonStyles.text, { color: currentColors.textSecondary }]}>Income not found</Text>
+          <Icon name="warning-outline" size={48} style={{ color: currentColors.textSecondary, marginBottom: 16 }} />
+          <Text style={[commonStyles.text, { color: currentColors.textSecondary, textAlign: 'center' }]}>
+            Income source not found
+          </Text>
+          <Text style={[commonStyles.text, { color: currentColors.textSecondary, textAlign: 'center', marginTop: 8 }]}>
+            It may have been deleted or there was an error loading the data.
+          </Text>
+          <Button
+            text="Go Back"
+            onPress={() => router.back()}
+            style={[buttonStyles.outline, { marginTop: 24, borderColor: currentColors.textSecondary }]}
+            textStyle={{ color: currentColors.textSecondary }}
+          />
         </View>
       </View>
     );

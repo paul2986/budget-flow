@@ -13,6 +13,7 @@ export const useBudgetData = () => {
   const [saving, setSaving] = useState(false);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isLoadingRef = useRef(false);
+  const lastSavedDataRef = useRef<string>('');
 
   const loadData = useCallback(async () => {
     if (isLoadingRef.current) {
@@ -24,7 +25,16 @@ export const useBudgetData = () => {
       isLoadingRef.current = true;
       console.log('useBudgetData: Loading data...');
       const budgetData = await loadBudgetData();
-      console.log('useBudgetData: Loaded data:', budgetData);
+      console.log('useBudgetData: Loaded data:', {
+        peopleCount: budgetData.people?.length || 0,
+        expensesCount: budgetData.expenses?.length || 0,
+        distributionMethod: budgetData.householdSettings?.distributionMethod
+      });
+      
+      // Store the loaded data as a string for comparison
+      const dataString = JSON.stringify(budgetData);
+      lastSavedDataRef.current = dataString;
+      
       setData(budgetData);
     } catch (error) {
       console.error('useBudgetData: Error loading budget data:', error);
@@ -46,14 +56,27 @@ export const useBudgetData = () => {
 
   const saveData = useCallback(async (newData: BudgetData) => {
     try {
-      console.log('useBudgetData: Saving data:', newData);
+      console.log('useBudgetData: Saving data:', {
+        peopleCount: newData.people?.length || 0,
+        expensesCount: newData.expenses?.length || 0,
+        distributionMethod: newData.householdSettings?.distributionMethod
+      });
       setSaving(true);
+      
+      // Validate data integrity before saving
+      if (!newData.people) newData.people = [];
+      if (!newData.expenses) newData.expenses = [];
+      if (!newData.householdSettings) newData.householdSettings = { distributionMethod: 'even' };
       
       // Save to storage first
       const saveResult = await saveBudgetData(newData);
       console.log('useBudgetData: Save result:', saveResult);
       
       if (saveResult.success) {
+        // Store the saved data as a string for comparison
+        const dataString = JSON.stringify(newData);
+        lastSavedDataRef.current = dataString;
+        
         // Immediately update the UI state
         setData(newData);
         console.log('useBudgetData: UI state updated successfully');
@@ -74,7 +97,12 @@ export const useBudgetData = () => {
   const addPerson = useCallback(async (person: Person) => {
     console.log('useBudgetData: Adding person:', person);
     try {
-      const newData = { ...data, people: [...data.people, person] };
+      const newData = { 
+        ...data, 
+        people: [...data.people, person],
+        expenses: [...data.expenses], // Preserve existing expenses
+        householdSettings: { ...data.householdSettings } // Preserve settings
+      };
       const result = await saveData(newData);
       console.log('useBudgetData: Person added successfully');
       return result;
@@ -98,6 +126,7 @@ export const useBudgetData = () => {
         ...data,
         people: data.people.filter(p => p.id !== personId),
         expenses: data.expenses.filter(e => e.personId !== personId),
+        householdSettings: { ...data.householdSettings } // Preserve settings
       };
       
       console.log('useBudgetData: New data after removing person:', {
@@ -120,6 +149,8 @@ export const useBudgetData = () => {
       const newData = {
         ...data,
         people: data.people.map(p => p.id === updatedPerson.id ? updatedPerson : p),
+        expenses: [...data.expenses], // Preserve existing expenses
+        householdSettings: { ...data.householdSettings } // Preserve settings
       };
       const result = await saveData(newData);
       console.log('useBudgetData: Person updated successfully');
@@ -147,9 +178,15 @@ export const useBudgetData = () => {
             ? { ...p, income: [...p.income, income] }
             : p
         ),
+        expenses: [...data.expenses], // Preserve existing expenses
+        householdSettings: { ...data.householdSettings } // Preserve settings
       };
       
-      console.log('useBudgetData: New data after adding income:', newData);
+      console.log('useBudgetData: New data after adding income:', {
+        peopleCount: newData.people.length,
+        expensesCount: newData.expenses.length,
+        incomeCount: newData.people.find(p => p.id === personId)?.income.length || 0
+      });
       const result = await saveData(newData);
       console.log('useBudgetData: Income added successfully');
       return result;
@@ -184,11 +221,15 @@ export const useBudgetData = () => {
             ? { ...p, income: p.income.filter(i => i.id !== incomeId) }
             : p
         ),
+        expenses: [...data.expenses], // Preserve existing expenses
+        householdSettings: { ...data.householdSettings } // Preserve settings
       };
       
       console.log('useBudgetData: New data after removing income:', {
         personId,
         incomeId,
+        peopleCount: newData.people.length,
+        expensesCount: newData.expenses.length,
         remainingIncomeCount: newData.people.find(p => p.id === personId)?.income.length || 0
       });
       
@@ -233,12 +274,16 @@ export const useBudgetData = () => {
               }
             : p
         ),
+        expenses: [...data.expenses], // Preserve existing expenses
+        householdSettings: { ...data.householdSettings } // Preserve settings
       };
       
       console.log('useBudgetData: New data after updating income:', {
         personId,
         incomeId,
         updates,
+        peopleCount: newData.people.length,
+        expensesCount: newData.expenses.length,
         updatedIncome: newData.people.find(p => p.id === personId)?.income.find(i => i.id === incomeId)
       });
       
@@ -262,7 +307,18 @@ export const useBudgetData = () => {
       
       console.log('useBudgetData: Expense with ID:', expenseWithId);
       
-      const newData = { ...data, expenses: [...data.expenses, expenseWithId] };
+      const newData = { 
+        ...data, 
+        expenses: [...data.expenses, expenseWithId],
+        people: [...data.people], // Preserve existing people
+        householdSettings: { ...data.householdSettings } // Preserve settings
+      };
+      
+      console.log('useBudgetData: New data after adding expense:', {
+        peopleCount: newData.people.length,
+        expensesCount: newData.expenses.length
+      });
+      
       const result = await saveData(newData);
       console.log('useBudgetData: Expense added successfully');
       return result;
@@ -285,10 +341,13 @@ export const useBudgetData = () => {
       const newData = {
         ...data,
         expenses: data.expenses.filter(e => e.id !== expenseId),
+        people: [...data.people], // Preserve existing people
+        householdSettings: { ...data.householdSettings } // Preserve settings
       };
       
       console.log('useBudgetData: New data after removing expense:', {
         expenseId,
+        peopleCount: newData.people.length,
         remainingExpensesCount: newData.expenses.length
       });
       
@@ -307,7 +366,15 @@ export const useBudgetData = () => {
       const newData = {
         ...data,
         expenses: data.expenses.map(e => e.id === updatedExpense.id ? updatedExpense : e),
+        people: [...data.people], // Preserve existing people
+        householdSettings: { ...data.householdSettings } // Preserve settings
       };
+      
+      console.log('useBudgetData: New data after updating expense:', {
+        peopleCount: newData.people.length,
+        expensesCount: newData.expenses.length
+      });
+      
       const result = await saveData(newData);
       console.log('useBudgetData: Expense updated successfully');
       return result;
@@ -328,7 +395,9 @@ export const useBudgetData = () => {
       
       const newData = { 
         ...data, 
-        householdSettings: newHouseholdSettings 
+        householdSettings: newHouseholdSettings,
+        people: [...data.people], // Preserve existing people
+        expenses: [...data.expenses] // Preserve existing expenses
       };
       
       console.log('useBudgetData: New data with updated household settings:', {
@@ -360,7 +429,23 @@ export const useBudgetData = () => {
     refreshTimeoutRef.current = setTimeout(async () => {
       if (!isLoadingRef.current && !saving) {
         console.log('useBudgetData: Executing throttled refresh...');
-        await loadData();
+        
+        // Check if we need to refresh by comparing with last saved data
+        try {
+          const currentStoredData = await loadBudgetData();
+          const currentDataString = JSON.stringify(currentStoredData);
+          
+          if (currentDataString !== lastSavedDataRef.current) {
+            console.log('useBudgetData: Data has changed, refreshing...');
+            await loadData();
+          } else {
+            console.log('useBudgetData: Data unchanged, skipping refresh');
+          }
+        } catch (error) {
+          console.error('useBudgetData: Error checking for data changes:', error);
+          // Fallback to regular refresh
+          await loadData();
+        }
       } else {
         console.log('useBudgetData: Skipping refresh - operation in progress');
       }
