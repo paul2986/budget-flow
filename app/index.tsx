@@ -19,16 +19,23 @@ import Icon from '../components/Icon';
 import PersonBreakdownChart from '../components/PersonBreakdownChart';
 
 export default function HomeScreen() {
-  const { data, loading } = useBudgetData();
+  const { data, loading, refreshData } = useBudgetData();
   const { currentColors } = useTheme();
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, loading: currencyLoading } = useCurrency();
 
   // Add console logs to track when data changes
   useEffect(() => {
     console.log('HomeScreen: Data changed - People:', data.people.length, 'Expenses:', data.expenses.length);
     console.log('HomeScreen: People data:', data.people);
+    console.log('HomeScreen: Expenses data:', data.expenses);
     console.log('HomeScreen: Household settings:', data.householdSettings);
   }, [data.people, data.expenses, data.householdSettings]);
+
+  // Force refresh data when component mounts
+  useEffect(() => {
+    console.log('HomeScreen: Component mounted, refreshing data...');
+    refreshData();
+  }, []);
 
   // Memoize calculations to ensure they update when data changes
   const calculations = useMemo(() => {
@@ -130,7 +137,7 @@ export default function HomeScreen() {
   };
 
   // Show loading state if data is still loading
-  if (loading) {
+  if (loading || currencyLoading) {
     return (
       <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
         <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
@@ -284,7 +291,7 @@ export default function HomeScreen() {
                         </Text>
                       </View>
                     </View>
-                    <TouchableOpacity onPress={() => router.push(`/edit-person?id=${person.id}`)}>
+                    <TouchableOpacity onPress={() => router.push(`/edit-person?personId=${person.id}`)}>
                       <Icon name="create-outline" size={24} style={{ color: currentColors.primary }} />
                     </TouchableOpacity>
                   </View>

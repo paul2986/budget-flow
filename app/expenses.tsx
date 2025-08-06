@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { router } from 'expo-router';
 import { Text, View, ScrollView, TouchableOpacity, Alert, Animated, ActivityIndicator } from 'react-native';
@@ -11,12 +11,18 @@ import { useCurrency } from '../hooks/useCurrency';
 import Icon from '../components/Icon';
 
 export default function ExpensesScreen() {
-  const { data, removeExpense, saving } = useBudgetData();
+  const { data, removeExpense, saving, refreshData } = useBudgetData();
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
   const [filter, setFilter] = useState<'all' | 'household' | 'personal'>('all');
   const [personFilter, setPersonFilter] = useState<string | null>(null);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
+
+  // Force refresh data when component mounts
+  useEffect(() => {
+    console.log('ExpensesScreen: Component mounted, refreshing data...');
+    refreshData();
+  }, []);
 
   const handleRemoveExpense = (expenseId: string, description: string) => {
     console.log('ExpensesScreen: Attempting to remove expense:', expenseId, description);
@@ -43,7 +49,10 @@ export default function ExpensesScreen() {
               const result = await removeExpense(expenseId);
               console.log('ExpensesScreen: Expense removal result:', result);
               
-              if (!result.success) {
+              if (result.success) {
+                // Force refresh to ensure UI updates
+                await refreshData();
+              } else {
                 console.error('ExpensesScreen: Expense removal failed:', result.error);
                 Alert.alert('Error', 'Failed to remove expense. Please try again.');
               }

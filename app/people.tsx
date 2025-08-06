@@ -1,7 +1,7 @@
 
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { commonStyles, buttonStyles } from '../styles/commonStyles';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
@@ -18,7 +18,7 @@ import Button from '../components/Button';
 import Icon from '../components/Icon';
 
 export default function PeopleScreen() {
-  const { data, addPerson, removePerson, addIncome, removeIncome, saving } = useBudgetData();
+  const { data, addPerson, removePerson, addIncome, removeIncome, saving, refreshData } = useBudgetData();
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
   const [showAddPerson, setShowAddPerson] = useState(false);
@@ -32,6 +32,12 @@ export default function PeopleScreen() {
     label: '',
     frequency: 'monthly' as const,
   });
+
+  // Force refresh data when component mounts
+  useEffect(() => {
+    console.log('PeopleScreen: Component mounted, refreshing data...');
+    refreshData();
+  }, []);
 
   const handleAddPerson = async () => {
     console.log('PeopleScreen: Add person button pressed');
@@ -51,11 +57,13 @@ export default function PeopleScreen() {
 
       console.log('PeopleScreen: Adding new person:', person);
       const result = await addPerson(person);
-      console.log('PeopleScreen: Person added successfully');
+      console.log('PeopleScreen: Person added result:', result);
       
       if (result.success) {
         setNewPersonName('');
         setShowAddPerson(false);
+        // Force refresh to ensure UI updates
+        await refreshData();
       } else {
         Alert.alert('Error', 'Failed to add person. Please try again.');
       }
@@ -90,7 +98,10 @@ export default function PeopleScreen() {
               const result = await removePerson(person.id);
               console.log('PeopleScreen: Person removal result:', result);
               
-              if (!result.success) {
+              if (result.success) {
+                // Force refresh to ensure UI updates
+                await refreshData();
+              } else {
                 console.error('PeopleScreen: Person removal failed:', result.error);
                 Alert.alert('Error', 'Failed to remove person. Please try again.');
               }
@@ -140,12 +151,14 @@ export default function PeopleScreen() {
 
       console.log('PeopleScreen: Adding new income:', income);
       const result = await addIncome(selectedPersonId, income);
-      console.log('PeopleScreen: Income added successfully');
+      console.log('PeopleScreen: Income added result:', result);
       
       if (result.success) {
         setNewIncome({ amount: '', label: '', frequency: 'monthly' });
         setShowAddIncome(false);
         setSelectedPersonId(null);
+        // Force refresh to ensure UI updates
+        await refreshData();
       } else {
         Alert.alert('Error', 'Failed to add income. Please try again.');
       }
@@ -180,7 +193,10 @@ export default function PeopleScreen() {
               const result = await removeIncome(personId, incomeId);
               console.log('PeopleScreen: Income removal result:', result);
               
-              if (!result.success) {
+              if (result.success) {
+                // Force refresh to ensure UI updates
+                await refreshData();
+              } else {
                 console.error('PeopleScreen: Income removal failed:', result.error);
                 Alert.alert('Error', 'Failed to remove income. Please try again.');
               }

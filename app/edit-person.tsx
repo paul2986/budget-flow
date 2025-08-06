@@ -1,12 +1,5 @@
 
-import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { commonStyles, buttonStyles } from '../styles/commonStyles';
-import { useBudgetData } from '../hooks/useBudgetData';
-import { useTheme } from '../hooks/useTheme';
-import { useCurrency } from '../hooks/useCurrency';
-import { Person, Income } from '../types/budget';
 import { 
   calculatePersonIncome, 
   calculateMonthlyAmount, 
@@ -14,61 +7,56 @@ import {
   calculateHouseholdShare,
   calculateHouseholdExpenses 
 } from '../utils/calculations';
+import { useBudgetData } from '../hooks/useBudgetData';
 import Button from '../components/Button';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useCurrency } from '../hooks/useCurrency';
 import Icon from '../components/Icon';
+import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { commonStyles, buttonStyles } from '../styles/commonStyles';
+import { Person, Income } from '../types/budget';
+import { useTheme } from '../hooks/useTheme';
 
 export default function EditPersonScreen() {
-  const { personId } = useLocalSearchParams<{ personId: string }>();
-  const { data, updatePerson, addIncome, removeIncome, saving } = useBudgetData();
-  const { currentColors } = useTheme();
-  const { formatCurrency } = useCurrency();
-  
   const [person, setPerson] = useState<Person | null>(null);
-  const [personName, setPersonName] = useState('');
-  const [showAddIncome, setShowAddIncome] = useState(false);
-  const [deletingIncomeId, setDeletingIncomeId] = useState<string | null>(null);
   const [newIncome, setNewIncome] = useState({
     amount: '',
     label: '',
     frequency: 'monthly' as const,
   });
+  const [showAddIncome, setShowAddIncome] = useState(false);
+  const [deletingIncomeId, setDeletingIncomeId] = useState<string | null>(null);
+  
+  const { formatCurrency } = useCurrency();
+  const { currentColors } = useTheme();
+  const params = useLocalSearchParams<{ personId: string }>();
+  const personId = params.personId;
+  
+  const { data, updatePerson, addIncome, removeIncome, saving, refreshData } = useBudgetData();
 
   useEffect(() => {
-    console.log('EditPersonScreen: Looking for person with ID:', personId);
-    console.log('EditPersonScreen: Available people:', data.people);
-    
-    const foundPerson = data.people.find(p => p.id === personId);
-    if (foundPerson) {
+    if (personId && data.people.length > 0) {
+      const foundPerson = data.people.find(p => p.id === personId);
       console.log('EditPersonScreen: Found person:', foundPerson);
-      setPerson(foundPerson);
-      setPersonName(foundPerson.name);
-    } else {
-      console.log('EditPersonScreen: Person not found');
-      Alert.alert('Error', 'Person not found');
-      setTimeout(() => router.back(), 2000);
+      setPerson(foundPerson || null);
     }
   }, [personId, data.people]);
 
+  // Force refresh data when component mounts
+  useEffect(() => {
+    console.log('EditPersonScreen: Component mounted, refreshing data...');
+    refreshData();
+  }, []);
+
   const handleSavePerson = async () => {
-    console.log('EditPersonScreen: Saving person...');
-    
-    if (!person || !personName.trim()) {
-      Alert.alert('Error', 'Please enter a name');
-      return;
-    }
+    if (!person) return;
 
     try {
-      const updatedPerson: Person = {
-        ...person,
-        name: personName.trim(),
-      };
-
-      console.log('EditPersonScreen: Updating person:', updatedPerson);
-      const result = await updatePerson(updatedPerson);
-      console.log('EditPersonScreen: Person updated successfully');
-      
+      const result = await updatePerson(person);
       if (result.success) {
-        setTimeout(() => router.back(), 500);
+        // Force refresh to ensure UI updates
+        await refreshData();
+        router.back();
       } else {
         Alert.alert('Error', 'Failed to update person. Please try again.');
       }
@@ -79,8 +67,6 @@ export default function EditPersonScreen() {
   };
 
   const handleAddIncome = async () => {
-    console.log('EditPersonScreen: Adding income...');
-    
     if (!person || !newIncome.amount || !newIncome.label.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -101,13 +87,12 @@ export default function EditPersonScreen() {
         personId: person.id,
       };
 
-      console.log('EditPersonScreen: Adding income:', income);
       const result = await addIncome(person.id, income);
-      
       if (result.success) {
         setNewIncome({ amount: '', label: '', frequency: 'monthly' });
         setShowAddIncome(false);
-        console.log('EditPersonScreen: Income added successfully');
+        // Force refresh to ensure UI updates
+        await refreshData();
       } else {
         Alert.alert('Error', 'Failed to add income. Please try again.');
       }
@@ -120,14 +105,12 @@ export default function EditPersonScreen() {
   const handleRemoveIncome = (incomeId: string, incomeLabel: string) => {
     if (!person) return;
     
-    console.log('EditPersonScreen: Removing income:', incomeId, incomeLabel);
-    
     // Prevent multiple deletion attempts
     if (deletingIncomeId === incomeId || saving) {
       console.log('EditPersonScreen: Income deletion already in progress, ignoring');
       return;
     }
-    
+
     Alert.alert(
       'Remove Income',
       `Are you sure you want to remove "${incomeLabel}"?`,
@@ -138,14 +121,13 @@ export default function EditPersonScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              console.log('EditPersonScreen: Starting income removal process');
               setDeletingIncomeId(incomeId);
               
               const result = await removeIncome(person.id, incomeId);
-              console.log('EditPersonScreen: Income removal result:', result);
-              
-              if (!result.success) {
-                console.error('EditPersonScreen: Income removal failed:', result.error);
+              if (result.success) {
+                // Force refresh to ensure UI updates
+                await refreshData();
+              } else {
                 Alert.alert('Error', 'Failed to remove income. Please try again.');
               }
             } catch (error) {
@@ -207,9 +189,17 @@ export default function EditPersonScreen() {
 
   if (!person) {
     return (
-      <View style={[commonStyles.container, commonStyles.centerContent, { backgroundColor: currentColors.background }]}>
-        <ActivityIndicator size="large" color={currentColors.primary} />
-        <Text style={[commonStyles.text, { color: currentColors.text, marginTop: 16 }]}>Loading...</Text>
+      <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
+        <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Icon name="arrow-back" size={24} style={{ color: currentColors.text }} />
+          </TouchableOpacity>
+          <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Edit Person</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={[commonStyles.centerContent, { flex: 1 }]}>
+          <Text style={[commonStyles.text, { color: currentColors.textSecondary }]}>Person not found</Text>
+        </View>
       </View>
     );
   }
@@ -223,7 +213,7 @@ export default function EditPersonScreen() {
     <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
       <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
         <TouchableOpacity onPress={() => router.back()} disabled={saving}>
-          <Icon name="arrow-back" size={24} style={{ color: saving ? currentColors.textSecondary : currentColors.text }} />
+          <Icon name="arrow-back" size={24} style={{ color: currentColors.text }} />
         </TouchableOpacity>
         <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Edit Person</Text>
         <TouchableOpacity onPress={handleSavePerson} disabled={saving}>
@@ -238,26 +228,24 @@ export default function EditPersonScreen() {
       <ScrollView style={commonStyles.content} contentContainerStyle={commonStyles.scrollContent}>
         {/* Person Details */}
         <View style={commonStyles.section}>
-          <Text style={[commonStyles.subtitle, { color: currentColors.text }]}>Person Details</Text>
+          <Text style={[commonStyles.subtitle, { color: currentColors.text, marginBottom: 12 }]}>Person Details</Text>
           
-          <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
-            <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
-              Name:
-            </Text>
-            <TextInput
-              style={[commonStyles.input, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border, color: currentColors.text }]}
-              placeholder="Enter person's name"
-              placeholderTextColor={currentColors.textSecondary}
-              value={personName}
-              onChangeText={setPersonName}
-              editable={!saving}
-            />
-          </View>
+          <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
+            Name:
+          </Text>
+          <TextInput
+            style={[commonStyles.input, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border, color: currentColors.text }]}
+            value={person.name}
+            onChangeText={(text) => setPerson({ ...person, name: text })}
+            placeholder="Enter person's name"
+            placeholderTextColor={currentColors.textSecondary}
+            editable={!saving}
+          />
         </View>
 
         {/* Income Summary */}
         <View style={commonStyles.section}>
-          <Text style={[commonStyles.subtitle, { color: currentColors.text }]}>Income Summary</Text>
+          <Text style={[commonStyles.subtitle, { color: currentColors.text, marginBottom: 12 }]}>Income Summary</Text>
           
           <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
             <View style={[commonStyles.row, { marginBottom: 8 }]}>
@@ -267,7 +255,7 @@ export default function EditPersonScreen() {
               </Text>
             </View>
 
-            <View style={[commonStyles.row, { borderTopWidth: 1, borderTopColor: currentColors.border, paddingTop: 8 }]}>
+            <View style={[commonStyles.row]}>
               <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>Remaining Income:</Text>
               <Text style={[
                 commonStyles.text, 
@@ -286,7 +274,7 @@ export default function EditPersonScreen() {
         {showAddIncome && (
           <View style={[commonStyles.card, { backgroundColor: currentColors.income + '10', borderColor: currentColors.border }]}>
             <Text style={[commonStyles.subtitle, { marginBottom: 12, color: currentColors.text }]}>
-              Add Income Source
+              Add Income for {person.name}
             </Text>
             
             <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
@@ -298,7 +286,6 @@ export default function EditPersonScreen() {
               placeholderTextColor={currentColors.textSecondary}
               value={newIncome.label}
               onChangeText={(text) => setNewIncome({ ...newIncome, label: text })}
-              autoFocus
               editable={!saving}
             />
             
@@ -352,33 +339,26 @@ export default function EditPersonScreen() {
         <View style={commonStyles.section}>
           <View style={[commonStyles.row, { marginBottom: 12 }]}>
             <Text style={[commonStyles.subtitle, { marginBottom: 0, color: currentColors.text }]}>Income Sources</Text>
-            <TouchableOpacity onPress={() => setShowAddIncome(true)} disabled={saving}>
+            <TouchableOpacity 
+              onPress={() => setShowAddIncome(true)}
+              disabled={saving}
+            >
               <Icon name="add-circle-outline" size={24} style={{ color: saving ? currentColors.textSecondary : currentColors.income }} />
             </TouchableOpacity>
           </View>
           
           {person.income.length === 0 ? (
             <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
-              <View style={commonStyles.centerContent}>
-                <Icon name="wallet-outline" size={48} style={{ color: currentColors.textSecondary, marginBottom: 12 }} />
-                <Text style={[commonStyles.textSecondary, { textAlign: 'center', color: currentColors.textSecondary }]}>
-                  No income sources added yet.{'\n'}Tap the + button to add one.
-                </Text>
-              </View>
+              <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, textAlign: 'center' }]}>
+                No income sources added
+              </Text>
             </View>
           ) : (
             person.income.map((income) => {
               const isDeletingIncome = deletingIncomeId === income.id;
               
               return (
-                <View key={income.id} style={[
-                  commonStyles.card, 
-                  { 
-                    backgroundColor: currentColors.backgroundAlt, 
-                    borderColor: currentColors.border,
-                    opacity: isDeletingIncome ? 0.6 : 1,
-                  }
-                ]}>
+                <View key={income.id} style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
                   <View style={[commonStyles.row, { marginBottom: 8 }]}>
                     <View style={commonStyles.flex1}>
                       <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>{income.label}</Text>
@@ -397,28 +377,14 @@ export default function EditPersonScreen() {
                       )}
                     </TouchableOpacity>
                   </View>
+                  
+                  <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                    Monthly: {formatCurrency(calculateMonthlyAmount(income.amount, income.frequency))}
+                  </Text>
                 </View>
               );
             })
           )}
-        </View>
-
-        {/* Save Button */}
-        <View style={commonStyles.section}>
-          <Button
-            text={saving ? 'Saving...' : 'Save Changes'}
-            onPress={handleSavePerson}
-            style={[buttonStyles.primary, { backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }]}
-            disabled={saving}
-          />
-          
-          <Button
-            text="Cancel"
-            onPress={() => router.back()}
-            style={[buttonStyles.outline, { borderColor: currentColors.textSecondary, marginTop: 12 }]}
-            textStyle={{ color: currentColors.textSecondary }}
-            disabled={saving}
-          />
         </View>
       </ScrollView>
     </View>

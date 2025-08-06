@@ -11,7 +11,7 @@ import Icon from '../components/Icon';
 import { Expense } from '../types/budget';
 
 export default function AddExpenseScreen() {
-  const { data, addExpense, updateExpense, saving } = useBudgetData();
+  const { data, addExpense, updateExpense, saving, refreshData } = useBudgetData();
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
   const params = useLocalSearchParams<{ id?: string }>();
@@ -76,13 +76,15 @@ export default function AddExpenseScreen() {
       let result;
       if (isEditMode) {
         result = await updateExpense(expenseData);
-        console.log('AddExpenseScreen: Expense updated successfully');
+        console.log('AddExpenseScreen: Expense updated result:', result);
       } else {
         result = await addExpense(expenseData);
-        console.log('AddExpenseScreen: Expense added successfully');
+        console.log('AddExpenseScreen: Expense added result:', result);
       }
 
       if (result.success) {
+        // Force refresh to ensure UI updates
+        await refreshData();
         // Navigate back to expenses screen
         router.back();
       } else {

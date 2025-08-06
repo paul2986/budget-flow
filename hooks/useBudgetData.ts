@@ -35,26 +35,20 @@ export const useBudgetData = () => {
       setSaving(true);
       
       // Save to storage first
-      await saveBudgetData(newData);
-      console.log('useBudgetData: Data saved successfully to storage');
+      const saveResult = await saveBudgetData(newData);
+      console.log('useBudgetData: Save result:', saveResult);
       
-      // Then update the UI state
-      setData(newData);
-      console.log('useBudgetData: UI state updated successfully');
-      
-      return { success: true };
+      if (saveResult.success) {
+        // Then update the UI state
+        setData(newData);
+        console.log('useBudgetData: UI state updated successfully');
+        return { success: true };
+      } else {
+        console.error('useBudgetData: Save failed:', saveResult.error);
+        return { success: false, error: saveResult.error };
+      }
     } catch (error) {
       console.error('useBudgetData: Error saving budget data:', error);
-      
-      // Reload data from storage to ensure consistency
-      try {
-        const freshData = await loadBudgetData();
-        setData(freshData);
-        console.log('useBudgetData: Reverted to fresh data from storage');
-      } catch (reloadError) {
-        console.error('useBudgetData: Error reloading data after save failure:', reloadError);
-      }
-      
       return { success: false, error: error as Error };
     } finally {
       setSaving(false);

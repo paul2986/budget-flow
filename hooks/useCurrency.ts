@@ -33,16 +33,20 @@ export const useCurrency = () => {
 
   const loadCurrency = async () => {
     try {
+      console.log('useCurrency: Loading currency from storage...');
       const savedCurrency = await AsyncStorage.getItem(CURRENCY_STORAGE_KEY);
       if (savedCurrency) {
         const parsedCurrency = JSON.parse(savedCurrency);
         const foundCurrency = CURRENCIES.find(c => c.code === parsedCurrency.code);
         if (foundCurrency) {
+          console.log('useCurrency: Loaded currency:', foundCurrency);
           setCurrency(foundCurrency);
         }
+      } else {
+        console.log('useCurrency: No saved currency found, using default USD');
       }
     } catch (error) {
-      console.error('Error loading currency:', error);
+      console.error('useCurrency: Error loading currency:', error);
     } finally {
       setLoading(false);
     }
@@ -50,18 +54,28 @@ export const useCurrency = () => {
 
   const saveCurrency = async (newCurrency: Currency) => {
     try {
+      console.log('useCurrency: Saving currency:', newCurrency);
       await AsyncStorage.setItem(CURRENCY_STORAGE_KEY, JSON.stringify(newCurrency));
       setCurrency(newCurrency);
+      console.log('useCurrency: Currency saved successfully');
     } catch (error) {
-      console.error('Error saving currency:', error);
+      console.error('useCurrency: Error saving currency:', error);
     }
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency.code,
-    }).format(amount);
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency.code,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(amount);
+    } catch (error) {
+      console.error('useCurrency: Error formatting currency:', error);
+      // Fallback to simple formatting
+      return `${currency.symbol}${amount.toFixed(2)}`;
+    }
   };
 
   return {
