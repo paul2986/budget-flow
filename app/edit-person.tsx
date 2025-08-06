@@ -32,7 +32,7 @@ export default function EditPersonScreen() {
   const params = useLocalSearchParams<{ personId: string }>();
   const personId = params.personId;
   
-  const { data, updatePerson, addIncome, removeIncome, saving, refreshData } = useBudgetData();
+  const { data, updatePerson, addIncome, removeIncome, updateIncome, saving, refreshData } = useBudgetData();
 
   // Update person state whenever data changes
   useEffect(() => {
@@ -364,36 +364,63 @@ export default function EditPersonScreen() {
               </Text>
             </View>
           ) : (
-            person.income.map((income) => {
-              const isDeletingIncome = deletingIncomeId === income.id;
-              
-              return (
-                <View key={income.id} style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
-                  <View style={[commonStyles.row, { marginBottom: 8 }]}>
-                    <View style={commonStyles.flex1}>
-                      <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>{income.label}</Text>
+            <View>
+              <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, fontSize: 12, marginBottom: 8 }]}>
+                Tap any income source to edit it
+              </Text>
+              {person.income.map((income) => {
+                const isDeletingIncome = deletingIncomeId === income.id;
+                
+                return (
+                  <TouchableOpacity
+                    key={income.id}
+                    style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}
+                    onPress={() => {
+                      router.push({
+                        pathname: '/edit-income',
+                        params: { personId: person.id, incomeId: income.id }
+                      });
+                    }}
+                    disabled={saving || isDeletingIncome}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[commonStyles.row, { marginBottom: 8 }]}>
+                      <View style={commonStyles.flex1}>
+                        <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>{income.label}</Text>
+                        <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                          {formatCurrency(income.amount)} • {income.frequency}
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Icon name="pencil-outline" size={20} style={{ color: saving || isDeletingIncome ? currentColors.textSecondary : currentColors.primary }} />
+                        <TouchableOpacity 
+                          onPress={(e) => {
+                            e.stopPropagation(); // Prevent triggering the edit action
+                            handleRemoveIncome(income.id, income.label);
+                          }}
+                          disabled={saving || isDeletingIncome}
+                        >
+                          {isDeletingIncome ? (
+                            <ActivityIndicator size="small" color={currentColors.error} />
+                          ) : (
+                            <Icon name="trash-outline" size={20} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    
+                    <View style={[commonStyles.row, { borderTopWidth: 1, borderTopColor: currentColors.border, paddingTop: 8 }]}>
                       <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
-                        {formatCurrency(income.amount)} • {income.frequency}
+                        Monthly: {formatCurrency(calculateMonthlyAmount(income.amount, income.frequency))}
+                      </Text>
+                      <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                        Tap to edit
                       </Text>
                     </View>
-                    <TouchableOpacity 
-                      onPress={() => handleRemoveIncome(income.id, income.label)}
-                      disabled={saving || isDeletingIncome}
-                    >
-                      {isDeletingIncome ? (
-                        <ActivityIndicator size="small" color={currentColors.error} />
-                      ) : (
-                        <Icon name="trash-outline" size={20} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                  
-                  <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
-                    Monthly: {formatCurrency(calculateMonthlyAmount(income.amount, income.frequency))}
-                  </Text>
-                </View>
-              );
-            })
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           )}
         </View>
       </ScrollView>

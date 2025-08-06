@@ -18,7 +18,7 @@ import Button from '../components/Button';
 import Icon from '../components/Icon';
 
 export default function PeopleScreen() {
-  const { data, addPerson, removePerson, addIncome, removeIncome, saving, refreshData } = useBudgetData();
+  const { data, addPerson, removePerson, addIncome, removeIncome, updateIncome, saving, refreshData } = useBudgetData();
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
   const [showAddPerson, setShowAddPerson] = useState(false);
@@ -532,33 +532,53 @@ export default function PeopleScreen() {
                   {person.income.length === 0 ? (
                     <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>No income sources added</Text>
                   ) : (
-                    person.income.map((income) => {
-                      const isDeletingIncome = deletingIncomeId === income.id;
+                    <View>
+                      <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, fontSize: 12, marginBottom: 8 }]}>
+                        Tap any income source to edit it
+                      </Text>
+                      {person.income.map((income) => {
+                        const isDeletingIncome = deletingIncomeId === income.id;
                       
-                      return (
-                        <View key={income.id} style={[commonStyles.row, { marginBottom: 4 }]}>
-                          <View style={commonStyles.flex1}>
-                            <Text style={[commonStyles.text, { color: currentColors.text }]}>{income.label}</Text>
-                            <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
-                              {formatCurrency(income.amount)} • {income.frequency}
-                            </Text>
-                          </View>
-                          <TouchableOpacity 
+                        return (
+                          <TouchableOpacity
+                            key={income.id}
+                            style={[commonStyles.row, { marginBottom: 4, paddingVertical: 4 }]}
                             onPress={(e) => {
-                              e.stopPropagation(); // Prevent triggering the edit action
-                              handleRemoveIncome(person.id, income.id, income.label);
+                              e.stopPropagation(); // Prevent triggering the edit person action
+                              router.push({
+                                pathname: '/edit-income',
+                                params: { personId: person.id, incomeId: income.id }
+                              });
                             }}
                             disabled={saving || isDeletingIncome}
+                            activeOpacity={0.7}
                           >
-                            {isDeletingIncome ? (
-                              <ActivityIndicator size="small" color={currentColors.error} />
-                            ) : (
-                              <Icon name="close-circle-outline" size={16} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
-                            )}
+                            <View style={commonStyles.flex1}>
+                              <Text style={[commonStyles.text, { color: currentColors.text }]}>{income.label}</Text>
+                              <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                                {formatCurrency(income.amount)} • {income.frequency}
+                              </Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                              <Icon name="pencil-outline" size={16} style={{ color: saving || isDeletingIncome ? currentColors.textSecondary : currentColors.primary }} />
+                              <TouchableOpacity 
+                                onPress={(e) => {
+                                  e.stopPropagation(); // Prevent triggering the edit action
+                                  handleRemoveIncome(person.id, income.id, income.label);
+                                }}
+                                disabled={saving || isDeletingIncome}
+                              >
+                                {isDeletingIncome ? (
+                                  <ActivityIndicator size="small" color={currentColors.error} />
+                                ) : (
+                                  <Icon name="close-circle-outline" size={16} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
+                                )}
+                              </TouchableOpacity>
+                            </View>
                           </TouchableOpacity>
-                        </View>
-                      );
-                    })
+                        );
+                      })}
+                    </View>
                   )}
                 </View>
 

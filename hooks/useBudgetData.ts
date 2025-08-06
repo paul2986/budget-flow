@@ -201,6 +201,56 @@ export const useBudgetData = () => {
     }
   }, [data, saveData]);
 
+  const updateIncome = useCallback(async (personId: string, incomeId: string, updates: Partial<Income>) => {
+    console.log('useBudgetData: Updating income:', personId, incomeId, updates);
+    
+    try {
+      // Find the person first to verify they exist
+      const person = data.people.find(p => p.id === personId);
+      if (!person) {
+        console.error('useBudgetData: Person not found:', personId);
+        return { success: false, error: new Error('Person not found') };
+      }
+      
+      // Check if the income exists
+      const incomeExists = person.income.find(i => i.id === incomeId);
+      if (!incomeExists) {
+        console.error('useBudgetData: Income not found:', incomeId);
+        return { success: false, error: new Error('Income not found') };
+      }
+      
+      const newData = {
+        ...data,
+        people: data.people.map(p => 
+          p.id === personId 
+            ? { 
+                ...p, 
+                income: p.income.map(i => 
+                  i.id === incomeId 
+                    ? { ...i, ...updates }
+                    : i
+                )
+              }
+            : p
+        ),
+      };
+      
+      console.log('useBudgetData: New data after updating income:', {
+        personId,
+        incomeId,
+        updates,
+        updatedIncome: newData.people.find(p => p.id === personId)?.income.find(i => i.id === incomeId)
+      });
+      
+      const result = await saveData(newData);
+      console.log('useBudgetData: Income updated successfully');
+      return result;
+    } catch (error) {
+      console.error('useBudgetData: Error updating income:', error);
+      return { success: false, error: error as Error };
+    }
+  }, [data, saveData]);
+
   const addExpense = useCallback(async (expense: Expense) => {
     console.log('useBudgetData: Adding expense:', expense);
     try {
@@ -326,6 +376,7 @@ export const useBudgetData = () => {
     updatePerson,
     addIncome,
     removeIncome,
+    updateIncome,
     addExpense,
     removeExpense,
     updateExpense,
