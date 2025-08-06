@@ -16,7 +16,6 @@ import {
 } from '../utils/calculations';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
-import Toast from '../components/Toast';
 
 export default function PeopleScreen() {
   const { data, addPerson, removePerson, addIncome, removeIncome, saving } = useBudgetData();
@@ -26,31 +25,20 @@ export default function PeopleScreen() {
   const [newPersonName, setNewPersonName] = useState('');
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [showAddIncome, setShowAddIncome] = useState(false);
+  const [deletingPersonId, setDeletingPersonId] = useState<string | null>(null);
+  const [deletingIncomeId, setDeletingIncomeId] = useState<string | null>(null);
   const [newIncome, setNewIncome] = useState({
     amount: '',
     label: '',
     frequency: 'monthly' as const,
   });
-  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({
-    visible: false,
-    message: '',
-    type: 'info'
-  });
-
-  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
-    setToast({ visible: true, message, type });
-  };
-
-  const hideToast = () => {
-    setToast({ visible: false, message: '', type: 'info' });
-  };
 
   const handleAddPerson = async () => {
     console.log('PeopleScreen: Add person button pressed');
     console.log('PeopleScreen: New person name:', newPersonName);
     
     if (!newPersonName.trim()) {
-      showToast('Please enter a name', 'error');
+      Alert.alert('Error', 'Please enter a name');
       return;
     }
 
@@ -68,18 +56,24 @@ export default function PeopleScreen() {
       if (result.success) {
         setNewPersonName('');
         setShowAddPerson(false);
-        showToast(`${person.name} has been added successfully!`, 'success');
       } else {
-        showToast('Failed to add person. Please try again.', 'error');
+        Alert.alert('Error', 'Failed to add person. Please try again.');
       }
     } catch (error) {
       console.error('PeopleScreen: Error adding person:', error);
-      showToast('Failed to add person. Please try again.', 'error');
+      Alert.alert('Error', 'Failed to add person. Please try again.');
     }
   };
 
   const handleRemovePerson = (person: Person) => {
     console.log('PeopleScreen: Attempting to remove person:', person);
+    
+    // Prevent multiple deletion attempts
+    if (deletingPersonId === person.id || saving) {
+      console.log('PeopleScreen: Deletion already in progress, ignoring');
+      return;
+    }
+
     Alert.alert(
       'Remove Person',
       `Are you sure you want to remove ${person.name}? This will also remove all their income and personal expenses.`,
@@ -90,18 +84,21 @@ export default function PeopleScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              console.log('PeopleScreen: Removing person:', person.id);
-              const result = await removePerson(person.id);
-              console.log('PeopleScreen: Person removed successfully');
+              console.log('PeopleScreen: Starting person removal process');
+              setDeletingPersonId(person.id);
               
-              if (result.success) {
-                showToast(`${person.name} has been removed.`, 'success');
-              } else {
-                showToast('Failed to remove person. Please try again.', 'error');
+              const result = await removePerson(person.id);
+              console.log('PeopleScreen: Person removal result:', result);
+              
+              if (!result.success) {
+                console.error('PeopleScreen: Person removal failed:', result.error);
+                Alert.alert('Error', 'Failed to remove person. Please try again.');
               }
             } catch (error) {
               console.error('PeopleScreen: Error removing person:', error);
-              showToast('Failed to remove person. Please try again.', 'error');
+              Alert.alert('Error', 'Failed to remove person. Please try again.');
+            } finally {
+              setDeletingPersonId(null);
             }
           }
         },
@@ -122,13 +119,13 @@ export default function PeopleScreen() {
     console.log('PeopleScreen: New income data:', newIncome);
     
     if (!selectedPersonId || !newIncome.amount || !newIncome.label.trim()) {
-      showToast('Please fill in all fields', 'error');
+      Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
     const amount = parseFloat(newIncome.amount);
     if (isNaN(amount) || amount <= 0) {
-      showToast('Please enter a valid amount', 'error');
+      Alert.alert('Error', 'Please enter a valid amount');
       return;
     }
 
@@ -149,18 +146,24 @@ export default function PeopleScreen() {
         setNewIncome({ amount: '', label: '', frequency: 'monthly' });
         setShowAddIncome(false);
         setSelectedPersonId(null);
-        showToast('Income source added successfully!', 'success');
       } else {
-        showToast('Failed to add income. Please try again.', 'error');
+        Alert.alert('Error', 'Failed to add income. Please try again.');
       }
     } catch (error) {
       console.error('PeopleScreen: Error adding income:', error);
-      showToast('Failed to add income. Please try again.', 'error');
+      Alert.alert('Error', 'Failed to add income. Please try again.');
     }
   };
 
   const handleRemoveIncome = (personId: string, incomeId: string, incomeLabel: string) => {
     console.log('PeopleScreen: Attempting to remove income:', { personId, incomeId, incomeLabel });
+    
+    // Prevent multiple deletion attempts
+    if (deletingIncomeId === incomeId || saving) {
+      console.log('PeopleScreen: Income deletion already in progress, ignoring');
+      return;
+    }
+
     Alert.alert(
       'Remove Income',
       `Are you sure you want to remove "${incomeLabel}"?`,
@@ -171,18 +174,21 @@ export default function PeopleScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              console.log('PeopleScreen: Removing income:', personId, incomeId);
-              const result = await removeIncome(personId, incomeId);
-              console.log('PeopleScreen: Income removed successfully');
+              console.log('PeopleScreen: Starting income removal process');
+              setDeletingIncomeId(incomeId);
               
-              if (result.success) {
-                showToast(`"${incomeLabel}" has been removed.`, 'success');
-              } else {
-                showToast('Failed to remove income. Please try again.', 'error');
+              const result = await removeIncome(personId, incomeId);
+              console.log('PeopleScreen: Income removal result:', result);
+              
+              if (!result.success) {
+                console.error('PeopleScreen: Income removal failed:', result.error);
+                Alert.alert('Error', 'Failed to remove income. Please try again.');
               }
             } catch (error) {
               console.error('PeopleScreen: Error removing income:', error);
-              showToast('Failed to remove income. Please try again.', 'error');
+              Alert.alert('Error', 'Failed to remove income. Please try again.');
+            } finally {
+              setDeletingIncomeId(null);
             }
           }
         },
@@ -235,13 +241,6 @@ export default function PeopleScreen() {
 
   return (
     <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        visible={toast.visible}
-        onHide={hideToast}
-      />
-      
       <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
         <View style={{ width: 24 }} />
         <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Manage People</Text>
@@ -414,14 +413,22 @@ export default function PeopleScreen() {
             const monthlyIncome = calculateMonthlyAmount(totalIncome, 'yearly');
             const remainingIncome = calculateRemainingIncome(person);
             const monthlyRemaining = calculateMonthlyAmount(remainingIncome, 'yearly');
+            const isDeleting = deletingPersonId === person.id;
             
             return (
               <TouchableOpacity
                 key={person.id}
-                style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}
+                style={[
+                  commonStyles.card, 
+                  { 
+                    backgroundColor: currentColors.backgroundAlt, 
+                    borderColor: currentColors.border,
+                    opacity: isDeleting ? 0.6 : 1,
+                  }
+                ]}
                 onPress={() => handleEditPerson(person)}
                 activeOpacity={0.7}
-                disabled={saving}
+                disabled={saving || isDeleting}
               >
                 <View style={[commonStyles.row, { marginBottom: 12 }]}>
                   <Text style={[commonStyles.subtitle, { marginBottom: 0, color: currentColors.text }]}>
@@ -432,9 +439,13 @@ export default function PeopleScreen() {
                       e.stopPropagation(); // Prevent triggering the edit action
                       handleRemovePerson(person);
                     }}
-                    disabled={saving}
+                    disabled={saving || isDeleting}
                   >
-                    <Icon name="trash-outline" size={20} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
+                    {isDeleting ? (
+                      <ActivityIndicator size="small" color={currentColors.error} />
+                    ) : (
+                      <Icon name="trash-outline" size={20} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
+                    )}
                   </TouchableOpacity>
                 </View>
                 
@@ -468,42 +479,54 @@ export default function PeopleScreen() {
                         setSelectedPersonId(person.id);
                         setShowAddIncome(true);
                       }}
-                      disabled={saving}
+                      disabled={saving || isDeleting}
                     >
-                      <Icon name="add-circle-outline" size={20} style={{ color: saving ? currentColors.textSecondary : currentColors.income }} />
+                      <Icon name="add-circle-outline" size={20} style={{ color: saving || isDeleting ? currentColors.textSecondary : currentColors.income }} />
                     </TouchableOpacity>
                   </View>
                   
                   {person.income.length === 0 ? (
                     <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>No income sources added</Text>
                   ) : (
-                    person.income.map((income) => (
-                      <View key={income.id} style={[commonStyles.row, { marginBottom: 4 }]}>
-                        <View style={commonStyles.flex1}>
-                          <Text style={[commonStyles.text, { color: currentColors.text }]}>{income.label}</Text>
-                          <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
-                            {formatCurrency(income.amount)} • {income.frequency}
-                          </Text>
+                    person.income.map((income) => {
+                      const isDeletingIncome = deletingIncomeId === income.id;
+                      
+                      return (
+                        <View key={income.id} style={[commonStyles.row, { marginBottom: 4 }]}>
+                          <View style={commonStyles.flex1}>
+                            <Text style={[commonStyles.text, { color: currentColors.text }]}>{income.label}</Text>
+                            <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                              {formatCurrency(income.amount)} • {income.frequency}
+                            </Text>
+                          </View>
+                          <TouchableOpacity 
+                            onPress={(e) => {
+                              e.stopPropagation(); // Prevent triggering the edit action
+                              handleRemoveIncome(person.id, income.id, income.label);
+                            }}
+                            disabled={saving || isDeletingIncome}
+                          >
+                            {isDeletingIncome ? (
+                              <ActivityIndicator size="small" color={currentColors.error} />
+                            ) : (
+                              <Icon name="close-circle-outline" size={16} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
+                            )}
+                          </TouchableOpacity>
                         </View>
-                        <TouchableOpacity 
-                          onPress={(e) => {
-                            e.stopPropagation(); // Prevent triggering the edit action
-                            handleRemoveIncome(person.id, income.id, income.label);
-                          }}
-                          disabled={saving}
-                        >
-                          <Icon name="close-circle-outline" size={16} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
-                        </TouchableOpacity>
-                      </View>
-                    ))
+                      );
+                    })
                   )}
                 </View>
 
                 <View style={[commonStyles.row, { borderTopWidth: 1, borderTopColor: currentColors.border, paddingTop: 8 }]}>
                   <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
-                    Tap to edit this person
+                    {isDeleting ? 'Deleting...' : 'Tap to edit this person'}
                   </Text>
-                  <Icon name="chevron-forward-outline" size={16} style={{ color: currentColors.textSecondary }} />
+                  {isDeleting ? (
+                    <ActivityIndicator size="small" color={currentColors.textSecondary} />
+                  ) : (
+                    <Icon name="chevron-forward-outline" size={16} style={{ color: currentColors.textSecondary }} />
+                  )}
                 </View>
               </TouchableOpacity>
             );

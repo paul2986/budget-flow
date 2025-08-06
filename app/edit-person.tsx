@@ -16,7 +16,6 @@ import {
 } from '../utils/calculations';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
-import Toast from '../components/Toast';
 
 export default function EditPersonScreen() {
   const { personId } = useLocalSearchParams<{ personId: string }>();
@@ -27,15 +26,11 @@ export default function EditPersonScreen() {
   const [person, setPerson] = useState<Person | null>(null);
   const [personName, setPersonName] = useState('');
   const [showAddIncome, setShowAddIncome] = useState(false);
+  const [deletingIncomeId, setDeletingIncomeId] = useState<string | null>(null);
   const [newIncome, setNewIncome] = useState({
     amount: '',
     label: '',
     frequency: 'monthly' as const,
-  });
-  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({
-    visible: false,
-    message: '',
-    type: 'info'
   });
 
   useEffect(() => {
@@ -49,24 +44,16 @@ export default function EditPersonScreen() {
       setPersonName(foundPerson.name);
     } else {
       console.log('EditPersonScreen: Person not found');
-      showToast('Person not found', 'error');
+      Alert.alert('Error', 'Person not found');
       setTimeout(() => router.back(), 2000);
     }
   }, [personId, data.people]);
-
-  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
-    setToast({ visible: true, message, type });
-  };
-
-  const hideToast = () => {
-    setToast({ visible: false, message: '', type: 'info' });
-  };
 
   const handleSavePerson = async () => {
     console.log('EditPersonScreen: Saving person...');
     
     if (!person || !personName.trim()) {
-      showToast('Please enter a name', 'error');
+      Alert.alert('Error', 'Please enter a name');
       return;
     }
 
@@ -81,14 +68,13 @@ export default function EditPersonScreen() {
       console.log('EditPersonScreen: Person updated successfully');
       
       if (result.success) {
-        showToast('Person updated successfully!', 'success');
-        setTimeout(() => router.back(), 1500);
+        setTimeout(() => router.back(), 500);
       } else {
-        showToast('Failed to update person. Please try again.', 'error');
+        Alert.alert('Error', 'Failed to update person. Please try again.');
       }
     } catch (error) {
       console.error('EditPersonScreen: Error updating person:', error);
-      showToast('Failed to update person. Please try again.', 'error');
+      Alert.alert('Error', 'Failed to update person. Please try again.');
     }
   };
 
@@ -96,13 +82,13 @@ export default function EditPersonScreen() {
     console.log('EditPersonScreen: Adding income...');
     
     if (!person || !newIncome.amount || !newIncome.label.trim()) {
-      showToast('Please fill in all fields', 'error');
+      Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
     const amount = parseFloat(newIncome.amount);
     if (isNaN(amount) || amount <= 0) {
-      showToast('Please enter a valid amount', 'error');
+      Alert.alert('Error', 'Please enter a valid amount');
       return;
     }
 
@@ -122,13 +108,12 @@ export default function EditPersonScreen() {
         setNewIncome({ amount: '', label: '', frequency: 'monthly' });
         setShowAddIncome(false);
         console.log('EditPersonScreen: Income added successfully');
-        showToast('Income source added successfully!', 'success');
       } else {
-        showToast('Failed to add income. Please try again.', 'error');
+        Alert.alert('Error', 'Failed to add income. Please try again.');
       }
     } catch (error) {
       console.error('EditPersonScreen: Error adding income:', error);
-      showToast('Failed to add income. Please try again.', 'error');
+      Alert.alert('Error', 'Failed to add income. Please try again.');
     }
   };
 
@@ -136,6 +121,12 @@ export default function EditPersonScreen() {
     if (!person) return;
     
     console.log('EditPersonScreen: Removing income:', incomeId, incomeLabel);
+    
+    // Prevent multiple deletion attempts
+    if (deletingIncomeId === incomeId || saving) {
+      console.log('EditPersonScreen: Income deletion already in progress, ignoring');
+      return;
+    }
     
     Alert.alert(
       'Remove Income',
@@ -147,18 +138,21 @@ export default function EditPersonScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              console.log('EditPersonScreen: Calling removeIncome with:', person.id, incomeId);
-              const result = await removeIncome(person.id, incomeId);
-              console.log('EditPersonScreen: Income removed successfully');
+              console.log('EditPersonScreen: Starting income removal process');
+              setDeletingIncomeId(incomeId);
               
-              if (result.success) {
-                showToast(`"${incomeLabel}" has been removed.`, 'success');
-              } else {
-                showToast('Failed to remove income. Please try again.', 'error');
+              const result = await removeIncome(person.id, incomeId);
+              console.log('EditPersonScreen: Income removal result:', result);
+              
+              if (!result.success) {
+                console.error('EditPersonScreen: Income removal failed:', result.error);
+                Alert.alert('Error', 'Failed to remove income. Please try again.');
               }
             } catch (error) {
               console.error('EditPersonScreen: Error removing income:', error);
-              showToast('Failed to remove income. Please try again.', 'error');
+              Alert.alert('Error', 'Failed to remove income. Please try again.');
+            } finally {
+              setDeletingIncomeId(null);
             }
           }
         },
@@ -227,13 +221,6 @@ export default function EditPersonScreen() {
 
   return (
     <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        visible={toast.visible}
-        onHide={hideToast}
-      />
-      
       <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
         <TouchableOpacity onPress={() => router.back()} disabled={saving}>
           <Icon name="arrow-back" size={24} style={{ color: saving ? currentColors.textSecondary : currentColors.text }} />
@@ -380,24 +367,39 @@ export default function EditPersonScreen() {
               </View>
             </View>
           ) : (
-            person.income.map((income) => (
-              <View key={income.id} style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
-                <View style={[commonStyles.row, { marginBottom: 8 }]}>
-                  <View style={commonStyles.flex1}>
-                    <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>{income.label}</Text>
-                    <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
-                      {formatCurrency(income.amount)} • {income.frequency}
-                    </Text>
+            person.income.map((income) => {
+              const isDeletingIncome = deletingIncomeId === income.id;
+              
+              return (
+                <View key={income.id} style={[
+                  commonStyles.card, 
+                  { 
+                    backgroundColor: currentColors.backgroundAlt, 
+                    borderColor: currentColors.border,
+                    opacity: isDeletingIncome ? 0.6 : 1,
+                  }
+                ]}>
+                  <View style={[commonStyles.row, { marginBottom: 8 }]}>
+                    <View style={commonStyles.flex1}>
+                      <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>{income.label}</Text>
+                      <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                        {formatCurrency(income.amount)} • {income.frequency}
+                      </Text>
+                    </View>
+                    <TouchableOpacity 
+                      onPress={() => handleRemoveIncome(income.id, income.label)}
+                      disabled={saving || isDeletingIncome}
+                    >
+                      {isDeletingIncome ? (
+                        <ActivityIndicator size="small" color={currentColors.error} />
+                      ) : (
+                        <Icon name="trash-outline" size={20} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
+                      )}
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity 
-                    onPress={() => handleRemoveIncome(income.id, income.label)}
-                    disabled={saving}
-                  >
-                    <Icon name="trash-outline" size={20} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
-                  </TouchableOpacity>
                 </View>
-              </View>
-            ))
+              );
+            })
           )}
         </View>
 

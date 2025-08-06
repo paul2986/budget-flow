@@ -34,19 +34,26 @@ export const useBudgetData = () => {
       console.log('useBudgetData: Saving data:', newData);
       setSaving(true);
       
-      // Optimistically update the UI first
-      setData(newData);
-      
-      // Then save to storage
+      // Save to storage first
       await saveBudgetData(newData);
-      console.log('useBudgetData: Data saved successfully');
+      console.log('useBudgetData: Data saved successfully to storage');
+      
+      // Then update the UI state
+      setData(newData);
+      console.log('useBudgetData: UI state updated successfully');
       
       return { success: true };
     } catch (error) {
       console.error('useBudgetData: Error saving budget data:', error);
       
-      // Revert the optimistic update on error
-      await loadData();
+      // Reload data from storage to ensure consistency
+      try {
+        const freshData = await loadBudgetData();
+        setData(freshData);
+        console.log('useBudgetData: Reverted to fresh data from storage');
+      } catch (reloadError) {
+        console.error('useBudgetData: Error reloading data after save failure:', reloadError);
+      }
       
       return { success: false, error: error as Error };
     } finally {
@@ -70,11 +77,24 @@ export const useBudgetData = () => {
   const removePerson = async (personId: string) => {
     console.log('useBudgetData: Removing person:', personId);
     try {
+      // Verify person exists before attempting removal
+      const personExists = data.people.find(p => p.id === personId);
+      if (!personExists) {
+        console.error('useBudgetData: Person not found:', personId);
+        return { success: false, error: new Error('Person not found') };
+      }
+
       const newData = {
         ...data,
         people: data.people.filter(p => p.id !== personId),
         expenses: data.expenses.filter(e => e.personId !== personId),
       };
+      
+      console.log('useBudgetData: New data after removing person:', {
+        peopleCount: newData.people.length,
+        expensesCount: newData.expenses.length
+      });
+      
       const result = await saveData(newData);
       console.log('useBudgetData: Person removed successfully');
       return result;
@@ -156,7 +176,12 @@ export const useBudgetData = () => {
         ),
       };
       
-      console.log('useBudgetData: New data after removing income:', newData);
+      console.log('useBudgetData: New data after removing income:', {
+        personId,
+        incomeId,
+        remainingIncomeCount: newData.people.find(p => p.id === personId)?.income.length || 0
+      });
+      
       const result = await saveData(newData);
       console.log('useBudgetData: Income removed successfully');
       return result;
@@ -169,7 +194,15 @@ export const useBudgetData = () => {
   const addExpense = async (expense: Expense) => {
     console.log('useBudgetData: Adding expense:', expense);
     try {
-      const newData = { ...data, expenses: [...data.expenses, expense] };
+      // Generate a proper ID if not provided
+      const expenseWithId = {
+        ...expense,
+        id: expense.id || `expense_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      };
+      
+      console.log('useBudgetData: Expense with ID:', expenseWithId);
+      
+      const newData = { ...data, expenses: [...data.expenses, expenseWithId] };
       const result = await saveData(newData);
       console.log('useBudgetData: Expense added successfully');
       return result;
@@ -182,10 +215,23 @@ export const useBudgetData = () => {
   const removeExpense = async (expenseId: string) => {
     console.log('useBudgetData: Removing expense:', expenseId);
     try {
+      // Verify expense exists before attempting removal
+      const expenseExists = data.expenses.find(e => e.id === expenseId);
+      if (!expenseExists) {
+        console.error('useBudgetData: Expense not found:', expenseId);
+        return { success: false, error: new Error('Expense not found') };
+      }
+
       const newData = {
         ...data,
         expenses: data.expenses.filter(e => e.id !== expenseId),
       };
+      
+      console.log('useBudgetData: New data after removing expense:', {
+        expenseId,
+        remainingExpensesCount: newData.expenses.length
+      });
+      
       const result = await saveData(newData);
       console.log('useBudgetData: Expense removed successfully');
       return result;

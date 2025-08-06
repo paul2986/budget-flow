@@ -9,7 +9,6 @@ import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler'
 import { commonStyles } from '../styles/commonStyles';
 import { useCurrency } from '../hooks/useCurrency';
 import Icon from '../components/Icon';
-import Toast from '../components/Toast';
 
 export default function ExpensesScreen() {
   const { data, removeExpense, saving } = useBudgetData();
@@ -17,22 +16,17 @@ export default function ExpensesScreen() {
   const { formatCurrency } = useCurrency();
   const [filter, setFilter] = useState<'all' | 'household' | 'personal'>('all');
   const [personFilter, setPersonFilter] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({
-    visible: false,
-    message: '',
-    type: 'info'
-  });
-
-  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
-    setToast({ visible: true, message, type });
-  };
-
-  const hideToast = () => {
-    setToast({ visible: false, message: '', type: 'info' });
-  };
+  const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
 
   const handleRemoveExpense = (expenseId: string, description: string) => {
     console.log('ExpensesScreen: Attempting to remove expense:', expenseId, description);
+    
+    // Prevent multiple deletion attempts
+    if (deletingExpenseId === expenseId || saving) {
+      console.log('ExpensesScreen: Deletion already in progress, ignoring');
+      return;
+    }
+
     Alert.alert(
       'Remove Expense',
       `Are you sure you want to remove "${description}"?`,
@@ -43,18 +37,21 @@ export default function ExpensesScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              console.log('ExpensesScreen: Removing expense:', expenseId);
-              const result = await removeExpense(expenseId);
-              console.log('ExpensesScreen: Expense removed successfully');
+              console.log('ExpensesScreen: Starting expense removal process');
+              setDeletingExpenseId(expenseId);
               
-              if (result.success) {
-                showToast(`"${description}" has been removed.`, 'success');
-              } else {
-                showToast('Failed to remove expense. Please try again.', 'error');
+              const result = await removeExpense(expenseId);
+              console.log('ExpensesScreen: Expense removal result:', result);
+              
+              if (!result.success) {
+                console.error('ExpensesScreen: Expense removal failed:', result.error);
+                Alert.alert('Error', 'Failed to remove expense. Please try again.');
               }
             } catch (error) {
               console.error('ExpensesScreen: Error removing expense:', error);
-              showToast('Failed to remove expense. Please try again.', 'error');
+              Alert.alert('Error', 'Failed to remove expense. Please try again.');
+            } finally {
+              setDeletingExpenseId(null);
             }
           }
         },
@@ -91,7 +88,7 @@ export default function ExpensesScreen() {
           setPersonFilter(null);
         }
       }}
-      disabled={saving}
+      disabled={saving || deletingExpenseId !== null}
     >
       <Text style={[
         commonStyles.badgeText,
@@ -107,6 +104,8 @@ export default function ExpensesScreen() {
   );
 
   const renderRightActions = (expenseId: string, description: string) => {
+    const isDeleting = deletingExpenseId === expenseId;
+    
     return (
       <Animated.View style={{
         flex: 1,
@@ -126,9 +125,9 @@ export default function ExpensesScreen() {
             width: 80,
             height: '100%',
           }}
-          disabled={saving}
+          disabled={saving || isDeleting}
         >
-          {saving ? (
+          {isDeleting ? (
             <ActivityIndicator size="small" color="white" />
           ) : (
             <>
@@ -144,6 +143,9 @@ export default function ExpensesScreen() {
   // Filter expenses
   let filteredExpenses = data.expenses;
   
+  console.log('ExpensesScreen: Total expenses:', data.expenses.length);
+  console.log('ExpensesScreen: All expenses:', data.expenses);
+  
   if (filter === 'household') {
     filteredExpenses = filteredExpenses.filter(e => e.category === 'household');
   } else if (filter === 'personal') {
@@ -154,25 +156,20 @@ export default function ExpensesScreen() {
     }
   }
 
+  console.log('ExpensesScreen: Filtered expenses:', filteredExpenses.length);
+
   // Sort by date (newest first)
   filteredExpenses = filteredExpenses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          visible={toast.visible}
-          onHide={hideToast}
-        />
-        
         <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
           <View style={{ width: 24 }} />
           <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Expenses</Text>
           <TouchableOpacity 
             onPress={() => router.push('/add-expense')} 
-            disabled={saving}
+            disabled={saving || deletingExpenseId !== null}
             style={{
               backgroundColor: currentColors.primary,
               borderRadius: 20,
@@ -216,7 +213,7 @@ export default function ExpensesScreen() {
                     }
                   ]}
                   onPress={() => setPersonFilter(null)}
-                  disabled={saving}
+                  disabled={saving || deletingExpenseId !== null}
                 >
                   <Text style={[
                     commonStyles.badgeText,
@@ -243,7 +240,7 @@ export default function ExpensesScreen() {
                       }
                     ]}
                     onPress={() => setPersonFilter(person.id)}
-                    disabled={saving}
+                    disabled={saving || deletingExpenseId !== null}
                   >
                     <Text style={[
                       commonStyles.badgeText,
@@ -281,12 +278,13 @@ export default function ExpensesScreen() {
             filteredExpenses.map((expense) => {
               const person = expense.personId ? data.people.find(p => p.id === expense.personId) : null;
               const monthlyAmount = calculateMonthlyAmount(expense.amount, expense.frequency);
+              const isDeleting = deletingExpenseId === expense.id;
               
               return (
                 <Swipeable
                   key={expense.id}
                   renderRightActions={() => renderRightActions(expense.id, expense.description)}
-                  enabled={!saving}
+                  enabled={!saving && !isDeleting}
                 >
                   <TouchableOpacity
                     style={[
@@ -295,11 +293,12 @@ export default function ExpensesScreen() {
                         backgroundColor: currentColors.backgroundAlt, 
                         borderColor: currentColors.border,
                         marginBottom: 8,
+                        opacity: isDeleting ? 0.6 : 1,
                       }
                     ]}
                     onPress={() => handleEditExpense(expense)}
                     activeOpacity={0.7}
-                    disabled={saving}
+                    disabled={saving || isDeleting}
                   >
                     <View style={[commonStyles.row, { marginBottom: 12 }]}>
                       <View style={commonStyles.flex1}>
@@ -348,10 +347,14 @@ export default function ExpensesScreen() {
                       </View>
                       
                       <Text style={[commonStyles.textSecondary, { flex: 1, color: currentColors.textSecondary }]}>
-                        Swipe left to delete • Tap to edit
+                        {isDeleting ? 'Deleting...' : 'Swipe left to delete • Tap to edit'}
                       </Text>
                       
-                      <Icon name="chevron-forward-outline" size={16} style={{ color: currentColors.textSecondary }} />
+                      {isDeleting ? (
+                        <ActivityIndicator size="small" color={currentColors.textSecondary} />
+                      ) : (
+                        <Icon name="chevron-forward-outline" size={16} style={{ color: currentColors.textSecondary }} />
+                      )}
                     </View>
                   </TouchableOpacity>
                 </Swipeable>

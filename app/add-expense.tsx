@@ -8,7 +8,6 @@ import { commonStyles, buttonStyles } from '../styles/commonStyles';
 import { useCurrency } from '../hooks/useCurrency';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
-import Toast from '../components/Toast';
 import { Expense } from '../types/budget';
 
 export default function AddExpenseScreen() {
@@ -22,11 +21,6 @@ export default function AddExpenseScreen() {
   const [category, setCategory] = useState<'household' | 'personal'>('household');
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
   const [personId, setPersonId] = useState<string>('');
-  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({
-    visible: false,
-    message: '',
-    type: 'info'
-  });
 
   const isEditMode = !!params.id;
   const expenseToEdit = isEditMode ? data.expenses.find(e => e.id === params.id) : null;
@@ -49,34 +43,26 @@ export default function AddExpenseScreen() {
     }
   }, [isEditMode, expenseToEdit, data.people, params.id]);
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
-    setToast({ visible: true, message, type });
-  };
-
-  const hideToast = () => {
-    setToast({ visible: false, message: '', type: 'info' });
-  };
-
   const handleSaveExpense = async () => {
     if (!description.trim()) {
-      showToast('Please enter a description', 'error');
+      Alert.alert('Error', 'Please enter a description');
       return;
     }
 
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
-      showToast('Please enter a valid amount', 'error');
+      Alert.alert('Error', 'Please enter a valid amount');
       return;
     }
 
     if (category === 'personal' && !personId) {
-      showToast('Please select a person for personal expenses', 'error');
+      Alert.alert('Error', 'Please select a person for personal expenses');
       return;
     }
 
     try {
       const expenseData: Expense = {
-        id: isEditMode ? expenseToEdit!.id : '',
+        id: isEditMode ? expenseToEdit!.id : `expense_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         description: description.trim(),
         amount: numAmount,
         category,
@@ -97,21 +83,14 @@ export default function AddExpenseScreen() {
       }
 
       if (result.success) {
-        showToast(
-          isEditMode ? 'Expense updated successfully!' : 'Expense added successfully!',
-          'success'
-        );
-        
-        // Navigate back to expenses screen after a short delay
-        setTimeout(() => {
-          router.back();
-        }, 1000);
+        // Navigate back to expenses screen
+        router.back();
       } else {
-        showToast('Failed to save expense. Please try again.', 'error');
+        Alert.alert('Error', 'Failed to save expense. Please try again.');
       }
     } catch (error) {
       console.error('AddExpenseScreen: Error saving expense:', error);
-      showToast('Failed to save expense. Please try again.', 'error');
+      Alert.alert('Error', 'Failed to save expense. Please try again.');
     }
   };
 
@@ -257,13 +236,6 @@ export default function AddExpenseScreen() {
 
   return (
     <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        visible={toast.visible}
-        onHide={hideToast}
-      />
-      
       <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
         <TouchableOpacity 
           onPress={() => router.back()}
