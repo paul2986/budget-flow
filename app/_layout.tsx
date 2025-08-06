@@ -54,7 +54,7 @@ function CustomTabBar() {
     flexDirection: 'row' as const,
     backgroundColor: currentColors.backgroundAlt,
     borderRadius: 28, // More rounded for modern iOS look
-    paddingVertical: 16, // Increased padding for better icon centering
+    paddingVertical: 12, // Reduced padding to better center icons
     paddingHorizontal: 20,
     elevation: 12,
     shadowColor: isDarkMode ? '#000000' : '#000000',
@@ -66,7 +66,8 @@ function CustomTabBar() {
     borderColor: isDarkMode ? 'transparent' : currentColors.border,
     // Add backdrop blur effect simulation
     opacity: 0.95,
-    height: 64, // Increased height for better icon centering
+    height: 60, // Optimized height for better icon centering
+    alignItems: 'center', // Ensure all items are centered vertically
   }), [currentColors.backgroundAlt, currentColors.border, isDarkMode]);
 
   // Pre-calculate styles for active and inactive states - properly centered icons
@@ -74,11 +75,12 @@ function CustomTabBar() {
     flex: 1,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    paddingVertical: 16, // Increased padding for proper centering
+    paddingVertical: 0, // Remove vertical padding to rely on parent centering
     paddingHorizontal: 8,
     borderRadius: 20,
     backgroundColor: isActive ? currentColors.primary + (isDarkMode ? '25' : '12') : 'transparent',
-    height: 52, // Fixed height for consistency - properly centered
+    height: 48, // Fixed height that fits well within the tab bar
+    minHeight: 48, // Ensure minimum height
   }), [currentColors.primary, isDarkMode]);
 
   const getIconColor = useCallback((isActive: boolean) => 
@@ -101,12 +103,17 @@ function CustomTabBar() {
               onPress={() => handleNavigation(item.route)}
               activeOpacity={0.7}
             >
-              <Icon
-                name={isActive ? item.activeIcon : item.icon}
-                size={26} // Slightly larger since no labels
-                style={{ color: iconColor }}
-              />
-              {/* Removed Text component - no labels */}
+              <View style={{
+                alignItems: 'center',
+                justifyContent: 'center',
+                flex: 1,
+              }}>
+                <Icon
+                  name={isActive ? item.activeIcon : item.icon}
+                  size={26} // Slightly larger since no labels
+                  style={{ color: iconColor }}
+                />
+              </View>
             </TouchableOpacity>
           );
         })}
