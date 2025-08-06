@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { commonStyles, buttonStyles } from '../styles/commonStyles';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
 import { useCurrency } from '../hooks/useCurrency';
@@ -21,6 +21,7 @@ export default function EditIncomeScreen() {
   
   const { formatCurrency } = useCurrency();
   const { currentColors } = useTheme();
+  const { themedStyles, themedButtonStyles } = useThemedStyles();
   const params = useLocalSearchParams<{ personId: string; incomeId: string }>();
   const { personId, incomeId } = params;
   
@@ -151,7 +152,7 @@ export default function EditIncomeScreen() {
         <TouchableOpacity
           key={freq}
           style={[
-            commonStyles.badge,
+            themedStyles.badge,
             { 
               backgroundColor: value === freq ? currentColors.primary : currentColors.border,
               marginRight: 8,
@@ -164,7 +165,7 @@ export default function EditIncomeScreen() {
           disabled={saving}
         >
           <Text style={[
-            commonStyles.badgeText,
+            themedStyles.badgeText,
             { color: value === freq ? currentColors.backgroundAlt : currentColors.text }
           ]}>
             {freq.charAt(0).toUpperCase() + freq.slice(1)}
@@ -177,17 +178,17 @@ export default function EditIncomeScreen() {
   // Show loading state while data is being loaded
   if (!isDataLoaded) {
     return (
-      <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
-        <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
+      <View style={themedStyles.container}>
+        <View style={themedStyles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <Icon name="arrow-back" size={24} style={{ color: currentColors.text }} />
           </TouchableOpacity>
-          <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Edit Income</Text>
+          <Text style={themedStyles.headerTitle}>Edit Income</Text>
           <View style={{ width: 24 }} />
         </View>
-        <View style={[commonStyles.centerContent, { flex: 1 }]}>
+        <View style={[themedStyles.centerContent, { flex: 1 }]}>
           <ActivityIndicator size="large" color={currentColors.primary} />
-          <Text style={[commonStyles.text, { color: currentColors.textSecondary, marginTop: 16 }]}>
+          <Text style={[themedStyles.text, { marginTop: 16 }]}>
             Loading income data...
           </Text>
         </View>
@@ -198,26 +199,26 @@ export default function EditIncomeScreen() {
   // Show error state if income not found
   if (!income) {
     return (
-      <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
-        <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
+      <View style={themedStyles.container}>
+        <View style={themedStyles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <Icon name="arrow-back" size={24} style={{ color: currentColors.text }} />
           </TouchableOpacity>
-          <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Edit Income</Text>
+          <Text style={themedStyles.headerTitle}>Edit Income</Text>
           <View style={{ width: 24 }} />
         </View>
-        <View style={[commonStyles.centerContent, { flex: 1 }]}>
+        <View style={[themedStyles.centerContent, { flex: 1 }]}>
           <Icon name="warning-outline" size={48} style={{ color: currentColors.textSecondary, marginBottom: 16 }} />
-          <Text style={[commonStyles.text, { color: currentColors.textSecondary, textAlign: 'center' }]}>
+          <Text style={[themedStyles.text, { textAlign: 'center' }]}>
             Income source not found
           </Text>
-          <Text style={[commonStyles.text, { color: currentColors.textSecondary, textAlign: 'center', marginTop: 8 }]}>
+          <Text style={[themedStyles.text, { textAlign: 'center', marginTop: 8 }]}>
             It may have been deleted or there was an error loading the data.
           </Text>
           <Button
             text="Go Back"
             onPress={() => router.back()}
-            style={[buttonStyles.outline, { marginTop: 24, borderColor: currentColors.textSecondary }]}
+            style={[themedButtonStyles.outline, { marginTop: 24, borderColor: currentColors.textSecondary }]}
             textStyle={{ color: currentColors.textSecondary }}
           />
         </View>
@@ -228,12 +229,12 @@ export default function EditIncomeScreen() {
   const person = data.people.find(p => p.id === personId);
 
   return (
-    <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
-      <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
+    <View style={themedStyles.container}>
+      <View style={themedStyles.header}>
         <TouchableOpacity onPress={() => router.back()} disabled={saving}>
           <Icon name="arrow-back" size={24} style={{ color: currentColors.text }} />
         </TouchableOpacity>
-        <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Edit Income</Text>
+        <Text style={themedStyles.headerTitle}>Edit Income</Text>
         <TouchableOpacity onPress={handleDeleteIncome} disabled={saving}>
           {saving ? (
             <ActivityIndicator size="small" color={currentColors.error} />
@@ -243,18 +244,18 @@ export default function EditIncomeScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={commonStyles.content} contentContainerStyle={commonStyles.scrollContent}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
         {/* Income Details */}
-        <View style={commonStyles.section}>
-          <Text style={[commonStyles.subtitle, { color: currentColors.text, marginBottom: 12 }]}>
+        <View style={themedStyles.section}>
+          <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>
             Edit Income for {person?.name}
           </Text>
           
-          <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
+          <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
             Income Source:
           </Text>
           <TextInput
-            style={[commonStyles.input, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border, color: currentColors.text }]}
+            style={themedStyles.input}
             value={editedIncome.label}
             onChangeText={(text) => setEditedIncome({ ...editedIncome, label: text })}
             placeholder="e.g., Salary, Freelance, Side Job"
@@ -262,11 +263,11 @@ export default function EditIncomeScreen() {
             editable={!saving}
           />
           
-          <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
+          <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
             Amount:
           </Text>
           <TextInput
-            style={[commonStyles.input, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border, color: currentColors.text }]}
+            style={themedStyles.input}
             value={editedIncome.amount}
             onChangeText={(text) => setEditedIncome({ ...editedIncome, amount: text })}
             placeholder="0.00"
@@ -275,7 +276,7 @@ export default function EditIncomeScreen() {
             editable={!saving}
           />
           
-          <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
+          <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
             Frequency:
           </Text>
           <FrequencyPicker
@@ -285,17 +286,17 @@ export default function EditIncomeScreen() {
         </View>
 
         {/* Current Income Preview */}
-        <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
-          <Text style={[commonStyles.text, { fontWeight: '600', marginBottom: 8, color: currentColors.text }]}>
+        <View style={themedStyles.card}>
+          <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 8 }]}>
             Current Income Details:
           </Text>
-          <Text style={[commonStyles.text, { color: currentColors.textSecondary, marginBottom: 4 }]}>
+          <Text style={[themedStyles.textSecondary, { marginBottom: 4 }]}>
             Source: {income.label}
           </Text>
-          <Text style={[commonStyles.text, { color: currentColors.textSecondary, marginBottom: 4 }]}>
+          <Text style={[themedStyles.textSecondary, { marginBottom: 4 }]}>
             Amount: {formatCurrency(income.amount)}
           </Text>
-          <Text style={[commonStyles.text, { color: currentColors.textSecondary }]}>
+          <Text style={themedStyles.textSecondary}>
             Frequency: {income.frequency}
           </Text>
         </View>
@@ -306,7 +307,7 @@ export default function EditIncomeScreen() {
             <Button
               text="Cancel"
               onPress={() => router.back()}
-              style={[buttonStyles.outline, { marginTop: 0, borderColor: currentColors.textSecondary }]}
+              style={[themedButtonStyles.outline, { marginTop: 0, borderColor: currentColors.textSecondary }]}
               textStyle={{ color: currentColors.textSecondary }}
               disabled={saving}
             />
@@ -315,7 +316,7 @@ export default function EditIncomeScreen() {
             <Button
               text={saving ? 'Saving...' : 'Save Changes'}
               onPress={handleSaveIncome}
-              style={[buttonStyles.primary, { marginTop: 0, backgroundColor: saving ? currentColors.textSecondary : currentColors.income }]}
+              style={[themedButtonStyles.primary, { marginTop: 0, backgroundColor: saving ? currentColors.textSecondary : currentColors.income }]}
               disabled={saving}
             />
           </View>
@@ -327,7 +328,7 @@ export default function EditIncomeScreen() {
             text={saving ? 'Deleting...' : 'Delete Income Source'}
             onPress={handleDeleteIncome}
             style={[
-              buttonStyles.outline, 
+              themedButtonStyles.outline, 
               { 
                 marginTop: 0, 
                 borderColor: currentColors.error,

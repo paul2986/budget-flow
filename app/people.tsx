@@ -2,7 +2,7 @@
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useState, useEffect, useCallback } from 'react';
-import { commonStyles, buttonStyles } from '../styles/commonStyles';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
 import { useCurrency } from '../hooks/useCurrency';
@@ -20,6 +20,7 @@ import Icon from '../components/Icon';
 export default function PeopleScreen() {
   const { data, addPerson, removePerson, addIncome, removeIncome, updateIncome, saving, refreshData } = useBudgetData();
   const { currentColors } = useTheme();
+  const { themedStyles, themedButtonStyles } = useThemedStyles();
   const { formatCurrency } = useCurrency();
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [newPersonName, setNewPersonName] = useState('');
@@ -236,7 +237,7 @@ export default function PeopleScreen() {
         <TouchableOpacity
           key={freq}
           style={[
-            commonStyles.badge,
+            themedStyles.badge,
             { 
               backgroundColor: value === freq ? currentColors.primary : currentColors.border,
               marginRight: 8,
@@ -249,7 +250,7 @@ export default function PeopleScreen() {
           disabled={saving}
         >
           <Text style={[
-            commonStyles.badgeText,
+            themedStyles.badgeText,
             { color: value === freq ? currentColors.backgroundAlt : currentColors.text }
           ]}>
             {freq.charAt(0).toUpperCase() + freq.slice(1)}
@@ -260,10 +261,10 @@ export default function PeopleScreen() {
   );
 
   return (
-    <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
-      <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
+    <View style={themedStyles.container}>
+      <View style={themedStyles.header}>
         <View style={{ width: 24 }} />
-        <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Manage People</Text>
+        <Text style={themedStyles.headerTitle}>Manage People</Text>
         <TouchableOpacity onPress={() => setShowAddPerson(true)} disabled={saving}>
           {saving ? (
             <ActivityIndicator size="small" color={currentColors.primary} />
@@ -273,22 +274,22 @@ export default function PeopleScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={commonStyles.content} contentContainerStyle={commonStyles.scrollContent}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
         {/* Prominent Add Person Button */}
         {data.people.length === 0 && !showAddPerson && (
-          <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
-            <View style={commonStyles.centerContent}>
+          <View style={themedStyles.card}>
+            <View style={themedStyles.centerContent}>
               <Icon name="people-outline" size={48} style={{ color: currentColors.primary, marginBottom: 12 }} />
-              <Text style={[commonStyles.subtitle, { textAlign: 'center', marginBottom: 8, color: currentColors.text }]}>
+              <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>
                 No People Added Yet
               </Text>
-              <Text style={[commonStyles.textSecondary, { textAlign: 'center', marginBottom: 16, color: currentColors.textSecondary }]}>
+              <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 16 }]}>
                 Add people to track personal expenses and income
               </Text>
               <Button
                 text="Add Your First Person"
                 onPress={() => setShowAddPerson(true)}
-                style={[buttonStyles.primary, { backgroundColor: currentColors.primary }]}
+                style={[themedButtonStyles.primary, { backgroundColor: currentColors.primary }]}
                 disabled={saving}
               />
             </View>
@@ -297,14 +298,13 @@ export default function PeopleScreen() {
 
         {/* Quick Add Person Button for existing users */}
         {data.people.length > 0 && !showAddPerson && (
-          <View style={[commonStyles.card, { backgroundColor: currentColors.primary + '10', borderColor: currentColors.border }]}>
-            <View style={[commonStyles.row, { alignItems: 'center' }]}>
-              <View style={[commonStyles.flex1, { marginRight: 12 }]}>
+          <View style={[themedStyles.card, { backgroundColor: currentColors.primary + '10' }]}>
+            <View style={[themedStyles.row, { alignItems: 'center' }]}>
+              <View style={[themedStyles.flex1, { marginRight: 12 }]}>
                 <Text style={[
-                  commonStyles.text, 
+                  themedStyles.text, 
                   { 
                     fontWeight: '600', 
-                    color: currentColors.text,
                     flexWrap: 'wrap',
                     textAlign: 'left'
                   }
@@ -312,9 +312,8 @@ export default function PeopleScreen() {
                   Add Another Person
                 </Text>
                 <Text style={[
-                  commonStyles.textSecondary, 
+                  themedStyles.textSecondary, 
                   { 
-                    color: currentColors.textSecondary,
                     flexWrap: 'wrap',
                     textAlign: 'left',
                     marginTop: 4
@@ -327,7 +326,7 @@ export default function PeopleScreen() {
                 text="Add Person"
                 onPress={() => setShowAddPerson(true)}
                 style={[
-                  buttonStyles.primary, 
+                  themedButtonStyles.primary, 
                   { 
                     backgroundColor: currentColors.primary, 
                     marginTop: 0,
@@ -343,14 +342,14 @@ export default function PeopleScreen() {
 
         {/* Add Person Form */}
         {showAddPerson && (
-          <View style={[commonStyles.card, { backgroundColor: currentColors.primary + '10', borderColor: currentColors.border }]}>
-            <Text style={[commonStyles.subtitle, { marginBottom: 12, color: currentColors.text }]}>Add New Person</Text>
+          <View style={[themedStyles.card, { backgroundColor: currentColors.primary + '10' }]}>
+            <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Add New Person</Text>
             
-            <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
+            <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
               Name:
             </Text>
             <TextInput
-              style={[commonStyles.input, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border, color: currentColors.text }]}
+              style={themedStyles.input}
               placeholder="Enter person's name"
               placeholderTextColor={currentColors.textSecondary}
               value={newPersonName}
@@ -367,7 +366,7 @@ export default function PeopleScreen() {
                     setShowAddPerson(false);
                     setNewPersonName('');
                   }}
-                  style={[buttonStyles.outline, { marginTop: 0, borderColor: currentColors.primary }]}
+                  style={[themedButtonStyles.outline, { marginTop: 0, borderColor: currentColors.primary }]}
                   textStyle={{ color: currentColors.primary }}
                   disabled={saving}
                 />
@@ -376,7 +375,7 @@ export default function PeopleScreen() {
                 <Button
                   text={saving ? 'Adding...' : 'Add Person'}
                   onPress={handleAddPerson}
-                  style={[buttonStyles.primary, { marginTop: 0, backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }]}
+                  style={[themedButtonStyles.primary, { marginTop: 0, backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }]}
                   disabled={saving}
                 />
               </View>
@@ -386,16 +385,16 @@ export default function PeopleScreen() {
 
         {/* Add Income Form */}
         {showAddIncome && selectedPersonId && (
-          <View style={[commonStyles.card, { backgroundColor: currentColors.income + '10', borderColor: currentColors.border }]}>
-            <Text style={[commonStyles.subtitle, { marginBottom: 12, color: currentColors.text }]}>
+          <View style={[themedStyles.card, { backgroundColor: currentColors.income + '10' }]}>
+            <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>
               Add Income for {data.people.find(p => p.id === selectedPersonId)?.name}
             </Text>
             
-            <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
+            <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
               Income Source:
             </Text>
             <TextInput
-              style={[commonStyles.input, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border, color: currentColors.text }]}
+              style={themedStyles.input}
               placeholder="e.g., Salary, Freelance, Side Job"
               placeholderTextColor={currentColors.textSecondary}
               value={newIncome.label}
@@ -403,11 +402,11 @@ export default function PeopleScreen() {
               editable={!saving}
             />
             
-            <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
+            <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
               Amount:
             </Text>
             <TextInput
-              style={[commonStyles.input, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border, color: currentColors.text }]}
+              style={themedStyles.input}
               placeholder="0.00"
               placeholderTextColor={currentColors.textSecondary}
               value={newIncome.amount}
@@ -416,7 +415,7 @@ export default function PeopleScreen() {
               editable={!saving}
             />
             
-            <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
+            <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
               Frequency:
             </Text>
             <FrequencyPicker
@@ -433,7 +432,7 @@ export default function PeopleScreen() {
                     setSelectedPersonId(null);
                     setNewIncome({ amount: '', label: '', frequency: 'monthly' });
                   }}
-                  style={[buttonStyles.outline, { marginTop: 0, borderColor: currentColors.income }]}
+                  style={[themedButtonStyles.outline, { marginTop: 0, borderColor: currentColors.income }]}
                   textStyle={{ color: currentColors.income }}
                   disabled={saving}
                 />
@@ -442,7 +441,7 @@ export default function PeopleScreen() {
                 <Button
                   text={saving ? 'Adding...' : 'Add Income'}
                   onPress={handleAddIncome}
-                  style={[buttonStyles.primary, { marginTop: 0, backgroundColor: saving ? currentColors.textSecondary : currentColors.income }]}
+                  style={[themedButtonStyles.primary, { marginTop: 0, backgroundColor: saving ? currentColors.textSecondary : currentColors.income }]}
                   disabled={saving}
                 />
               </View>
@@ -463,10 +462,8 @@ export default function PeopleScreen() {
               <TouchableOpacity
                 key={person.id}
                 style={[
-                  commonStyles.card, 
+                  themedStyles.card, 
                   { 
-                    backgroundColor: currentColors.backgroundAlt, 
-                    borderColor: currentColors.border,
                     opacity: isDeleting ? 0.6 : 1,
                   }
                 ]}
@@ -474,8 +471,8 @@ export default function PeopleScreen() {
                 activeOpacity={0.7}
                 disabled={saving || isDeleting}
               >
-                <View style={[commonStyles.row, { marginBottom: 12 }]}>
-                  <Text style={[commonStyles.subtitle, { marginBottom: 0, color: currentColors.text }]}>
+                <View style={[themedStyles.row, { marginBottom: 12 }]}>
+                  <Text style={[themedStyles.subtitle, { marginBottom: 0 }]}>
                     {person.name}
                   </Text>
                   <TouchableOpacity 
@@ -493,17 +490,17 @@ export default function PeopleScreen() {
                   </TouchableOpacity>
                 </View>
                 
-                <View style={[commonStyles.row, { marginBottom: 8 }]}>
-                  <Text style={[commonStyles.text, { color: currentColors.text }]}>Monthly Income:</Text>
-                  <Text style={[commonStyles.text, { color: currentColors.income, fontWeight: '600' }]}>
+                <View style={[themedStyles.row, { marginBottom: 8 }]}>
+                  <Text style={themedStyles.text}>Monthly Income:</Text>
+                  <Text style={[themedStyles.text, { color: currentColors.income, fontWeight: '600' }]}>
                     {formatCurrency(monthlyIncome)}
                   </Text>
                 </View>
 
-                <View style={[commonStyles.row, { marginBottom: 12 }]}>
-                  <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>Remaining Income:</Text>
+                <View style={[themedStyles.row, { marginBottom: 12 }]}>
+                  <Text style={[themedStyles.text, { fontWeight: '600' }]}>Remaining Income:</Text>
                   <Text style={[
-                    commonStyles.text, 
+                    themedStyles.text, 
                     { 
                       color: monthlyRemaining >= 0 ? currentColors.success : currentColors.error, 
                       fontWeight: '700' 
@@ -515,8 +512,8 @@ export default function PeopleScreen() {
                 
                 {/* Income Sources */}
                 <View style={{ marginBottom: 12 }}>
-                  <View style={[commonStyles.row, { marginBottom: 8 }]}>
-                    <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>Income Sources:</Text>
+                  <View style={[themedStyles.row, { marginBottom: 8 }]}>
+                    <Text style={[themedStyles.text, { fontWeight: '600' }]}>Income Sources:</Text>
                     <TouchableOpacity 
                       onPress={(e) => {
                         e.stopPropagation(); // Prevent triggering the edit action
@@ -530,10 +527,10 @@ export default function PeopleScreen() {
                   </View>
                   
                   {person.income.length === 0 ? (
-                    <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>No income sources added</Text>
+                    <Text style={themedStyles.textSecondary}>No income sources added</Text>
                   ) : (
                     <View>
-                      <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, fontSize: 12, marginBottom: 8 }]}>
+                      <Text style={[themedStyles.textSecondary, { fontSize: 12, marginBottom: 8 }]}>
                         Tap any income source to edit it
                       </Text>
                       {person.income.map((income) => {
@@ -542,7 +539,7 @@ export default function PeopleScreen() {
                         return (
                           <TouchableOpacity
                             key={income.id}
-                            style={[commonStyles.row, { marginBottom: 4, paddingVertical: 4 }]}
+                            style={[themedStyles.row, { marginBottom: 4, paddingVertical: 4 }]}
                             onPress={(e) => {
                               e.stopPropagation(); // Prevent triggering the edit person action
                               router.push({
@@ -553,9 +550,9 @@ export default function PeopleScreen() {
                             disabled={saving || isDeletingIncome}
                             activeOpacity={0.7}
                           >
-                            <View style={commonStyles.flex1}>
-                              <Text style={[commonStyles.text, { color: currentColors.text }]}>{income.label}</Text>
-                              <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                            <View style={themedStyles.flex1}>
+                              <Text style={themedStyles.text}>{income.label}</Text>
+                              <Text style={themedStyles.textSecondary}>
                                 {formatCurrency(income.amount)} • {income.frequency}
                               </Text>
                             </View>
@@ -582,8 +579,8 @@ export default function PeopleScreen() {
                   )}
                 </View>
 
-                <View style={[commonStyles.row, { borderTopWidth: 1, borderTopColor: currentColors.border, paddingTop: 8 }]}>
-                  <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                <View style={[themedStyles.row, { borderTopWidth: 1, borderTopColor: currentColors.border, paddingTop: 8 }]}>
+                  <Text style={themedStyles.textSecondary}>
                     {isDeleting ? 'Deleting...' : 'Tap to edit this person'}
                   </Text>
                   {isDeleting ? (

@@ -1,6 +1,6 @@
 
 import { Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { commonStyles, buttonStyles } from '../styles/commonStyles';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
 import { useCurrency, CURRENCIES } from '../hooks/useCurrency';
@@ -10,6 +10,7 @@ import Icon from '../components/Icon';
 export default function SettingsScreen() {
   const { data, updateHouseholdSettings } = useBudgetData();
   const { currentColors, themeMode, setThemeMode, isDarkMode } = useTheme();
+  const { themedStyles, themedButtonStyles } = useThemedStyles();
   const { currency, setCurrency } = useCurrency();
 
   const handleDistributionMethodChange = async (method: 'even' | 'income-based') => {
@@ -88,20 +89,20 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
-      <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
+    <View style={themedStyles.container}>
+      <View style={themedStyles.header}>
         <View style={{ width: 24 }} />
-        <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Settings</Text>
+        <Text style={themedStyles.headerTitle}>Settings</Text>
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView style={commonStyles.content} contentContainerStyle={commonStyles.scrollContent}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
         {/* Theme Settings */}
-        <View style={commonStyles.section}>
-          <Text style={[commonStyles.subtitle, { color: currentColors.text }]}>Appearance</Text>
+        <View style={themedStyles.section}>
+          <Text style={themedStyles.subtitle}>Appearance</Text>
           
-          <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
-            <Text style={[commonStyles.text, { marginBottom: 12, color: currentColors.text }]}>
+          <View style={themedStyles.card}>
+            <Text style={[themedStyles.text, { marginBottom: 12 }]}>
               Choose your preferred theme (Current: {themeMode}, Dark Mode: {isDarkMode ? 'Yes' : 'No'})
             </Text>
             
@@ -113,7 +114,7 @@ export default function SettingsScreen() {
               <TouchableOpacity
                 key={theme.key}
                 style={[
-                  commonStyles.card,
+                  themedStyles.card,
                   { 
                     backgroundColor: themeMode === theme.key 
                       ? currentColors.primary + '20' 
@@ -127,7 +128,7 @@ export default function SettingsScreen() {
                 ]}
                 onPress={() => handleThemeChange(theme.key as any)}
               >
-                <View style={commonStyles.rowStart}>
+                <View style={themedStyles.rowStart}>
                   <Icon 
                     name={themeMode === theme.key ? 'radio-button-on' : 'radio-button-off'} 
                     size={20} 
@@ -144,7 +145,7 @@ export default function SettingsScreen() {
                       marginRight: 12 
                     }} 
                   />
-                  <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>
+                  <Text style={[themedStyles.text, { fontWeight: '600' }]}>
                     {theme.label}
                   </Text>
                 </View>
@@ -154,11 +155,11 @@ export default function SettingsScreen() {
         </View>
 
         {/* Currency Settings */}
-        <View style={commonStyles.section}>
-          <Text style={[commonStyles.subtitle, { color: currentColors.text }]}>Currency</Text>
+        <View style={themedStyles.section}>
+          <Text style={themedStyles.subtitle}>Currency</Text>
           
-          <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
-            <Text style={[commonStyles.text, { marginBottom: 12, color: currentColors.text }]}>
+          <View style={themedStyles.card}>
+            <Text style={[themedStyles.text, { marginBottom: 12 }]}>
               Current: {currency.name} ({currency.symbol})
             </Text>
             
@@ -167,7 +168,7 @@ export default function SettingsScreen() {
                 <TouchableOpacity
                   key={curr.code}
                   style={[
-                    commonStyles.row,
+                    themedStyles.row,
                     { 
                       paddingVertical: 12,
                       borderBottomWidth: 1,
@@ -179,7 +180,7 @@ export default function SettingsScreen() {
                     setCurrency(curr);
                   }}
                 >
-                  <View style={commonStyles.rowStart}>
+                  <View style={themedStyles.rowStart}>
                     <Icon 
                       name={currency.code === curr.code ? 'radio-button-on' : 'radio-button-off'} 
                       size={20} 
@@ -189,10 +190,10 @@ export default function SettingsScreen() {
                       }} 
                     />
                     <View>
-                      <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>
+                      <Text style={[themedStyles.text, { fontWeight: '600' }]}>
                         {curr.symbol} {curr.code}
                       </Text>
-                      <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                      <Text style={themedStyles.textSecondary}>
                         {curr.name}
                       </Text>
                     </View>
@@ -204,17 +205,17 @@ export default function SettingsScreen() {
         </View>
 
         {/* Household Distribution Settings */}
-        <View style={commonStyles.section}>
-          <Text style={[commonStyles.subtitle, { color: currentColors.text }]}>Household Expense Distribution</Text>
+        <View style={themedStyles.section}>
+          <Text style={themedStyles.subtitle}>Household Expense Distribution</Text>
           
-          <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
-            <Text style={[commonStyles.text, { marginBottom: 12, color: currentColors.text }]}>
+          <View style={themedStyles.card}>
+            <Text style={[themedStyles.text, { marginBottom: 12 }]}>
               How should household expenses be split among people?
             </Text>
             
             <TouchableOpacity
               style={[
-                commonStyles.card,
+                themedStyles.card,
                 { 
                   backgroundColor: data.householdSettings.distributionMethod === 'even' 
                     ? currentColors.primary + '20' 
@@ -228,7 +229,7 @@ export default function SettingsScreen() {
               ]}
               onPress={() => handleDistributionMethodChange('even')}
             >
-              <View style={commonStyles.rowStart}>
+              <View style={themedStyles.rowStart}>
                 <Icon 
                   name={data.householdSettings.distributionMethod === 'even' ? 'radio-button-on' : 'radio-button-off'} 
                   size={20} 
@@ -237,9 +238,9 @@ export default function SettingsScreen() {
                     marginRight: 12 
                   }} 
                 />
-                <View style={commonStyles.flex1}>
-                  <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>Even Split</Text>
-                  <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                <View style={themedStyles.flex1}>
+                  <Text style={[themedStyles.text, { fontWeight: '600' }]}>Even Split</Text>
+                  <Text style={themedStyles.textSecondary}>
                     Each person pays an equal share of household expenses
                   </Text>
                 </View>
@@ -248,7 +249,7 @@ export default function SettingsScreen() {
             
             <TouchableOpacity
               style={[
-                commonStyles.card,
+                themedStyles.card,
                 { 
                   backgroundColor: data.householdSettings.distributionMethod === 'income-based' 
                     ? currentColors.primary + '20' 
@@ -261,7 +262,7 @@ export default function SettingsScreen() {
               ]}
               onPress={() => handleDistributionMethodChange('income-based')}
             >
-              <View style={commonStyles.rowStart}>
+              <View style={themedStyles.rowStart}>
                 <Icon 
                   name={data.householdSettings.distributionMethod === 'income-based' ? 'radio-button-on' : 'radio-button-off'} 
                   size={20} 
@@ -270,9 +271,9 @@ export default function SettingsScreen() {
                     marginRight: 12 
                   }} 
                 />
-                <View style={commonStyles.flex1}>
-                  <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>Income-Based Split</Text>
-                  <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                <View style={themedStyles.flex1}>
+                  <Text style={[themedStyles.text, { fontWeight: '600' }]}>Income-Based Split</Text>
+                  <Text style={themedStyles.textSecondary}>
                     Each person pays proportionally based on their income
                   </Text>
                 </View>
@@ -282,18 +283,18 @@ export default function SettingsScreen() {
         </View>
 
         {/* Danger Zone */}
-        <View style={commonStyles.section}>
-          <Text style={[commonStyles.subtitle, { color: currentColors.error }]}>Danger Zone</Text>
+        <View style={themedStyles.section}>
+          <Text style={[themedStyles.subtitle, { color: currentColors.error }]}>Danger Zone</Text>
           
-          <View style={[commonStyles.card, { borderColor: currentColors.error, borderWidth: 1, backgroundColor: currentColors.backgroundAlt }]}>
-            <Text style={[commonStyles.text, { marginBottom: 12, color: currentColors.text }]}>
+          <View style={[themedStyles.card, { borderColor: currentColors.error, borderWidth: 1 }]}>
+            <Text style={[themedStyles.text, { marginBottom: 12 }]}>
               This will permanently delete all your data including people, income, and expenses.
             </Text>
             
             <Button
               text="Clear All Data"
               onPress={clearAllData}
-              style={[buttonStyles.danger, { backgroundColor: currentColors.error }]}
+              style={[themedButtonStyles.danger, { backgroundColor: currentColors.error }]}
             />
           </View>
         </View>

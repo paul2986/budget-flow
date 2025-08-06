@@ -4,7 +4,7 @@ import { useBudgetData } from '../hooks/useBudgetData';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
-import { commonStyles, buttonStyles } from '../styles/commonStyles';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useCurrency } from '../hooks/useCurrency';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
@@ -13,6 +13,7 @@ import { Expense } from '../types/budget';
 export default function AddExpenseScreen() {
   const { data, addExpense, updateExpense, removeExpense, saving } = useBudgetData();
   const { currentColors } = useTheme();
+  const { themedStyles, themedButtonStyles } = useThemedStyles();
   const { formatCurrency } = useCurrency();
   const params = useLocalSearchParams<{ id?: string }>();
   
@@ -149,12 +150,12 @@ export default function AddExpenseScreen() {
   }, []);
 
   const CategoryPicker = useCallback(() => (
-    <View style={[commonStyles.section, { paddingTop: 0 }]}>
-      <Text style={[commonStyles.label, { color: currentColors.text }]}>Category</Text>
-      <View style={[commonStyles.row, { marginTop: 8 }]}>
+    <View style={[themedStyles.section, { paddingTop: 0 }]}>
+      <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Category</Text>
+      <View style={[themedStyles.row, { marginTop: 8 }]}>
         <TouchableOpacity
           style={[
-            commonStyles.badge,
+            themedStyles.badge,
             { 
               backgroundColor: category === 'household' ? currentColors.household : currentColors.border,
               marginRight: 12,
@@ -171,7 +172,7 @@ export default function AddExpenseScreen() {
           disabled={saving || deleting}
         >
           <Text style={[
-            commonStyles.badgeText,
+            themedStyles.badgeText,
             { 
               color: category === 'household' ? '#FFFFFF' : currentColors.text,
               fontWeight: '600',
@@ -184,7 +185,7 @@ export default function AddExpenseScreen() {
         
         <TouchableOpacity
           style={[
-            commonStyles.badge,
+            themedStyles.badge,
             { 
               backgroundColor: category === 'personal' ? currentColors.personal : currentColors.border,
               paddingHorizontal: 20,
@@ -197,7 +198,7 @@ export default function AddExpenseScreen() {
           disabled={saving || deleting}
         >
           <Text style={[
-            commonStyles.badgeText,
+            themedStyles.badgeText,
             { 
               color: category === 'personal' ? '#FFFFFF' : currentColors.text,
               fontWeight: '600',
@@ -209,17 +210,17 @@ export default function AddExpenseScreen() {
         </TouchableOpacity>
       </View>
     </View>
-  ), [category, currentColors, saving, deleting]);
+  ), [category, currentColors, saving, deleting, themedStyles]);
 
   const FrequencyPicker = useCallback(() => (
-    <View style={commonStyles.section}>
-      <Text style={[commonStyles.label, { color: currentColors.text }]}>Frequency</Text>
-      <View style={[commonStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
+    <View style={themedStyles.section}>
+      <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Frequency</Text>
+      <View style={[themedStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
         {(['daily', 'weekly', 'monthly', 'yearly'] as const).map((freq) => (
           <TouchableOpacity
             key={freq}
             style={[
-              commonStyles.badge,
+              themedStyles.badge,
               { 
                 backgroundColor: frequency === freq ? currentColors.primary : currentColors.border,
                 marginRight: 8,
@@ -233,7 +234,7 @@ export default function AddExpenseScreen() {
             disabled={saving || deleting}
           >
             <Text style={[
-              commonStyles.badgeText,
+              themedStyles.badgeText,
               { 
                 color: frequency === freq ? '#FFFFFF' : currentColors.text,
                 fontWeight: '600',
@@ -246,20 +247,20 @@ export default function AddExpenseScreen() {
         ))}
       </View>
     </View>
-  ), [frequency, currentColors, saving, deleting]);
+  ), [frequency, currentColors, saving, deleting, themedStyles]);
 
   const PersonPicker = useCallback(() => {
     if (category !== 'personal' || data.people.length === 0) return null;
 
     return (
-      <View style={commonStyles.section}>
-        <Text style={[commonStyles.label, { color: currentColors.text }]}>Person</Text>
-        <View style={[commonStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
+      <View style={themedStyles.section}>
+        <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Person</Text>
+        <View style={[themedStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
           {data.people.map((person) => (
             <TouchableOpacity
               key={person.id}
               style={[
-                commonStyles.badge,
+                themedStyles.badge,
                 { 
                   backgroundColor: personId === person.id ? currentColors.secondary : currentColors.border,
                   marginRight: 8,
@@ -273,7 +274,7 @@ export default function AddExpenseScreen() {
               disabled={saving || deleting}
             >
               <Text style={[
-                commonStyles.badgeText,
+                themedStyles.badgeText,
                 { 
                   color: personId === person.id ? '#FFFFFF' : currentColors.text,
                   fontWeight: '600',
@@ -286,11 +287,11 @@ export default function AddExpenseScreen() {
         </View>
       </View>
     );
-  }, [category, data.people, personId, currentColors, saving, deleting]);
+  }, [category, data.people, personId, currentColors, saving, deleting, themedStyles]);
 
   return (
-    <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
-      <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
+    <View style={themedStyles.container}>
+      <View style={themedStyles.header}>
         <TouchableOpacity 
           onPress={handleGoBack}
           disabled={saving || deleting}
@@ -302,7 +303,7 @@ export default function AddExpenseScreen() {
         >
           <Icon name="arrow-back" size={20} style={{ color: currentColors.text }} />
         </TouchableOpacity>
-        <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>
+        <Text style={themedStyles.headerTitle}>
           {isEditMode ? 'Edit Expense' : 'Add Expense'}
         </Text>
         {/* Delete button in header for edit mode */}
@@ -330,18 +331,11 @@ export default function AddExpenseScreen() {
         )}
       </View>
 
-      <ScrollView style={commonStyles.content} contentContainerStyle={commonStyles.scrollContent}>
-        <View style={commonStyles.section}>
-          <Text style={[commonStyles.label, { color: currentColors.text }]}>Description</Text>
+      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
+        <View style={themedStyles.section}>
+          <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Description</Text>
           <TextInput
-            style={[
-              commonStyles.input,
-              { 
-                backgroundColor: currentColors.backgroundAlt,
-                borderColor: currentColors.border,
-                color: currentColors.text,
-              }
-            ]}
+            style={themedStyles.input}
             value={description}
             onChangeText={setDescription}
             placeholder="Enter expense description"
@@ -350,17 +344,10 @@ export default function AddExpenseScreen() {
           />
         </View>
 
-        <View style={commonStyles.section}>
-          <Text style={[commonStyles.label, { color: currentColors.text }]}>Amount</Text>
+        <View style={themedStyles.section}>
+          <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Amount</Text>
           <TextInput
-            style={[
-              commonStyles.input,
-              { 
-                backgroundColor: currentColors.backgroundAlt,
-                borderColor: currentColors.border,
-                color: currentColors.text,
-              }
-            ]}
+            style={themedStyles.input}
             value={amount}
             onChangeText={setAmount}
             placeholder="0.00"
@@ -375,26 +362,26 @@ export default function AddExpenseScreen() {
         <PersonPicker />
 
         {category === 'personal' && data.people.length === 0 && (
-          <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
-            <View style={commonStyles.centerContent}>
+          <View style={themedStyles.card}>
+            <View style={themedStyles.centerContent}>
               <Icon name="people-outline" size={48} style={{ color: currentColors.textSecondary, marginBottom: 12 }} />
-              <Text style={[commonStyles.subtitle, { textAlign: 'center', marginBottom: 8, color: currentColors.text }]}>
+              <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>
                 No People Added
               </Text>
-              <Text style={[commonStyles.textSecondary, { textAlign: 'center', color: currentColors.textSecondary }]}>
+              <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
                 Add people in the People tab to assign personal expenses
               </Text>
             </View>
           </View>
         )}
 
-        <View style={[commonStyles.section, { paddingTop: 32 }]}>
+        <View style={[themedStyles.section, { paddingTop: 32 }]}>
           <Button
             text={saving ? 'Saving...' : deleting ? 'Deleting...' : (isEditMode ? 'Update Expense' : 'Add Expense')}
             onPress={handleSaveExpense}
             disabled={saving || deleting}
             style={[
-              buttonStyles.primary,
+              themedButtonStyles.primary,
               { backgroundColor: currentColors.primary },
               (saving || deleting) && { opacity: 0.7 }
             ]}
@@ -411,7 +398,7 @@ export default function AddExpenseScreen() {
                 }}
                 disabled={saving || deleting}
                 style={[
-                  buttonStyles.primary,
+                  themedButtonStyles.primary,
                   { 
                     backgroundColor: currentColors.error,
                     borderColor: currentColors.error,

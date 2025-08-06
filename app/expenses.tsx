@@ -5,7 +5,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { Text, View, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { calculateMonthlyAmount } from '../utils/calculations';
-import { commonStyles } from '../styles/commonStyles';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useCurrency } from '../hooks/useCurrency';
 import Icon from '../components/Icon';
 
@@ -14,6 +14,7 @@ type SortOption = 'date' | 'highest' | 'lowest';
 export default function ExpensesScreen() {
   const { data, removeExpense, saving, refreshData } = useBudgetData();
   const { currentColors } = useTheme();
+  const { themedStyles } = useThemedStyles();
   const { formatCurrency } = useCurrency();
   const [filter, setFilter] = useState<'all' | 'household' | 'personal'>('all');
   const [personFilter, setPersonFilter] = useState<string | null>(null);
@@ -98,7 +99,7 @@ export default function ExpensesScreen() {
   const FilterButton = useCallback(({ filterType, label }: { filterType: typeof filter, label: string }) => (
     <TouchableOpacity
       style={[
-        commonStyles.badge,
+        themedStyles.badge,
         { 
           backgroundColor: filter === filterType ? currentColors.primary : currentColors.border,
           flex: 1,
@@ -119,7 +120,7 @@ export default function ExpensesScreen() {
       disabled={saving || deletingExpenseId !== null}
     >
       <Text style={[
-        commonStyles.badgeText,
+        themedStyles.badgeText,
         { 
           color: filter === filterType ? '#FFFFFF' : currentColors.text,
           fontWeight: '600',
@@ -130,12 +131,12 @@ export default function ExpensesScreen() {
         {label}
       </Text>
     </TouchableOpacity>
-  ), [filter, currentColors, saving, deletingExpenseId]);
+  ), [filter, currentColors, saving, deletingExpenseId, themedStyles]);
 
   const SortButton = useCallback(({ sortType, label, icon }: { sortType: SortOption, label: string, icon: string }) => (
     <TouchableOpacity
       style={[
-        commonStyles.badge,
+        themedStyles.badge,
         { 
           backgroundColor: sortBy === sortType ? currentColors.secondary : currentColors.border,
           marginRight: 8,
@@ -158,7 +159,7 @@ export default function ExpensesScreen() {
         }} 
       />
       <Text style={[
-        commonStyles.badgeText,
+        themedStyles.badgeText,
         { 
           color: sortBy === sortType ? '#FFFFFF' : currentColors.text,
           fontWeight: '600',
@@ -168,7 +169,7 @@ export default function ExpensesScreen() {
         {label}
       </Text>
     </TouchableOpacity>
-  ), [sortBy, currentColors, saving, deletingExpenseId]);
+  ), [sortBy, currentColors, saving, deletingExpenseId, themedStyles]);
 
   // Filter expenses
   let filteredExpenses = data.expenses;
@@ -201,10 +202,10 @@ export default function ExpensesScreen() {
   });
 
   return (
-    <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
-      <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
+    <View style={themedStyles.container}>
+      <View style={themedStyles.header}>
         <View style={{ width: 24 }} />
-        <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Expenses</Text>
+        <Text style={themedStyles.headerTitle}>Expenses</Text>
         <TouchableOpacity 
           onPress={handleNavigateToAddExpense} 
           disabled={saving || deletingExpenseId !== null}
@@ -223,7 +224,7 @@ export default function ExpensesScreen() {
       </View>
 
       {/* Filters */}
-      <View style={[commonStyles.section, { paddingBottom: 0, paddingTop: 12, paddingHorizontal: 12 }]}>
+      <View style={[themedStyles.section, { paddingBottom: 0, paddingTop: 12, paddingHorizontal: 12 }]}>
         {/* Main filter buttons - distributed horizontally */}
         <View style={{ 
           flexDirection: 'row', 
@@ -240,7 +241,7 @@ export default function ExpensesScreen() {
             <View style={{ paddingHorizontal: 4, flexDirection: 'row' }}>
               <TouchableOpacity
                 style={[
-                  commonStyles.badge,
+                  themedStyles.badge,
                   { 
                     backgroundColor: personFilter === null ? currentColors.secondary : currentColors.border,
                     marginRight: 8,
@@ -253,7 +254,7 @@ export default function ExpensesScreen() {
                 disabled={saving || deletingExpenseId !== null}
               >
                 <Text style={[
-                  commonStyles.badgeText,
+                  themedStyles.badgeText,
                   { 
                     color: personFilter === null ? '#FFFFFF' : currentColors.text,
                     fontWeight: '600',
@@ -268,7 +269,7 @@ export default function ExpensesScreen() {
                 <TouchableOpacity
                   key={person.id}
                   style={[
-                    commonStyles.badge,
+                    themedStyles.badge,
                     { 
                       backgroundColor: personFilter === person.id ? currentColors.secondary : currentColors.border,
                       marginRight: 8,
@@ -281,7 +282,7 @@ export default function ExpensesScreen() {
                   disabled={saving || deletingExpenseId !== null}
                 >
                   <Text style={[
-                    commonStyles.badgeText,
+                    themedStyles.badgeText,
                     { 
                       color: personFilter === person.id ? '#FFFFFF' : currentColors.text,
                       fontWeight: '600',
@@ -306,15 +307,15 @@ export default function ExpensesScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView style={commonStyles.content} contentContainerStyle={[commonStyles.scrollContent, { paddingHorizontal: 12 }]}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 12 }]}>
         {filteredExpenses.length === 0 ? (
-          <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
-            <View style={commonStyles.centerContent}>
+          <View style={themedStyles.card}>
+            <View style={themedStyles.centerContent}>
               <Icon name="receipt-outline" size={64} style={{ color: currentColors.textSecondary, marginBottom: 16 }} />
-              <Text style={[commonStyles.subtitle, { textAlign: 'center', marginBottom: 12, color: currentColors.text }]}>
+              <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 12 }]}>
                 No Expenses Found
               </Text>
-              <Text style={[commonStyles.textSecondary, { textAlign: 'center', color: currentColors.textSecondary }]}>
+              <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
                 {filter === 'all' 
                   ? 'Add your first expense to get started'
                   : `No ${filter} expenses found`
@@ -332,10 +333,8 @@ export default function ExpensesScreen() {
               <View
                 key={expense.id}
                 style={[
-                  commonStyles.card,
+                  themedStyles.card,
                   { 
-                    backgroundColor: currentColors.backgroundAlt, 
-                    borderColor: currentColors.border,
                     marginBottom: 6,
                     padding: 12,
                     opacity: isDeleting ? 0.6 : 1,
@@ -350,15 +349,15 @@ export default function ExpensesScreen() {
                   style={{ flex: 1 }}
                 >
                   {/* Top row with title and amount */}
-                  <View style={[commonStyles.row, { marginBottom: 6, alignItems: 'flex-start', paddingRight: 50 }]}>
-                    <View style={commonStyles.flex1}>
-                      <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.text, fontSize: 16 }]}>
+                  <View style={[themedStyles.row, { marginBottom: 6, alignItems: 'flex-start', paddingRight: 50 }]}>
+                    <View style={themedStyles.flex1}>
+                      <Text style={[themedStyles.text, { fontWeight: '700', fontSize: 16 }]}>
                         {expense.description}
                       </Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
                       <Text style={[
-                        commonStyles.text, 
+                        themedStyles.text, 
                         { 
                           fontWeight: '800', 
                           color: expense.category === 'household' ? currentColors.household : currentColors.personal,
@@ -367,16 +366,16 @@ export default function ExpensesScreen() {
                       ]}>
                         {formatCurrency(expense.amount)}
                       </Text>
-                      <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, fontSize: 11 }]}>
+                      <Text style={[themedStyles.textSecondary, { fontSize: 11 }]}>
                         {formatCurrency(monthlyAmount)}/mo
                       </Text>
                     </View>
                   </View>
                   
                   {/* Bottom row with metadata and category badge */}
-                  <View style={[commonStyles.row, { alignItems: 'center', paddingRight: 50 }]}>
+                  <View style={[themedStyles.row, { alignItems: 'center', paddingRight: 50 }]}>
                     <View style={[
-                      commonStyles.badge,
+                      themedStyles.badge,
                       { 
                         backgroundColor: expense.category === 'household' ? currentColors.household : currentColors.personal,
                         marginRight: 8,
@@ -386,14 +385,14 @@ export default function ExpensesScreen() {
                       }
                     ]}>
                       <Text style={[
-                        commonStyles.badgeText,
+                        themedStyles.badgeText,
                         { color: '#FFFFFF', fontSize: 10, fontWeight: '700' }
                       ]}>
                         {expense.category.toUpperCase()}
                       </Text>
                     </View>
                     
-                    <Text style={[commonStyles.textSecondary, { flex: 1, color: currentColors.textSecondary, fontSize: 12 }]}>
+                    <Text style={[themedStyles.textSecondary, { flex: 1, fontSize: 12 }]}>
                       {expense.category === 'personal' && person ? `${person.name} • ` : ''}
                       {expense.frequency} • {new Date(expense.date).toLocaleDateString()}
                     </Text>

@@ -13,7 +13,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCurrency } from '../hooks/useCurrency';
 import Icon from '../components/Icon';
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
-import { commonStyles, buttonStyles } from '../styles/commonStyles';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Person, Income } from '../types/budget';
 import { useTheme } from '../hooks/useTheme';
 
@@ -29,6 +29,7 @@ export default function EditPersonScreen() {
   
   const { formatCurrency } = useCurrency();
   const { currentColors } = useTheme();
+  const { themedStyles, themedButtonStyles } = useThemedStyles();
   const params = useLocalSearchParams<{ personId: string }>();
   const personId = params.personId;
   
@@ -180,7 +181,7 @@ export default function EditPersonScreen() {
         <TouchableOpacity
           key={freq}
           style={[
-            commonStyles.badge,
+            themedStyles.badge,
             { 
               backgroundColor: value === freq ? currentColors.primary : currentColors.border,
               marginRight: 8,
@@ -193,7 +194,7 @@ export default function EditPersonScreen() {
           disabled={saving}
         >
           <Text style={[
-            commonStyles.badgeText,
+            themedStyles.badgeText,
             { color: value === freq ? currentColors.backgroundAlt : currentColors.text }
           ]}>
             {freq.charAt(0).toUpperCase() + freq.slice(1)}
@@ -205,24 +206,24 @@ export default function EditPersonScreen() {
 
   if (!person) {
     return (
-      <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
-        <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
+      <View style={themedStyles.container}>
+        <View style={themedStyles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <Icon name="arrow-back" size={24} style={{ color: currentColors.text }} />
           </TouchableOpacity>
-          <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Edit Person</Text>
+          <Text style={themedStyles.headerTitle}>Edit Person</Text>
           <View style={{ width: 24 }} />
         </View>
-        <View style={[commonStyles.centerContent, { flex: 1 }]}>
-          <Text style={[commonStyles.text, { color: currentColors.textSecondary }]}>Person not found</Text>
-          <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, marginTop: 8, textAlign: 'center' }]}>
+        <View style={[themedStyles.centerContent, { flex: 1 }]}>
+          <Text style={themedStyles.textSecondary}>Person not found</Text>
+          <Text style={[themedStyles.textSecondary, { marginTop: 8, textAlign: 'center' }]}>
             The person you're trying to edit could not be found. They may have been deleted.
           </Text>
           <TouchableOpacity 
-            style={[buttonStyles.primary, { backgroundColor: currentColors.primary, marginTop: 16 }]}
+            style={[themedButtonStyles.primary, { backgroundColor: currentColors.primary, marginTop: 16 }]}
             onPress={() => router.replace('/people')}
           >
-            <Text style={[buttonStyles.primaryText, { color: currentColors.backgroundAlt }]}>
+            <Text style={[themedStyles.text, { color: currentColors.backgroundAlt }]}>
               Go Back to People
             </Text>
           </TouchableOpacity>
@@ -237,12 +238,12 @@ export default function EditPersonScreen() {
   const monthlyRemaining = calculateMonthlyAmount(remainingIncome, 'yearly');
 
   return (
-    <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
-      <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
+    <View style={themedStyles.container}>
+      <View style={themedStyles.header}>
         <TouchableOpacity onPress={() => router.back()} disabled={saving}>
           <Icon name="arrow-back" size={24} style={{ color: currentColors.text }} />
         </TouchableOpacity>
-        <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Edit Person</Text>
+        <Text style={themedStyles.headerTitle}>Edit Person</Text>
         <TouchableOpacity onPress={handleSavePerson} disabled={saving}>
           {saving ? (
             <ActivityIndicator size="small" color={currentColors.primary} />
@@ -252,16 +253,16 @@ export default function EditPersonScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={commonStyles.content} contentContainerStyle={commonStyles.scrollContent}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
         {/* Person Details */}
-        <View style={commonStyles.section}>
-          <Text style={[commonStyles.subtitle, { color: currentColors.text, marginBottom: 12 }]}>Person Details</Text>
+        <View style={themedStyles.section}>
+          <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Person Details</Text>
           
-          <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
+          <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
             Name:
           </Text>
           <TextInput
-            style={[commonStyles.input, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border, color: currentColors.text }]}
+            style={themedStyles.input}
             value={person.name}
             onChangeText={(text) => setPerson({ ...person, name: text })}
             placeholder="Enter person's name"
@@ -271,21 +272,21 @@ export default function EditPersonScreen() {
         </View>
 
         {/* Income Summary */}
-        <View style={commonStyles.section}>
-          <Text style={[commonStyles.subtitle, { color: currentColors.text, marginBottom: 12 }]}>Income Summary</Text>
+        <View style={themedStyles.section}>
+          <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Income Summary</Text>
           
-          <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
-            <View style={[commonStyles.row, { marginBottom: 8 }]}>
-              <Text style={[commonStyles.text, { color: currentColors.text }]}>Monthly Income:</Text>
-              <Text style={[commonStyles.text, { color: currentColors.income, fontWeight: '600' }]}>
+          <View style={themedStyles.card}>
+            <View style={[themedStyles.row, { marginBottom: 8 }]}>
+              <Text style={themedStyles.text}>Monthly Income:</Text>
+              <Text style={[themedStyles.text, { color: currentColors.income, fontWeight: '600' }]}>
                 {formatCurrency(monthlyIncome)}
               </Text>
             </View>
 
-            <View style={[commonStyles.row]}>
-              <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>Remaining Income:</Text>
+            <View style={themedStyles.row}>
+              <Text style={[themedStyles.text, { fontWeight: '600' }]}>Remaining Income:</Text>
               <Text style={[
-                commonStyles.text, 
+                themedStyles.text, 
                 { 
                   color: monthlyRemaining >= 0 ? currentColors.success : currentColors.error, 
                   fontWeight: '700' 
@@ -299,16 +300,16 @@ export default function EditPersonScreen() {
 
         {/* Add Income Form */}
         {showAddIncome && (
-          <View style={[commonStyles.card, { backgroundColor: currentColors.income + '10', borderColor: currentColors.border }]}>
-            <Text style={[commonStyles.subtitle, { marginBottom: 12, color: currentColors.text }]}>
+          <View style={[themedStyles.card, { backgroundColor: currentColors.income + '10' }]}>
+            <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>
               Add Income for {person.name}
             </Text>
             
-            <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
+            <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
               Income Source:
             </Text>
             <TextInput
-              style={[commonStyles.input, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border, color: currentColors.text }]}
+              style={themedStyles.input}
               placeholder="e.g., Salary, Freelance, Side Job"
               placeholderTextColor={currentColors.textSecondary}
               value={newIncome.label}
@@ -316,11 +317,11 @@ export default function EditPersonScreen() {
               editable={!saving}
             />
             
-            <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
+            <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
               Amount:
             </Text>
             <TextInput
-              style={[commonStyles.input, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border, color: currentColors.text }]}
+              style={themedStyles.input}
               placeholder="0.00"
               placeholderTextColor={currentColors.textSecondary}
               value={newIncome.amount}
@@ -329,7 +330,7 @@ export default function EditPersonScreen() {
               editable={!saving}
             />
             
-            <Text style={[commonStyles.text, { marginBottom: 8, fontWeight: '600', color: currentColors.text }]}>
+            <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
               Frequency:
             </Text>
             <FrequencyPicker
@@ -345,7 +346,7 @@ export default function EditPersonScreen() {
                     setShowAddIncome(false);
                     setNewIncome({ amount: '', label: '', frequency: 'monthly' });
                   }}
-                  style={[buttonStyles.outline, { marginTop: 0, borderColor: currentColors.income }]}
+                  style={[themedButtonStyles.outline, { marginTop: 0, borderColor: currentColors.income }]}
                   textStyle={{ color: currentColors.income }}
                   disabled={saving}
                 />
@@ -354,7 +355,7 @@ export default function EditPersonScreen() {
                 <Button
                   text={saving ? 'Adding...' : 'Add Income'}
                   onPress={handleAddIncome}
-                  style={[buttonStyles.primary, { marginTop: 0, backgroundColor: saving ? currentColors.textSecondary : currentColors.income }]}
+                  style={[themedButtonStyles.primary, { marginTop: 0, backgroundColor: saving ? currentColors.textSecondary : currentColors.income }]}
                   disabled={saving}
                 />
               </View>
@@ -363,9 +364,9 @@ export default function EditPersonScreen() {
         )}
 
         {/* Income Sources */}
-        <View style={commonStyles.section}>
-          <View style={[commonStyles.row, { marginBottom: 12 }]}>
-            <Text style={[commonStyles.subtitle, { marginBottom: 0, color: currentColors.text }]}>Income Sources</Text>
+        <View style={themedStyles.section}>
+          <View style={[themedStyles.row, { marginBottom: 12 }]}>
+            <Text style={[themedStyles.subtitle, { marginBottom: 0 }]}>Income Sources</Text>
             <TouchableOpacity 
               onPress={() => setShowAddIncome(true)}
               disabled={saving}
@@ -375,14 +376,14 @@ export default function EditPersonScreen() {
           </View>
           
           {person.income.length === 0 ? (
-            <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
-              <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, textAlign: 'center' }]}>
+            <View style={themedStyles.card}>
+              <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
                 No income sources added
               </Text>
             </View>
           ) : (
             <View>
-              <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, fontSize: 12, marginBottom: 8 }]}>
+              <Text style={[themedStyles.textSecondary, { fontSize: 12, marginBottom: 8 }]}>
                 Tap any income source to edit it
               </Text>
               {person.income.map((income) => {
@@ -391,7 +392,7 @@ export default function EditPersonScreen() {
                 return (
                   <TouchableOpacity
                     key={income.id}
-                    style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}
+                    style={themedStyles.card}
                     onPress={() => {
                       router.push({
                         pathname: '/edit-income',
@@ -401,10 +402,10 @@ export default function EditPersonScreen() {
                     disabled={saving || isDeletingIncome}
                     activeOpacity={0.7}
                   >
-                    <View style={[commonStyles.row, { marginBottom: 8 }]}>
-                      <View style={commonStyles.flex1}>
-                        <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>{income.label}</Text>
-                        <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                    <View style={[themedStyles.row, { marginBottom: 8 }]}>
+                      <View style={themedStyles.flex1}>
+                        <Text style={[themedStyles.text, { fontWeight: '600' }]}>{income.label}</Text>
+                        <Text style={themedStyles.textSecondary}>
                           {formatCurrency(income.amount)} • {income.frequency}
                         </Text>
                       </View>
@@ -426,11 +427,11 @@ export default function EditPersonScreen() {
                       </View>
                     </View>
                     
-                    <View style={[commonStyles.row, { borderTopWidth: 1, borderTopColor: currentColors.border, paddingTop: 8 }]}>
-                      <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                    <View style={[themedStyles.row, { borderTopWidth: 1, borderTopColor: currentColors.border, paddingTop: 8 }]}>
+                      <Text style={themedStyles.textSecondary}>
                         Monthly: {formatCurrency(calculateMonthlyAmount(income.amount, income.frequency))}
                       </Text>
-                      <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                      <Text style={themedStyles.textSecondary}>
                         Tap to edit
                       </Text>
                     </View>
