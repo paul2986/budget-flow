@@ -17,6 +17,7 @@ import {
 } from '../utils/calculations';
 import Icon from '../components/Icon';
 import PersonBreakdownChart from '../components/PersonBreakdownChart';
+import StandardHeader from '../components/StandardHeader';
 
 export default function HomeScreen() {
   const { data, loading, refreshData } = useBudgetData();
@@ -140,11 +141,11 @@ export default function HomeScreen() {
   if (loading || currencyLoading) {
     return (
       <View style={themedStyles.container}>
-        <View style={themedStyles.header}>
-          <View style={{ width: 24 }} />
-          <Text style={themedStyles.headerTitle}>Budget Overview</Text>
-          <View style={{ width: 24 }} />
-        </View>
+        <StandardHeader
+          title="Budget Overview"
+          showLeftIcon={false}
+          showRightIcon={false}
+        />
         <View style={[themedStyles.centerContent, { flex: 1 }]}>
           <Text style={themedStyles.textSecondary}>Loading...</Text>
         </View>
@@ -154,13 +155,11 @@ export default function HomeScreen() {
 
   return (
     <View style={themedStyles.container}>
-      <View style={themedStyles.header}>
-        <View style={{ width: 24 }} />
-        <Text style={themedStyles.headerTitle}>Budget Overview</Text>
-        <TouchableOpacity onPress={handleNavigateToAddExpense}>
-          <Icon name="add-circle" size={28} style={{ color: currentColors.primary }} />
-        </TouchableOpacity>
-      </View>
+      <StandardHeader
+        title="Budget Overview"
+        showLeftIcon={false}
+        onRightPress={handleNavigateToAddExpense}
+      />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
         {/* Budget Summary Cards */}

@@ -9,6 +9,7 @@ import { useCurrency } from '../hooks/useCurrency';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
 import { Expense } from '../types/budget';
+import StandardHeader from '../components/StandardHeader';
 
 export default function AddExpenseScreen() {
   const { data, addExpense, updateExpense, removeExpense, saving } = useBudgetData();
@@ -291,45 +292,15 @@ export default function AddExpenseScreen() {
 
   return (
     <View style={themedStyles.container}>
-      <View style={themedStyles.header}>
-        <TouchableOpacity 
-          onPress={handleGoBack}
-          disabled={saving || deleting}
-          style={{
-            backgroundColor: currentColors.border,
-            borderRadius: 20,
-            padding: 8,
-          }}
-        >
-          <Icon name="arrow-back" size={20} style={{ color: currentColors.text }} />
-        </TouchableOpacity>
-        <Text style={themedStyles.headerTitle}>
-          {isEditMode ? 'Edit Expense' : 'Add Expense'}
-        </Text>
-        {/* Delete button in header for edit mode */}
-        {isEditMode ? (
-          <TouchableOpacity 
-            onPress={() => {
-              console.log('AddExpenseScreen: Header delete button pressed');
-              handleDeleteExpense();
-            }}
-            disabled={saving || deleting}
-            style={{
-              backgroundColor: currentColors.error + '20',
-              borderRadius: 20,
-              padding: 8,
-            }}
-          >
-            {deleting ? (
-              <ActivityIndicator size="small" color={currentColors.error} />
-            ) : (
-              <Icon name="trash-outline" size={20} style={{ color: currentColors.error }} />
-            )}
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 36 }} />
-        )}
-      </View>
+      <StandardHeader
+        title={isEditMode ? 'Edit Expense' : 'Add Expense'}
+        onLeftPress={handleGoBack}
+        rightIcon={isEditMode ? 'trash-outline' : undefined}
+        onRightPress={isEditMode ? handleDeleteExpense : undefined}
+        showRightIcon={isEditMode}
+        loading={saving || deleting}
+        rightIconColor={isEditMode ? currentColors.error : undefined}
+      />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
         <View style={themedStyles.section}>

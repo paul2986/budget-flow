@@ -1,0 +1,102 @@
+
+import React from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useTheme } from '../hooks/useTheme';
+import { useThemedStyles } from '../hooks/useThemedStyles';
+import Icon from './Icon';
+
+interface StandardHeaderProps {
+  title: string;
+  leftIcon?: string;
+  rightIcon?: string;
+  onLeftPress?: () => void;
+  onRightPress?: () => void;
+  loading?: boolean;
+  rightIconColor?: string;
+  leftIconColor?: string;
+  showRightIcon?: boolean;
+  showLeftIcon?: boolean;
+}
+
+export default function StandardHeader({
+  title,
+  leftIcon = 'arrow-back',
+  rightIcon = 'add',
+  onLeftPress,
+  onRightPress,
+  loading = false,
+  rightIconColor,
+  leftIconColor,
+  showRightIcon = true,
+  showLeftIcon = true,
+}: StandardHeaderProps) {
+  const { currentColors } = useTheme();
+  const { themedStyles } = useThemedStyles();
+
+  const defaultRightIconColor = rightIconColor || '#FFFFFF';
+  const defaultLeftIconColor = leftIconColor || currentColors.text;
+
+  return (
+    <View style={[themedStyles.header, { height: 64 }]}>
+      {/* Left side */}
+      <View style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'flex-start' }}>
+        {showLeftIcon && onLeftPress ? (
+          <TouchableOpacity
+            onPress={onLeftPress}
+            disabled={loading}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: currentColors.border + '40',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <Icon name={leftIcon} size={24} style={{ color: defaultLeftIconColor }} />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 44 }} />
+        )}
+      </View>
+
+      {/* Center title */}
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={[themedStyles.headerTitle, { textAlign: 'center' }]}>
+          {title}
+        </Text>
+      </View>
+
+      {/* Right side */}
+      <View style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'flex-end' }}>
+        {showRightIcon && onRightPress ? (
+          <TouchableOpacity
+            onPress={onRightPress}
+            disabled={loading}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: currentColors.primary,
+              justifyContent: 'center',
+              alignItems: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.2,
+              shadowRadius: 4,
+              elevation: 4,
+            }}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color={defaultRightIconColor} />
+            ) : (
+              <Icon name={rightIcon} size={24} style={{ color: defaultRightIconColor }} />
+            )}
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 44 }} />
+        )}
+      </View>
+    </View>
+  );
+}

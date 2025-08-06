@@ -8,6 +8,7 @@ import { calculateMonthlyAmount } from '../utils/calculations';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useCurrency } from '../hooks/useCurrency';
 import Icon from '../components/Icon';
+import StandardHeader from '../components/StandardHeader';
 
 type SortOption = 'date' | 'highest' | 'lowest';
 
@@ -229,25 +230,12 @@ export default function ExpensesScreen() {
 
   return (
     <View style={themedStyles.container}>
-      <View style={themedStyles.header}>
-        <View style={{ width: 24 }} />
-        <Text style={themedStyles.headerTitle}>Expenses</Text>
-        <TouchableOpacity 
-          onPress={handleNavigateToAddExpense} 
-          disabled={saving || deletingExpenseId !== null}
-          style={{
-            backgroundColor: currentColors.primary,
-            borderRadius: 20,
-            padding: 8,
-          }}
-        >
-          {saving ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Icon name="add" size={20} style={{ color: '#FFFFFF' }} />
-          )}
-        </TouchableOpacity>
-      </View>
+      <StandardHeader
+        title="Expenses"
+        showLeftIcon={false}
+        onRightPress={handleNavigateToAddExpense}
+        loading={saving || deletingExpenseId !== null}
+      />
 
       {/* Filters */}
       <View style={[themedStyles.section, { paddingBottom: 0, paddingTop: 12, paddingHorizontal: 12 }]}>

@@ -6,6 +6,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useCurrency, CURRENCIES } from '../hooks/useCurrency';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
+import StandardHeader from '../components/StandardHeader';
 
 export default function SettingsScreen() {
   const { data, updateHouseholdSettings } = useBudgetData();
@@ -90,11 +91,11 @@ export default function SettingsScreen() {
 
   return (
     <View style={themedStyles.container}>
-      <View style={themedStyles.header}>
-        <View style={{ width: 24 }} />
-        <Text style={themedStyles.headerTitle}>Settings</Text>
-        <View style={{ width: 24 }} />
-      </View>
+      <StandardHeader
+        title="Settings"
+        showLeftIcon={false}
+        showRightIcon={false}
+      />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
         {/* Theme Settings */}

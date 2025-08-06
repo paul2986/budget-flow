@@ -9,6 +9,7 @@ import { useCurrency } from '../hooks/useCurrency';
 import { Income } from '../types/budget';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
+import StandardHeader from '../components/StandardHeader';
 
 export default function EditIncomeScreen() {
   const [income, setIncome] = useState<Income | null>(null);
@@ -194,6 +195,10 @@ export default function EditIncomeScreen() {
     );
   }, [income, personId, removeIncome, data.people, data.expenses]);
 
+  const handleGoBack = useCallback(() => {
+    router.back();
+  }, []);
+
   const FrequencyPicker = ({ value, onChange }: { value: string, onChange: (value: string) => void }) => (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
       {['daily', 'weekly', 'monthly', 'yearly'].map((freq) => (
@@ -227,13 +232,11 @@ export default function EditIncomeScreen() {
   if (!isDataLoaded || loading) {
     return (
       <View style={themedStyles.container}>
-        <View style={themedStyles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Icon name="arrow-back" size={24} style={{ color: currentColors.text }} />
-          </TouchableOpacity>
-          <Text style={themedStyles.headerTitle}>Edit Income</Text>
-          <View style={{ width: 24 }} />
-        </View>
+        <StandardHeader
+          title="Edit Income"
+          onLeftPress={handleGoBack}
+          showRightIcon={false}
+        />
         <View style={[themedStyles.centerContent, { flex: 1 }]}>
           <ActivityIndicator size="large" color={currentColors.primary} />
           <Text style={[themedStyles.text, { marginTop: 16 }]}>
@@ -248,13 +251,11 @@ export default function EditIncomeScreen() {
   if (!income) {
     return (
       <View style={themedStyles.container}>
-        <View style={themedStyles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Icon name="arrow-back" size={24} style={{ color: currentColors.text }} />
-          </TouchableOpacity>
-          <Text style={themedStyles.headerTitle}>Edit Income</Text>
-          <View style={{ width: 24 }} />
-        </View>
+        <StandardHeader
+          title="Edit Income"
+          onLeftPress={handleGoBack}
+          showRightIcon={false}
+        />
         <View style={[themedStyles.centerContent, { flex: 1 }]}>
           <Icon name="warning-outline" size={48} style={{ color: currentColors.textSecondary, marginBottom: 16 }} />
           <Text style={[themedStyles.text, { textAlign: 'center' }]}>
@@ -278,19 +279,14 @@ export default function EditIncomeScreen() {
 
   return (
     <View style={themedStyles.container}>
-      <View style={themedStyles.header}>
-        <TouchableOpacity onPress={() => router.back()} disabled={saving}>
-          <Icon name="arrow-back" size={24} style={{ color: currentColors.text }} />
-        </TouchableOpacity>
-        <Text style={themedStyles.headerTitle}>Edit Income</Text>
-        <TouchableOpacity onPress={handleDeleteIncome} disabled={saving}>
-          {saving ? (
-            <ActivityIndicator size="small" color={currentColors.error} />
-          ) : (
-            <Icon name="trash-outline" size={24} style={{ color: currentColors.error }} />
-          )}
-        </TouchableOpacity>
-      </View>
+      <StandardHeader
+        title="Edit Income"
+        onLeftPress={handleGoBack}
+        rightIcon="trash-outline"
+        onRightPress={handleDeleteIncome}
+        loading={saving}
+        rightIconColor={currentColors.error}
+      />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
         {/* Income Details */}

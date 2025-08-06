@@ -16,6 +16,7 @@ import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityInd
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Person, Income } from '../types/budget';
 import { useTheme } from '../hooks/useTheme';
+import StandardHeader from '../components/StandardHeader';
 
 export default function EditPersonScreen() {
   const [person, setPerson] = useState<Person | null>(null);
@@ -82,6 +83,10 @@ export default function EditPersonScreen() {
       Alert.alert('Error', 'Failed to update person. Please try again.');
     }
   }, [person, updatePerson]);
+
+  const handleGoBack = useCallback(() => {
+    router.back();
+  }, []);
 
   const handleAddIncome = useCallback(async () => {
     if (!person || !newIncome.amount || !newIncome.label.trim()) {
@@ -207,13 +212,11 @@ export default function EditPersonScreen() {
   if (!person) {
     return (
       <View style={themedStyles.container}>
-        <View style={themedStyles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Icon name="arrow-back" size={24} style={{ color: currentColors.text }} />
-          </TouchableOpacity>
-          <Text style={themedStyles.headerTitle}>Edit Person</Text>
-          <View style={{ width: 24 }} />
-        </View>
+        <StandardHeader
+          title="Edit Person"
+          onLeftPress={handleGoBack}
+          showRightIcon={false}
+        />
         <View style={[themedStyles.centerContent, { flex: 1 }]}>
           <Text style={themedStyles.textSecondary}>Person not found</Text>
           <Text style={[themedStyles.textSecondary, { marginTop: 8, textAlign: 'center' }]}>
@@ -239,19 +242,13 @@ export default function EditPersonScreen() {
 
   return (
     <View style={themedStyles.container}>
-      <View style={themedStyles.header}>
-        <TouchableOpacity onPress={() => router.back()} disabled={saving}>
-          <Icon name="arrow-back" size={24} style={{ color: currentColors.text }} />
-        </TouchableOpacity>
-        <Text style={themedStyles.headerTitle}>Edit Person</Text>
-        <TouchableOpacity onPress={handleSavePerson} disabled={saving}>
-          {saving ? (
-            <ActivityIndicator size="small" color={currentColors.primary} />
-          ) : (
-            <Icon name="checkmark" size={24} style={{ color: currentColors.primary }} />
-          )}
-        </TouchableOpacity>
-      </View>
+      <StandardHeader
+        title="Edit Person"
+        onLeftPress={handleGoBack}
+        rightIcon="checkmark"
+        onRightPress={handleSavePerson}
+        loading={saving}
+      />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
         {/* Person Details */}

@@ -16,6 +16,7 @@ import {
 } from '../utils/calculations';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
+import StandardHeader from '../components/StandardHeader';
 
 export default function PeopleScreen() {
   const { data, addPerson, removePerson, addIncome, removeIncome, updateIncome, saving, refreshData } = useBudgetData();
@@ -231,6 +232,10 @@ export default function PeopleScreen() {
     return totalIncome - personalExpenses - householdShare;
   }, [data.expenses, data.people, data.householdSettings.distributionMethod]);
 
+  const handleNavigateToAddPerson = useCallback(() => {
+    setShowAddPerson(true);
+  }, []);
+
   const FrequencyPicker = ({ value, onChange }: { value: string, onChange: (value: string) => void }) => (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
       {['daily', 'weekly', 'monthly', 'yearly'].map((freq) => (
@@ -262,17 +267,12 @@ export default function PeopleScreen() {
 
   return (
     <View style={themedStyles.container}>
-      <View style={themedStyles.header}>
-        <View style={{ width: 24 }} />
-        <Text style={themedStyles.headerTitle}>People</Text>
-        <TouchableOpacity onPress={() => setShowAddPerson(true)} disabled={saving}>
-          {saving ? (
-            <ActivityIndicator size="small" color={currentColors.primary} />
-          ) : (
-            <Icon name="add" size={24} style={{ color: currentColors.text }} />
-          )}
-        </TouchableOpacity>
-      </View>
+      <StandardHeader
+        title="People"
+        showLeftIcon={false}
+        onRightPress={handleNavigateToAddPerson}
+        loading={saving}
+      />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
         {/* Prominent Add Person Button */}
