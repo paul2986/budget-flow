@@ -91,9 +91,9 @@ export default function AddExpenseScreen() {
       }
 
       if (result.success) {
-        console.log('AddExpenseScreen: Expense saved successfully, navigating back');
-        // Navigate back to expenses screen
-        router.back();
+        console.log('AddExpenseScreen: Expense saved successfully, navigating to expenses page');
+        // Navigate to expenses screen to show the newly created/updated expense
+        router.replace('/expenses');
       } else {
         Alert.alert('Error', 'Failed to save expense. Please try again.');
       }

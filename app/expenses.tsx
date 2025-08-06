@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useBudgetData } from '../hooks/useBudgetData';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Text, View, ScrollView, TouchableOpacity, Alert, Animated, ActivityIndicator } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { calculateMonthlyAmount } from '../utils/calculations';
@@ -9,6 +9,7 @@ import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler'
 import { commonStyles } from '../styles/commonStyles';
 import { useCurrency } from '../hooks/useCurrency';
 import Icon from '../components/Icon';
+import { useCallback } from 'react';
 
 export default function ExpensesScreen() {
   const { data, removeExpense, saving, refreshData } = useBudgetData();
@@ -23,6 +24,14 @@ export default function ExpensesScreen() {
     console.log('ExpensesScreen: Component mounted, refreshing data...');
     refreshData();
   }, []);
+
+  // Refresh data when screen comes into focus (e.g., after adding an expense)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('ExpensesScreen: Screen focused, refreshing data...');
+      refreshData();
+    }, [refreshData])
+  );
 
   const handleRemoveExpense = (expenseId: string, description: string) => {
     console.log('ExpensesScreen: Attempting to remove expense:', expenseId, description);
