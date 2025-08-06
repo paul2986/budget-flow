@@ -142,8 +142,9 @@ export default function EditIncomeScreen() {
       
       const result = await updateIncome(personId, income.id, updates);
       if (result.success) {
-        console.log('EditIncomeScreen: Income saved successfully, navigating back');
-        router.back();
+        console.log('EditIncomeScreen: Income saved successfully, navigating to people page');
+        // Navigate specifically to the people page to show the updated data
+        router.replace('/people');
       } else {
         console.error('EditIncomeScreen: Failed to save income:', result.error);
         Alert.alert('Error', 'Failed to update income. Please try again.');
@@ -176,8 +177,9 @@ export default function EditIncomeScreen() {
               
               const result = await removeIncome(personId, income.id);
               if (result.success) {
-                console.log('EditIncomeScreen: Income deleted successfully, navigating back');
-                router.back();
+                console.log('EditIncomeScreen: Income deleted successfully, navigating to people page');
+                // Navigate specifically to the people page to show the updated data
+                router.replace('/people');
               } else {
                 console.error('EditIncomeScreen: Failed to delete income:', result.error);
                 Alert.alert('Error', 'Failed to delete income. Please try again.');

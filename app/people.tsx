@@ -264,7 +264,7 @@ export default function PeopleScreen() {
     <View style={themedStyles.container}>
       <View style={themedStyles.header}>
         <View style={{ width: 24 }} />
-        <Text style={themedStyles.headerTitle}>Manage People</Text>
+        <Text style={themedStyles.headerTitle}>People</Text>
         <TouchableOpacity onPress={() => setShowAddPerson(true)} disabled={saving}>
           {saving ? (
             <ActivityIndicator size="small" color={currentColors.primary} />
