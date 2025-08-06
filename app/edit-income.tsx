@@ -18,6 +18,7 @@ export default function EditIncomeScreen() {
     frequency: 'monthly' as const,
   });
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   
   const { formatCurrency } = useCurrency();
   const { currentColors } = useTheme();
@@ -25,19 +26,39 @@ export default function EditIncomeScreen() {
   const params = useLocalSearchParams<{ personId: string; incomeId: string }>();
   const { personId, incomeId } = params;
   
-  const { data, updateIncome, removeIncome, saving, refreshData } = useBudgetData();
+  const { data, updateIncome, removeIncome, saving, loading, refreshData } = useBudgetData();
 
-  // Force refresh data when screen is focused
+  // Only refresh data on initial focus, not on subsequent focuses
   useFocusEffect(
     useCallback(() => {
-      console.log('EditIncomeScreen: Screen focused, refreshing data...');
-      setIsDataLoaded(false);
-      refreshData();
-    }, [refreshData])
+      console.log('EditIncomeScreen: Screen focused, isInitialLoad:', isInitialLoad);
+      if (isInitialLoad) {
+        console.log('EditIncomeScreen: Initial load, refreshing data...');
+        setIsDataLoaded(false);
+        refreshData();
+        setIsInitialLoad(false);
+      } else {
+        console.log('EditIncomeScreen: Subsequent focus, skipping refresh');
+      }
+    }, [refreshData, isInitialLoad])
   );
 
   // Find the income and person when data changes
   useEffect(() => {
+    console.log('EditIncomeScreen: Data effect triggered', {
+      personId,
+      incomeId,
+      peopleCount: data.people.length,
+      loading,
+      isDataLoaded
+    });
+
+    if (loading) {
+      console.log('EditIncomeScreen: Data is still loading, waiting...');
+      setIsDataLoaded(false);
+      return;
+    }
+
     if (personId && incomeId && data.people.length > 0) {
       console.log('EditIncomeScreen: Looking for income in data:', {
         personId,
@@ -72,11 +93,11 @@ export default function EditIncomeScreen() {
         setIncome(null);
         setIsDataLoaded(true);
       }
-    } else if (data.people.length === 0) {
-      console.log('EditIncomeScreen: No people in data yet, waiting...');
-      setIsDataLoaded(false);
+    } else if (!loading && data.people.length === 0) {
+      console.log('EditIncomeScreen: No people in data and not loading, marking as loaded');
+      setIsDataLoaded(true);
     }
-  }, [personId, incomeId, data.people, data.expenses]);
+  }, [personId, incomeId, data.people, data.expenses, loading]);
 
   const handleSaveIncome = useCallback(async () => {
     if (!income || !personId) return;
@@ -176,7 +197,7 @@ export default function EditIncomeScreen() {
   );
 
   // Show loading state while data is being loaded
-  if (!isDataLoaded) {
+  if (!isDataLoaded || loading) {
     return (
       <View style={themedStyles.container}>
         <View style={themedStyles.header}>

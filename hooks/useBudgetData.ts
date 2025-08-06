@@ -34,6 +34,7 @@ export const useBudgetData = () => {
 
     try {
       isLoadingRef.current = true;
+      setLoading(true);
       console.log('useBudgetData: Loading data...');
       const budgetData = await loadBudgetData();
       console.log('useBudgetData: Loaded data:', {
@@ -463,13 +464,18 @@ export const useBudgetData = () => {
     }
   }, [saveData]);
 
-  // Improved refresh function that avoids unnecessary reloads
+  // Improved refresh function that is more conservative about when to refresh
   const refreshData = useCallback(() => {
-    console.log('useBudgetData: Refresh requested...');
+    console.log('useBudgetData: Refresh requested...', {
+      pendingUpdates: pendingUpdatesRef.current,
+      saving,
+      loading,
+      isLoading: isLoadingRef.current
+    });
     
-    // Don't refresh if we have pending updates or are currently saving
-    if (pendingUpdatesRef.current || saving) {
-      console.log('useBudgetData: Skipping refresh - pending updates or saving in progress');
+    // Don't refresh if we have pending updates, are currently saving, or already loading
+    if (pendingUpdatesRef.current || saving || isLoadingRef.current) {
+      console.log('useBudgetData: Skipping refresh - operation in progress');
       return;
     }
     
@@ -478,32 +484,14 @@ export const useBudgetData = () => {
       clearTimeout(refreshTimeoutRef.current);
     }
     
-    // Throttle refresh calls to prevent excessive loading
-    refreshTimeoutRef.current = setTimeout(async () => {
-      if (!isLoadingRef.current && !saving && !pendingUpdatesRef.current) {
-        console.log('useBudgetData: Executing throttled refresh...');
-        
-        // Check if we need to refresh by comparing with last saved data
-        try {
-          const currentStoredData = await loadBudgetData();
-          const currentDataString = JSON.stringify(currentStoredData);
-          
-          if (currentDataString !== lastSavedDataRef.current) {
-            console.log('useBudgetData: Data has changed, refreshing...');
-            await loadData();
-          } else {
-            console.log('useBudgetData: Data unchanged, skipping refresh');
-          }
-        } catch (error) {
-          console.error('useBudgetData: Error checking for data changes:', error);
-          // Fallback to regular refresh
-          await loadData();
-        }
-      } else {
-        console.log('useBudgetData: Skipping refresh - operation in progress');
-      }
-    }, 100);
-  }, [loadData, saving]);
+    // Only refresh if we're not in the middle of any operations
+    if (!loading) {
+      console.log('useBudgetData: Executing immediate refresh...');
+      loadData();
+    } else {
+      console.log('useBudgetData: Skipping refresh - already loading');
+    }
+  }, [loadData, saving, loading]);
 
   return {
     data,
