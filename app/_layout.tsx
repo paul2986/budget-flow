@@ -41,20 +41,20 @@ function CustomTabBar() {
     router.replace(route);
   }, []);
 
-  // Modern floating tab bar style with equal spacing
+  // Modern floating tab bar style with equal spacing - moved down slightly
   const tabBarContainerStyle = useMemo(() => ({
     position: 'absolute' as const,
-    bottom: 20, // Equal distance from bottom
+    bottom: 12, // Reduced from 20 to move nav bar down slightly
     left: 20,   // Equal distance from left
     right: 20,  // Equal distance from right
-    paddingBottom: insets.bottom > 0 ? insets.bottom - 10 : 10, // Adjust for safe area
+    paddingBottom: insets.bottom > 0 ? insets.bottom - 5 : 8, // Adjusted for moving down
   }), [insets.bottom]);
 
   const tabBarStyle = useMemo(() => ({
     flexDirection: 'row' as const,
     backgroundColor: currentColors.backgroundAlt,
     borderRadius: 28, // More rounded for modern iOS look
-    paddingVertical: 16,
+    paddingVertical: 12, // Reduced padding since no labels
     paddingHorizontal: 20,
     elevation: 12,
     shadowColor: isDarkMode ? '#000000' : '#000000',
@@ -66,9 +66,10 @@ function CustomTabBar() {
     borderColor: isDarkMode ? 'transparent' : currentColors.border,
     // Add backdrop blur effect simulation
     opacity: 0.95,
+    height: 60, // Fixed height since no labels
   }), [currentColors.backgroundAlt, currentColors.border, isDarkMode]);
 
-  // Pre-calculate styles for active and inactive states
+  // Pre-calculate styles for active and inactive states - no labels
   const getButtonStyle = useCallback((isActive: boolean) => ({
     flex: 1,
     alignItems: 'center' as const,
@@ -77,21 +78,13 @@ function CustomTabBar() {
     paddingHorizontal: 8,
     borderRadius: 20,
     backgroundColor: isActive ? currentColors.primary + (isDarkMode ? '25' : '12') : 'transparent',
-    minHeight: 56, // Ensure consistent height
+    height: 48, // Fixed height for consistency without labels
   }), [currentColors.primary, isDarkMode]);
 
   const getIconColor = useCallback((isActive: boolean) => 
     isActive ? currentColors.primary : currentColors.textSecondary,
     [currentColors.primary, currentColors.textSecondary]
   );
-
-  const getTextStyle = useCallback((isActive: boolean) => ({
-    fontSize: 12,
-    fontWeight: '600' as const,
-    color: isActive ? currentColors.primary : currentColors.textSecondary,
-    marginTop: 4,
-    textAlign: 'center' as const,
-  }), [currentColors.primary, currentColors.textSecondary]);
 
   return (
     <View style={tabBarContainerStyle}>
@@ -100,7 +93,6 @@ function CustomTabBar() {
           const isActive = pathname === item.route;
           const buttonStyle = getButtonStyle(isActive);
           const iconColor = getIconColor(isActive);
-          const textStyle = getTextStyle(isActive);
 
           return (
             <TouchableOpacity
@@ -111,10 +103,10 @@ function CustomTabBar() {
             >
               <Icon
                 name={isActive ? item.activeIcon : item.icon}
-                size={24}
+                size={26} // Slightly larger since no labels
                 style={{ color: iconColor }}
               />
-              <Text style={textStyle}>{item.name}</Text>
+              {/* Removed Text component - no labels */}
             </TouchableOpacity>
           );
         })}
