@@ -279,7 +279,7 @@ export default function ExpensesScreen() {
                   }
                 ]}
               >
-                {/* Top row with title, amount and delete button */}
+                {/* Top row with title and delete button - separate from edit functionality */}
                 <View style={[commonStyles.row, { marginBottom: 12, alignItems: 'flex-start' }]}>
                   <View style={commonStyles.flex1}>
                     <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.text, fontSize: 18 }]}>
@@ -291,59 +291,65 @@ export default function ExpensesScreen() {
                     </Text>
                   </View>
                   
-                  {/* Amount and delete button container */}
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <View style={{ alignItems: 'flex-end', marginRight: 12 }}>
-                        <Text style={[
-                          commonStyles.text, 
-                          { 
-                            fontWeight: '800', 
-                            color: expense.category === 'household' ? currentColors.household : currentColors.personal,
-                            fontSize: 18,
-                          }
-                        ]}>
-                          {formatCurrency(expense.amount)}
-                        </Text>
-                        <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, marginTop: 2 }]}>
-                          {formatCurrency(monthlyAmount)}/mo
-                        </Text>
-                      </View>
-                      
-                      {/* Delete button - positioned absolutely to avoid touch conflicts */}
-                      <TouchableOpacity
-                        onPress={() => {
-                          console.log('ExpensesScreen: Bin icon pressed for expense:', expense.id, expense.description);
-                          handleDeletePress(expense.id, expense.description);
-                        }}
-                        disabled={saving || isDeleting}
-                        style={{
-                          padding: 8,
-                          borderRadius: 20,
-                          backgroundColor: currentColors.error + '20',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          minWidth: 36,
-                          minHeight: 36,
-                        }}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      >
-                        {isDeleting ? (
-                          <ActivityIndicator size="small" color={currentColors.error} />
-                        ) : (
-                          <Icon name="trash-outline" size={20} style={{ color: currentColors.error }} />
-                        )}
-                      </TouchableOpacity>
-                    </View>
+                  {/* Delete button - completely separate from other touch areas */}
+                  <View style={{ 
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    zIndex: 10,
+                  }}>
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        console.log('ExpensesScreen: Bin icon pressed for expense:', expense.id, expense.description);
+                        handleDeletePress(expense.id, expense.description);
+                      }}
+                      disabled={saving || isDeleting}
+                      style={{
+                        padding: 12,
+                        borderRadius: 24,
+                        backgroundColor: currentColors.error + '20',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: 44,
+                        minHeight: 44,
+                      }}
+                      hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                    >
+                      {isDeleting ? (
+                        <ActivityIndicator size="small" color={currentColors.error} />
+                      ) : (
+                        <Icon name="trash-outline" size={22} style={{ color: currentColors.error }} />
+                      )}
+                    </TouchableOpacity>
                   </View>
                 </View>
                 
-                {/* Bottom row with category badge and edit button - separate from delete button */}
+                {/* Amount row */}
+                <View style={[commonStyles.row, { marginBottom: 12, paddingRight: 60 }]}>
+                  <View style={{ alignItems: 'flex-end', flex: 1 }}>
+                    <Text style={[
+                      commonStyles.text, 
+                      { 
+                        fontWeight: '800', 
+                        color: expense.category === 'household' ? currentColors.household : currentColors.personal,
+                        fontSize: 18,
+                      }
+                    ]}>
+                      {formatCurrency(expense.amount)}
+                    </Text>
+                    <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, marginTop: 2 }]}>
+                      {formatCurrency(monthlyAmount)}/mo
+                    </Text>
+                  </View>
+                </View>
+                
+                {/* Bottom row with category badge and edit button - separate touch area */}
                 <TouchableOpacity
                   onPress={() => handleEditExpense(expense)}
                   activeOpacity={0.7}
                   disabled={saving || isDeleting}
-                  style={[commonStyles.row, { alignItems: 'center' }]}
+                  style={[commonStyles.row, { alignItems: 'center', paddingRight: 60 }]}
                 >
                   <View style={[
                     commonStyles.badge,

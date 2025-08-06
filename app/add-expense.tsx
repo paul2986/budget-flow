@@ -11,7 +11,7 @@ import Icon from '../components/Icon';
 import { Expense } from '../types/budget';
 
 export default function AddExpenseScreen() {
-  const { data, addExpense, updateExpense, saving } = useBudgetData();
+  const { data, addExpense, updateExpense, removeExpense, saving } = useBudgetData();
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
   const params = useLocalSearchParams<{ id?: string }>();
@@ -21,6 +21,7 @@ export default function AddExpenseScreen() {
   const [category, setCategory] = useState<'household' | 'personal'>('household');
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
   const [personId, setPersonId] = useState<string>('');
+  const [deleting, setDeleting] = useState(false);
 
   const isEditMode = !!params.id;
   const expenseToEdit = isEditMode ? data.expenses.find(e => e.id === params.id) : null;
@@ -97,6 +98,49 @@ export default function AddExpenseScreen() {
     }
   }, [description, amount, category, frequency, personId, isEditMode, expenseToEdit, addExpense, updateExpense]);
 
+  const handleDeleteExpense = useCallback(async () => {
+    if (!isEditMode || !expenseToEdit) {
+      return;
+    }
+
+    Alert.alert(
+      'Delete Expense',
+      `Are you sure you want to delete "${expenseToEdit.description}"?`,
+      [
+        { 
+          text: 'Cancel', 
+          style: 'cancel',
+          onPress: () => console.log('AddExpenseScreen: Delete cancelled')
+        },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            console.log('AddExpenseScreen: Delete confirmed');
+            try {
+              setDeleting(true);
+              const result = await removeExpense(expenseToEdit.id);
+              console.log('AddExpenseScreen: Expense deletion result:', result);
+              
+              if (result.success) {
+                console.log('AddExpenseScreen: Expense deleted successfully, navigating to expenses page');
+                router.replace('/expenses');
+              } else {
+                console.error('AddExpenseScreen: Expense deletion failed:', result.error);
+                Alert.alert('Error', 'Failed to delete expense. Please try again.');
+              }
+            } catch (error) {
+              console.error('AddExpenseScreen: Error deleting expense:', error);
+              Alert.alert('Error', 'Failed to delete expense. Please try again.');
+            } finally {
+              setDeleting(false);
+            }
+          }
+        },
+      ]
+    );
+  }, [isEditMode, expenseToEdit, removeExpense]);
+
   const handleGoBack = useCallback(() => {
     router.back();
   }, []);
@@ -121,7 +165,7 @@ export default function AddExpenseScreen() {
             setCategory('household');
             setPersonId('');
           }}
-          disabled={saving}
+          disabled={saving || deleting}
         >
           <Text style={[
             commonStyles.badgeText,
@@ -147,7 +191,7 @@ export default function AddExpenseScreen() {
             }
           ]}
           onPress={() => setCategory('personal')}
-          disabled={saving}
+          disabled={saving || deleting}
         >
           <Text style={[
             commonStyles.badgeText,
@@ -162,7 +206,7 @@ export default function AddExpenseScreen() {
         </TouchableOpacity>
       </View>
     </View>
-  ), [category, currentColors, saving]);
+  ), [category, currentColors, saving, deleting]);
 
   const FrequencyPicker = useCallback(() => (
     <View style={commonStyles.section}>
@@ -183,7 +227,7 @@ export default function AddExpenseScreen() {
               }
             ]}
             onPress={() => setFrequency(freq)}
-            disabled={saving}
+            disabled={saving || deleting}
           >
             <Text style={[
               commonStyles.badgeText,
@@ -199,7 +243,7 @@ export default function AddExpenseScreen() {
         ))}
       </View>
     </View>
-  ), [frequency, currentColors, saving]);
+  ), [frequency, currentColors, saving, deleting]);
 
   const PersonPicker = useCallback(() => {
     if (category !== 'personal' || data.people.length === 0) return null;
@@ -223,7 +267,7 @@ export default function AddExpenseScreen() {
                 }
               ]}
               onPress={() => setPersonId(person.id)}
-              disabled={saving}
+              disabled={saving || deleting}
             >
               <Text style={[
                 commonStyles.badgeText,
@@ -239,14 +283,14 @@ export default function AddExpenseScreen() {
         </View>
       </View>
     );
-  }, [category, data.people, personId, currentColors, saving]);
+  }, [category, data.people, personId, currentColors, saving, deleting]);
 
   return (
     <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
       <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
         <TouchableOpacity 
           onPress={handleGoBack}
-          disabled={saving}
+          disabled={saving || deleting}
           style={{
             backgroundColor: currentColors.border,
             borderRadius: 20,
@@ -258,7 +302,26 @@ export default function AddExpenseScreen() {
         <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>
           {isEditMode ? 'Edit Expense' : 'Add Expense'}
         </Text>
-        <View style={{ width: 36 }} />
+        {/* Delete button in header for edit mode */}
+        {isEditMode ? (
+          <TouchableOpacity 
+            onPress={handleDeleteExpense}
+            disabled={saving || deleting}
+            style={{
+              backgroundColor: currentColors.error + '20',
+              borderRadius: 20,
+              padding: 8,
+            }}
+          >
+            {deleting ? (
+              <ActivityIndicator size="small" color={currentColors.error} />
+            ) : (
+              <Icon name="trash-outline" size={20} style={{ color: currentColors.error }} />
+            )}
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 36 }} />
+        )}
       </View>
 
       <ScrollView style={commonStyles.content} contentContainerStyle={commonStyles.scrollContent}>
@@ -277,7 +340,7 @@ export default function AddExpenseScreen() {
             onChangeText={setDescription}
             placeholder="Enter expense description"
             placeholderTextColor={currentColors.textSecondary}
-            editable={!saving}
+            editable={!saving && !deleting}
           />
         </View>
 
@@ -297,7 +360,7 @@ export default function AddExpenseScreen() {
             placeholder="0.00"
             placeholderTextColor={currentColors.textSecondary}
             keyboardType="numeric"
-            editable={!saving}
+            editable={!saving && !deleting}
           />
         </View>
 
@@ -321,15 +384,34 @@ export default function AddExpenseScreen() {
 
         <View style={[commonStyles.section, { paddingTop: 32 }]}>
           <Button
-            text={saving ? 'Saving...' : (isEditMode ? 'Update Expense' : 'Add Expense')}
+            text={saving ? 'Saving...' : deleting ? 'Deleting...' : (isEditMode ? 'Update Expense' : 'Add Expense')}
             onPress={handleSaveExpense}
-            disabled={saving}
+            disabled={saving || deleting}
             style={[
               buttonStyles.primary,
               { backgroundColor: currentColors.primary },
-              saving && { opacity: 0.7 }
+              (saving || deleting) && { opacity: 0.7 }
             ]}
           />
+          
+          {/* Additional delete button for edit mode */}
+          {isEditMode && (
+            <View style={{ marginTop: 16 }}>
+              <Button
+                text={deleting ? 'Deleting...' : 'Delete Expense'}
+                onPress={handleDeleteExpense}
+                disabled={saving || deleting}
+                style={[
+                  buttonStyles.primary,
+                  { 
+                    backgroundColor: currentColors.error,
+                    borderColor: currentColors.error,
+                  },
+                  (saving || deleting) && { opacity: 0.7 }
+                ]}
+              />
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>
