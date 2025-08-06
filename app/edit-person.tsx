@@ -65,8 +65,8 @@ export default function EditPersonScreen() {
       console.log('EditPersonScreen: Saving person:', person);
       const result = await updatePerson(person);
       if (result.success) {
-        console.log('EditPersonScreen: Person saved successfully, navigating back');
-        router.back();
+        console.log('EditPersonScreen: Person saved successfully, navigating to people page');
+        router.replace('/people');
       } else {
         Alert.alert('Error', 'Failed to update person. Please try again.');
       }
