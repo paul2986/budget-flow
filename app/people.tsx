@@ -291,18 +291,42 @@ export default function PeopleScreen() {
         {data.people.length > 0 && !showAddPerson && (
           <View style={[commonStyles.card, { backgroundColor: currentColors.primary + '10', borderColor: currentColors.border }]}>
             <View style={[commonStyles.row, { alignItems: 'center' }]}>
-              <View style={commonStyles.flex1}>
-                <Text style={[commonStyles.text, { fontWeight: '600', color: currentColors.text }]}>
+              <View style={[commonStyles.flex1, { marginRight: 12 }]}>
+                <Text style={[
+                  commonStyles.text, 
+                  { 
+                    fontWeight: '600', 
+                    color: currentColors.text,
+                    flexWrap: 'wrap',
+                    textAlign: 'left'
+                  }
+                ]}>
                   Add Another Person
                 </Text>
-                <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary }]}>
+                <Text style={[
+                  commonStyles.textSecondary, 
+                  { 
+                    color: currentColors.textSecondary,
+                    flexWrap: 'wrap',
+                    textAlign: 'left',
+                    marginTop: 4
+                  }
+                ]}>
                   Track expenses for family members or roommates
                 </Text>
               </View>
               <Button
                 text="Add Person"
                 onPress={() => setShowAddPerson(true)}
-                style={[buttonStyles.primary, { backgroundColor: currentColors.primary, marginTop: 0 }]}
+                style={[
+                  buttonStyles.primary, 
+                  { 
+                    backgroundColor: currentColors.primary, 
+                    marginTop: 0,
+                    minWidth: 100,
+                    flexShrink: 0
+                  }
+                ]}
                 disabled={saving}
               />
             </View>
