@@ -20,13 +20,26 @@ export default function ExpensesScreen() {
   const [personFilter, setPersonFilter] = useState<string | null>(null);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('date');
+  const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
 
-  // Refresh data when screen comes into focus (e.g., after adding an expense)
+  // Refresh data when screen comes into focus, but only if enough time has passed
   useFocusEffect(
     useCallback(() => {
-      console.log('ExpensesScreen: Screen focused, refreshing data...');
-      refreshData();
-    }, [refreshData])
+      const now = Date.now();
+      const timeSinceLastRefresh = now - lastRefreshTime;
+      
+      console.log('ExpensesScreen: Screen focused, time since last refresh:', timeSinceLastRefresh);
+      
+      // Only refresh if more than 2 seconds have passed since last refresh
+      // This prevents excessive refreshing when navigating between screens
+      if (timeSinceLastRefresh > 2000) {
+        console.log('ExpensesScreen: Refreshing data due to focus...');
+        refreshData();
+        setLastRefreshTime(now);
+      } else {
+        console.log('ExpensesScreen: Skipping refresh - too soon since last refresh');
+      }
+    }, [refreshData, lastRefreshTime])
   );
 
   const handleRemoveExpense = useCallback(async (expenseId: string, description: string) => {
@@ -42,13 +55,20 @@ export default function ExpensesScreen() {
       console.log('ExpensesScreen: Starting expense removal process');
       setDeletingExpenseId(expenseId);
       
+      // Log current state before deletion
+      console.log('ExpensesScreen: Current expenses before deletion:', {
+        totalExpenses: data.expenses.length,
+        expenseIds: data.expenses.map(e => e.id),
+        targetExpenseId: expenseId
+      });
+      
       const result = await removeExpense(expenseId);
       console.log('ExpensesScreen: Expense removal result:', result);
       
       if (result.success) {
         console.log('ExpensesScreen: Expense removed successfully');
-        // Refresh data to ensure UI is updated
-        await refreshData();
+        // Don't call refreshData here - the useBudgetData hook should handle state updates
+        // refreshData() could potentially reload stale data
       } else {
         console.error('ExpensesScreen: Expense removal failed:', result.error);
         Alert.alert('Error', 'Failed to remove expense. Please try again.');
@@ -59,7 +79,7 @@ export default function ExpensesScreen() {
     } finally {
       setDeletingExpenseId(null);
     }
-  }, [deletingExpenseId, saving, removeExpense, refreshData]);
+  }, [deletingExpenseId, saving, removeExpense, data.expenses]);
 
   const handleDeletePress = useCallback((expenseId: string, description: string) => {
     console.log('ExpensesScreen: Delete button pressed for expense:', expenseId, description);
@@ -174,7 +194,10 @@ export default function ExpensesScreen() {
   // Filter expenses
   let filteredExpenses = data.expenses;
   
-  console.log('ExpensesScreen: Total expenses:', data.expenses.length);
+  console.log('ExpensesScreen: Current expenses in data:', {
+    totalExpenses: data.expenses.length,
+    expenseIds: data.expenses.map(e => e.id)
+  });
   
   if (filter === 'household') {
     filteredExpenses = filteredExpenses.filter(e => e.category === 'household');
@@ -186,7 +209,10 @@ export default function ExpensesScreen() {
     }
   }
 
-  console.log('ExpensesScreen: Filtered expenses:', filteredExpenses.length);
+  console.log('ExpensesScreen: Filtered expenses:', {
+    filteredCount: filteredExpenses.length,
+    filteredIds: filteredExpenses.map(e => e.id)
+  });
 
   // Sort expenses based on selected sort option
   filteredExpenses = filteredExpenses.sort((a, b) => {

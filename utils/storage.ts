@@ -75,7 +75,8 @@ const validateBudgetData = (data: any): BudgetData => {
   console.log('storage: Data validation complete:', {
     peopleCount: validatedData.people.length,
     expensesCount: validatedData.expenses.length,
-    distributionMethod: validatedData.householdSettings.distributionMethod
+    distributionMethod: validatedData.householdSettings.distributionMethod,
+    expenseIds: validatedData.expenses.map(e => e.id)
   });
   
   return validatedData;
@@ -94,7 +95,8 @@ export const loadBudgetData = async (): Promise<BudgetData> => {
         console.log('storage: Successfully loaded and validated budget data:', {
           peopleCount: validatedData.people?.length || 0,
           expensesCount: validatedData.expenses?.length || 0,
-          distributionMethod: validatedData.householdSettings?.distributionMethod
+          distributionMethod: validatedData.householdSettings?.distributionMethod,
+          expenseIds: validatedData.expenses?.map(e => e.id) || []
         });
         
         return validatedData;
@@ -114,13 +116,41 @@ export const loadBudgetData = async (): Promise<BudgetData> => {
   }
 };
 
+// Add a mutex-like mechanism to prevent concurrent saves
+let saveInProgress = false;
+let pendingSaveData: BudgetData | null = null;
+
 export const saveBudgetData = async (data: BudgetData): Promise<{ success: boolean; error?: Error }> => {
   try {
-    console.log('storage: Saving budget data to AsyncStorage:', {
+    console.log('storage: Save request received:', {
       peopleCount: data.people?.length || 0,
       expensesCount: data.expenses?.length || 0,
-      distributionMethod: data.householdSettings?.distributionMethod
+      distributionMethod: data.householdSettings?.distributionMethod,
+      expenseIds: data.expenses?.map(e => e.id) || [],
+      saveInProgress
     });
+    
+    // If a save is already in progress, queue this data
+    if (saveInProgress) {
+      console.log('storage: Save already in progress, queuing data...');
+      pendingSaveData = data;
+      
+      // Wait for the current save to complete
+      while (saveInProgress) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      
+      // If we have pending data and no save is in progress, save it
+      if (pendingSaveData && !saveInProgress) {
+        const dataToSave = pendingSaveData;
+        pendingSaveData = null;
+        return await saveBudgetData(dataToSave);
+      }
+      
+      return { success: true };
+    }
+    
+    saveInProgress = true;
     
     // Validate data before saving
     const validatedData = validateBudgetData(data);
@@ -136,9 +166,17 @@ export const saveBudgetData = async (data: BudgetData): Promise<{ success: boole
     if (data.expenses?.length && validatedData.expenses.length !== data.expenses.length) {
       console.warn('storage: Expenses count mismatch after validation!', {
         original: data.expenses.length,
-        validated: validatedData.expenses.length
+        validated: validatedData.expenses.length,
+        originalIds: data.expenses.map(e => e.id),
+        validatedIds: validatedData.expenses.map(e => e.id)
       });
     }
+    
+    console.log('storage: About to save validated data:', {
+      peopleCount: validatedData.people?.length || 0,
+      expensesCount: validatedData.expenses?.length || 0,
+      expenseIds: validatedData.expenses?.map(e => e.id) || []
+    });
     
     const jsonData = JSON.stringify(validatedData);
     await AsyncStorage.setItem(STORAGE_KEYS.BUDGET_DATA, jsonData);
@@ -154,19 +192,35 @@ export const saveBudgetData = async (data: BudgetData): Promise<{ success: boole
         
         console.log('storage: Save verification successful:', {
           peopleCount: revalidatedData.people?.length || 0,
-          expensesCount: revalidatedData.expenses?.length || 0
+          expensesCount: revalidatedData.expenses?.length || 0,
+          expenseIds: revalidatedData.expenses?.map(e => e.id) || []
         });
         
         // Double check that the data matches what we tried to save
         if (revalidatedData.people?.length === validatedData.people?.length && 
             revalidatedData.expenses?.length === validatedData.expenses?.length) {
-          return { success: true };
+          
+          // Also verify that the expense IDs match
+          const originalExpenseIds = validatedData.expenses?.map(e => e.id).sort() || [];
+          const verifiedExpenseIds = revalidatedData.expenses?.map(e => e.id).sort() || [];
+          const expenseIdsMatch = originalExpenseIds.length === verifiedExpenseIds.length && 
+                                  originalExpenseIds.every((id, index) => id === verifiedExpenseIds[index]);
+          
+          if (expenseIdsMatch) {
+            return { success: true };
+          } else {
+            console.error('storage: Save verification failed - expense IDs mismatch', {
+              expected: originalExpenseIds,
+              actual: verifiedExpenseIds
+            });
+            return { success: false, error: new Error('Save verification failed - expense IDs mismatch') };
+          }
         } else {
-          console.error('storage: Save verification failed - data mismatch', {
+          console.error('storage: Save verification failed - data count mismatch', {
             expected: { people: validatedData.people?.length, expenses: validatedData.expenses?.length },
             actual: { people: revalidatedData.people?.length, expenses: revalidatedData.expenses?.length }
           });
-          return { success: false, error: new Error('Save verification failed - data mismatch') };
+          return { success: false, error: new Error('Save verification failed - data count mismatch') };
         }
       } catch (parseError) {
         console.error('storage: Save verification failed - parse error:', parseError);
@@ -179,6 +233,8 @@ export const saveBudgetData = async (data: BudgetData): Promise<{ success: boole
   } catch (error) {
     console.error('storage: Error saving budget data:', error);
     return { success: false, error: error as Error };
+  } finally {
+    saveInProgress = false;
   }
 };
 

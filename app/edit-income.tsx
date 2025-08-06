@@ -19,6 +19,7 @@ export default function EditIncomeScreen() {
   });
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
   
   const { formatCurrency } = useCurrency();
   const { currentColors } = useTheme();
@@ -31,16 +32,27 @@ export default function EditIncomeScreen() {
   // Only refresh data on initial focus, not on subsequent focuses
   useFocusEffect(
     useCallback(() => {
-      console.log('EditIncomeScreen: Screen focused, isInitialLoad:', isInitialLoad);
+      const now = Date.now();
+      const timeSinceLastRefresh = now - lastRefreshTime;
+      
+      console.log('EditIncomeScreen: Screen focused, isInitialLoad:', isInitialLoad, 'timeSinceLastRefresh:', timeSinceLastRefresh);
+      
       if (isInitialLoad) {
         console.log('EditIncomeScreen: Initial load, refreshing data...');
         setIsDataLoaded(false);
         refreshData();
         setIsInitialLoad(false);
+        setLastRefreshTime(now);
+      } else if (timeSinceLastRefresh > 5000) {
+        // Only refresh if more than 5 seconds have passed since last refresh
+        console.log('EditIncomeScreen: Subsequent focus after long time, refreshing data...');
+        setIsDataLoaded(false);
+        refreshData();
+        setLastRefreshTime(now);
       } else {
         console.log('EditIncomeScreen: Subsequent focus, skipping refresh');
       }
-    }, [refreshData, isInitialLoad])
+    }, [refreshData, isInitialLoad, lastRefreshTime])
   );
 
   // Find the income and person when data changes
@@ -49,6 +61,7 @@ export default function EditIncomeScreen() {
       personId,
       incomeId,
       peopleCount: data.people.length,
+      expensesCount: data.expenses.length,
       loading,
       isDataLoaded
     });
@@ -115,6 +128,12 @@ export default function EditIncomeScreen() {
 
     try {
       console.log('EditIncomeScreen: Saving income:', editedIncome);
+      console.log('EditIncomeScreen: Current data state before save:', {
+        peopleCount: data.people.length,
+        expensesCount: data.expenses.length,
+        expenseIds: data.expenses.map(e => e.id)
+      });
+      
       const updates = {
         amount: amount,
         label: editedIncome.label.trim(),
@@ -133,7 +152,7 @@ export default function EditIncomeScreen() {
       console.error('EditIncomeScreen: Error updating income:', error);
       Alert.alert('Error', 'Failed to update income. Please try again.');
     }
-  }, [income, personId, editedIncome, updateIncome]);
+  }, [income, personId, editedIncome, updateIncome, data.people, data.expenses]);
 
   const handleDeleteIncome = useCallback(() => {
     if (!income || !personId) return;
@@ -149,6 +168,12 @@ export default function EditIncomeScreen() {
           onPress: async () => {
             try {
               console.log('EditIncomeScreen: Deleting income:', income.id);
+              console.log('EditIncomeScreen: Current data state before delete:', {
+                peopleCount: data.people.length,
+                expensesCount: data.expenses.length,
+                expenseIds: data.expenses.map(e => e.id)
+              });
+              
               const result = await removeIncome(personId, income.id);
               if (result.success) {
                 console.log('EditIncomeScreen: Income deleted successfully, navigating back');
@@ -165,7 +190,7 @@ export default function EditIncomeScreen() {
         },
       ]
     );
-  }, [income, personId, removeIncome]);
+  }, [income, personId, removeIncome, data.people, data.expenses]);
 
   const FrequencyPicker = ({ value, onChange }: { value: string, onChange: (value: string) => void }) => (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
