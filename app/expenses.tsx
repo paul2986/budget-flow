@@ -26,7 +26,7 @@ export default function ExpensesScreen() {
     }, [refreshData])
   );
 
-  const handleRemoveExpense = useCallback((expenseId: string, description: string) => {
+  const handleRemoveExpense = useCallback(async (expenseId: string, description: string) => {
     console.log('ExpensesScreen: Attempting to remove expense:', expenseId, description);
     
     // Prevent multiple deletion attempts
@@ -35,37 +35,28 @@ export default function ExpensesScreen() {
       return;
     }
 
-    Alert.alert(
-      'Remove Expense',
-      `Are you sure you want to remove "${description}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Remove', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log('ExpensesScreen: Starting expense removal process');
-              setDeletingExpenseId(expenseId);
-              
-              const result = await removeExpense(expenseId);
-              console.log('ExpensesScreen: Expense removal result:', result);
-              
-              if (!result.success) {
-                console.error('ExpensesScreen: Expense removal failed:', result.error);
-                Alert.alert('Error', 'Failed to remove expense. Please try again.');
-              }
-            } catch (error) {
-              console.error('ExpensesScreen: Error removing expense:', error);
-              Alert.alert('Error', 'Failed to remove expense. Please try again.');
-            } finally {
-              setDeletingExpenseId(null);
-            }
-          }
-        },
-      ]
-    );
-  }, [deletingExpenseId, saving, removeExpense]);
+    try {
+      console.log('ExpensesScreen: Starting expense removal process');
+      setDeletingExpenseId(expenseId);
+      
+      const result = await removeExpense(expenseId);
+      console.log('ExpensesScreen: Expense removal result:', result);
+      
+      if (result.success) {
+        console.log('ExpensesScreen: Expense removed successfully');
+        // Refresh data to ensure UI is updated
+        await refreshData();
+      } else {
+        console.error('ExpensesScreen: Expense removal failed:', result.error);
+        Alert.alert('Error', 'Failed to remove expense. Please try again.');
+      }
+    } catch (error) {
+      console.error('ExpensesScreen: Error removing expense:', error);
+      Alert.alert('Error', 'Failed to remove expense. Please try again.');
+    } finally {
+      setDeletingExpenseId(null);
+    }
+  }, [deletingExpenseId, saving, removeExpense, refreshData]);
 
   const handleEditExpense = useCallback((expense: any) => {
     console.log('ExpensesScreen: Navigating to edit expense:', expense);
@@ -130,7 +121,28 @@ export default function ExpensesScreen() {
         marginLeft: 8,
       }}>
         <TouchableOpacity
-          onPress={() => handleRemoveExpense(expenseId, description)}
+          onPress={() => {
+            console.log('ExpensesScreen: Delete button pressed for expense:', expenseId, description);
+            Alert.alert(
+              'Remove Expense',
+              `Are you sure you want to remove "${description}"?`,
+              [
+                { 
+                  text: 'Cancel', 
+                  style: 'cancel',
+                  onPress: () => console.log('ExpensesScreen: Delete cancelled')
+                },
+                { 
+                  text: 'Remove', 
+                  style: 'destructive',
+                  onPress: () => {
+                    console.log('ExpensesScreen: Delete confirmed');
+                    handleRemoveExpense(expenseId, description);
+                  }
+                },
+              ]
+            );
+          }}
           style={{
             justifyContent: 'center',
             alignItems: 'center',
