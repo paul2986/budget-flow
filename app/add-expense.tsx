@@ -100,8 +100,11 @@ export default function AddExpenseScreen() {
 
   const handleDeleteExpense = useCallback(async () => {
     if (!isEditMode || !expenseToEdit) {
+      console.log('AddExpenseScreen: Cannot delete - not in edit mode or no expense to edit');
       return;
     }
+
+    console.log('AddExpenseScreen: Delete expense requested for:', expenseToEdit.id, expenseToEdit.description);
 
     Alert.alert(
       'Delete Expense',
@@ -116,7 +119,7 @@ export default function AddExpenseScreen() {
           text: 'Delete', 
           style: 'destructive',
           onPress: async () => {
-            console.log('AddExpenseScreen: Delete confirmed');
+            console.log('AddExpenseScreen: Delete confirmed for expense:', expenseToEdit.id);
             try {
               setDeleting(true);
               const result = await removeExpense(expenseToEdit.id);
@@ -305,7 +308,10 @@ export default function AddExpenseScreen() {
         {/* Delete button in header for edit mode */}
         {isEditMode ? (
           <TouchableOpacity 
-            onPress={handleDeleteExpense}
+            onPress={() => {
+              console.log('AddExpenseScreen: Header delete button pressed');
+              handleDeleteExpense();
+            }}
             disabled={saving || deleting}
             style={{
               backgroundColor: currentColors.error + '20',
@@ -399,7 +405,10 @@ export default function AddExpenseScreen() {
             <View style={{ marginTop: 16 }}>
               <Button
                 text={deleting ? 'Deleting...' : 'Delete Expense'}
-                onPress={handleDeleteExpense}
+                onPress={() => {
+                  console.log('AddExpenseScreen: Bottom delete button pressed');
+                  handleDeleteExpense();
+                }}
                 disabled={saving || deleting}
                 style={[
                   buttonStyles.primary,
@@ -410,7 +419,7 @@ export default function AddExpenseScreen() {
                   (saving || deleting) && { opacity: 0.7 }
                 ]}
               />
-            </View>
+            </div>
           )}
         </View>
       </ScrollView>

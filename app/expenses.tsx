@@ -279,102 +279,113 @@ export default function ExpensesScreen() {
                   }
                 ]}
               >
-                {/* Top row with title and delete button - separate from edit functionality */}
-                <View style={[commonStyles.row, { marginBottom: 12, alignItems: 'flex-start' }]}>
-                  <View style={commonStyles.flex1}>
-                    <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.text, fontSize: 18 }]}>
-                      {expense.description}
-                    </Text>
-                    <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, marginTop: 4 }]}>
-                      {expense.category === 'personal' && person ? `${person.name} • ` : ''}
-                      {expense.frequency} • {new Date(expense.date).toLocaleDateString()}
-                    </Text>
-                  </View>
-                  
-                  {/* Delete button - completely separate from other touch areas */}
-                  <View style={{ 
-                    position: 'absolute',
-                    top: 0,
-                    right: 0,
-                    zIndex: 10,
-                  }}>
-                    <TouchableOpacity
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        console.log('ExpensesScreen: Bin icon pressed for expense:', expense.id, expense.description);
-                        handleDeletePress(expense.id, expense.description);
-                      }}
-                      disabled={saving || isDeleting}
-                      style={{
-                        padding: 12,
-                        borderRadius: 24,
-                        backgroundColor: currentColors.error + '20',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        minWidth: 44,
-                        minHeight: 44,
-                      }}
-                      hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                    >
-                      {isDeleting ? (
-                        <ActivityIndicator size="small" color={currentColors.error} />
-                      ) : (
-                        <Icon name="trash-outline" size={22} style={{ color: currentColors.error }} />
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                
-                {/* Amount row */}
-                <View style={[commonStyles.row, { marginBottom: 12, paddingRight: 60 }]}>
-                  <View style={{ alignItems: 'flex-end', flex: 1 }}>
-                    <Text style={[
-                      commonStyles.text, 
-                      { 
-                        fontWeight: '800', 
-                        color: expense.category === 'household' ? currentColors.household : currentColors.personal,
-                        fontSize: 18,
-                      }
-                    ]}>
-                      {formatCurrency(expense.amount)}
-                    </Text>
-                    <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, marginTop: 2 }]}>
-                      {formatCurrency(monthlyAmount)}/mo
-                    </Text>
-                  </View>
-                </View>
-                
-                {/* Bottom row with category badge and edit button - separate touch area */}
+                {/* Main content area - clickable for editing */}
                 <TouchableOpacity
                   onPress={() => handleEditExpense(expense)}
                   activeOpacity={0.7}
                   disabled={saving || isDeleting}
-                  style={[commonStyles.row, { alignItems: 'center', paddingRight: 60 }]}
+                  style={{ flex: 1 }}
                 >
-                  <View style={[
-                    commonStyles.badge,
-                    { 
-                      backgroundColor: expense.category === 'household' ? currentColors.household : currentColors.personal,
-                      marginRight: 12,
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderRadius: 16,
-                    }
-                  ]}>
-                    <Text style={[
-                      commonStyles.badgeText,
-                      { color: '#FFFFFF', fontSize: 12, fontWeight: '700' }
-                    ]}>
-                      {expense.category.toUpperCase()}
-                    </Text>
+                  {/* Top row with title and metadata */}
+                  <View style={[commonStyles.row, { marginBottom: 12, alignItems: 'flex-start', paddingRight: 60 }]}>
+                    <View style={commonStyles.flex1}>
+                      <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.text, fontSize: 18 }]}>
+                        {expense.description}
+                      </Text>
+                      <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, marginTop: 4 }]}>
+                        {expense.category === 'personal' && person ? `${person.name} • ` : ''}
+                        {expense.frequency} • {new Date(expense.date).toLocaleDateString()}
+                      </Text>
+                    </View>
                   </View>
                   
-                  <Text style={[commonStyles.textSecondary, { flex: 1, color: currentColors.textSecondary }]}>
-                    {isDeleting ? 'Deleting...' : 'Tap to edit'}
-                  </Text>
+                  {/* Amount row */}
+                  <View style={[commonStyles.row, { marginBottom: 12, paddingRight: 60 }]}>
+                    <View style={{ alignItems: 'flex-end', flex: 1 }}>
+                      <Text style={[
+                        commonStyles.text, 
+                        { 
+                          fontWeight: '800', 
+                          color: expense.category === 'household' ? currentColors.household : currentColors.personal,
+                          fontSize: 18,
+                        }
+                      ]}>
+                        {formatCurrency(expense.amount)}
+                      </Text>
+                      <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, marginTop: 2 }]}>
+                        {formatCurrency(monthlyAmount)}/mo
+                      </Text>
+                    </View>
+                  </View>
                   
-                  <Icon name="chevron-forward-outline" size={16} style={{ color: currentColors.textSecondary }} />
+                  {/* Bottom row with category badge and edit indicator */}
+                  <View style={[commonStyles.row, { alignItems: 'center', paddingRight: 60 }]}>
+                    <View style={[
+                      commonStyles.badge,
+                      { 
+                        backgroundColor: expense.category === 'household' ? currentColors.household : currentColors.personal,
+                        marginRight: 12,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 16,
+                      }
+                    ]}>
+                      <Text style={[
+                        commonStyles.badgeText,
+                        { color: '#FFFFFF', fontSize: 12, fontWeight: '700' }
+                      ]}>
+                        {expense.category.toUpperCase()}
+                      </Text>
+                    </View>
+                    
+                    <Text style={[commonStyles.textSecondary, { flex: 1, color: currentColors.textSecondary }]}>
+                      {isDeleting ? 'Deleting...' : 'Tap to edit'}
+                    </Text>
+                    
+                    <Icon name="chevron-forward-outline" size={16} style={{ color: currentColors.textSecondary }} />
+                  </View>
                 </TouchableOpacity>
+
+                {/* Delete button - positioned absolutely in top right, outside the edit touch area */}
+                <View style={{ 
+                  position: 'absolute',
+                  top: 16,
+                  right: 16,
+                  zIndex: 100,
+                }}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      console.log('ExpensesScreen: Bin icon pressed for expense:', expense.id, expense.description);
+                      handleDeletePress(expense.id, expense.description);
+                    }}
+                    disabled={saving || isDeleting}
+                    style={{
+                      padding: 8,
+                      borderRadius: 20,
+                      backgroundColor: currentColors.error + '20',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: 40,
+                      minHeight: 40,
+                      // Add shadow for better visibility
+                      shadowColor: '#000',
+                      shadowOffset: {
+                        width: 0,
+                        height: 2,
+                      },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 3.84,
+                      elevation: 5,
+                    }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    {isDeleting ? (
+                      <ActivityIndicator size="small" color={currentColors.error} />
+                    ) : (
+                      <Icon name="trash-outline" size={20} style={{ color: currentColors.error }} />
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
             );
           })
