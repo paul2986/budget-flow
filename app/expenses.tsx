@@ -279,6 +279,7 @@ export default function ExpensesScreen() {
                   }
                 ]}
               >
+                {/* Main content area - clickable for editing */}
                 <TouchableOpacity
                   onPress={() => handleEditExpense(expense)}
                   activeOpacity={0.7}
@@ -295,41 +296,20 @@ export default function ExpensesScreen() {
                         {expense.frequency} • {new Date(expense.date).toLocaleDateString()}
                       </Text>
                     </View>
-                    <View style={{ alignItems: 'flex-end', flexDirection: 'row', alignItems: 'center' }}>
-                      <View style={{ alignItems: 'flex-end', marginRight: 12 }}>
-                        <Text style={[
-                          commonStyles.text, 
-                          { 
-                            fontWeight: '800', 
-                            color: expense.category === 'household' ? currentColors.household : currentColors.personal,
-                            fontSize: 18,
-                          }
-                        ]}>
-                          {formatCurrency(expense.amount)}
-                        </Text>
-                        <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, marginTop: 2 }]}>
-                          {formatCurrency(monthlyAmount)}/mo
-                        </Text>
-                      </View>
-                      
-                      {/* Delete button */}
-                      <TouchableOpacity
-                        onPress={() => handleDeletePress(expense.id, expense.description)}
-                        disabled={saving || isDeleting}
-                        style={{
-                          padding: 8,
-                          borderRadius: 20,
-                          backgroundColor: currentColors.error + '20',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        {isDeleting ? (
-                          <ActivityIndicator size="small" color={currentColors.error} />
-                        ) : (
-                          <Icon name="trash-outline" size={20} style={{ color: currentColors.error }} />
-                        )}
-                      </TouchableOpacity>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={[
+                        commonStyles.text, 
+                        { 
+                          fontWeight: '800', 
+                          color: expense.category === 'household' ? currentColors.household : currentColors.personal,
+                          fontSize: 18,
+                        }
+                      ]}>
+                        {formatCurrency(expense.amount)}
+                      </Text>
+                      <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, marginTop: 2 }]}>
+                        {formatCurrency(monthlyAmount)}/mo
+                      </Text>
                     </View>
                   </View>
                   
@@ -359,6 +339,38 @@ export default function ExpensesScreen() {
                     <Icon name="chevron-forward-outline" size={16} style={{ color: currentColors.textSecondary }} />
                   </View>
                 </TouchableOpacity>
+
+                {/* Delete button - positioned absolutely to avoid touch conflicts */}
+                <View style={{
+                  position: 'absolute',
+                  top: 16,
+                  right: 16,
+                  zIndex: 10,
+                }}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      console.log('ExpensesScreen: Bin icon pressed for expense:', expense.id, expense.description);
+                      handleDeletePress(expense.id, expense.description);
+                    }}
+                    disabled={saving || isDeleting}
+                    style={{
+                      padding: 8,
+                      borderRadius: 20,
+                      backgroundColor: currentColors.error + '20',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: 36,
+                      minHeight: 36,
+                    }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    {isDeleting ? (
+                      <ActivityIndicator size="small" color={currentColors.error} />
+                    ) : (
+                      <Icon name="trash-outline" size={20} style={{ color: currentColors.error }} />
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
             );
           })
