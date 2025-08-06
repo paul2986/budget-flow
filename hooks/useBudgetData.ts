@@ -14,16 +14,6 @@ export const useBudgetData = () => {
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isLoadingRef = useRef(false);
 
-  useEffect(() => {
-    loadData();
-    return () => {
-      // Cleanup timeout on unmount
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-      }
-    };
-  }, []);
-
   const loadData = useCallback(async () => {
     if (isLoadingRef.current) {
       console.log('useBudgetData: Load already in progress, skipping...');
@@ -43,6 +33,16 @@ export const useBudgetData = () => {
       isLoadingRef.current = false;
     }
   }, []);
+
+  useEffect(() => {
+    loadData();
+    return () => {
+      // Cleanup timeout on unmount
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, [loadData]);
 
   const saveData = useCallback(async (newData: BudgetData) => {
     try {

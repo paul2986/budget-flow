@@ -419,7 +419,7 @@ export default function AddExpenseScreen() {
                   (saving || deleting) && { opacity: 0.7 }
                 ]}
               />
-            </div>
+            </View>
           )}
         </View>
       </ScrollView>

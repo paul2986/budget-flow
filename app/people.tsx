@@ -37,7 +37,7 @@ export default function PeopleScreen() {
   useEffect(() => {
     console.log('PeopleScreen: Component mounted, refreshing data...');
     refreshData();
-  }, []);
+  }, [refreshData]);
 
   // Refresh data when screen becomes focused (e.g., after editing a person)
   useFocusEffect(
@@ -47,7 +47,7 @@ export default function PeopleScreen() {
     }, [refreshData])
   );
 
-  const handleAddPerson = async () => {
+  const handleAddPerson = useCallback(async () => {
     console.log('PeopleScreen: Add person button pressed');
     console.log('PeopleScreen: New person name:', newPersonName);
     
@@ -78,9 +78,9 @@ export default function PeopleScreen() {
       console.error('PeopleScreen: Error adding person:', error);
       Alert.alert('Error', 'Failed to add person. Please try again.');
     }
-  };
+  }, [newPersonName, addPerson]);
 
-  const handleRemovePerson = (person: Person) => {
+  const handleRemovePerson = useCallback((person: Person) => {
     console.log('PeopleScreen: Attempting to remove person:', person);
     
     // Prevent multiple deletion attempts
@@ -121,17 +121,17 @@ export default function PeopleScreen() {
         },
       ]
     );
-  };
+  }, [deletingPersonId, saving, removePerson]);
 
-  const handleEditPerson = (person: Person) => {
+  const handleEditPerson = useCallback((person: Person) => {
     console.log('PeopleScreen: Navigating to edit person:', person);
     router.push({
       pathname: '/edit-person',
       params: { personId: person.id }
     });
-  };
+  }, []);
 
-  const handleAddIncome = async () => {
+  const handleAddIncome = useCallback(async () => {
     console.log('PeopleScreen: Add income button pressed');
     console.log('PeopleScreen: New income data:', newIncome);
     
@@ -171,9 +171,9 @@ export default function PeopleScreen() {
       console.error('PeopleScreen: Error adding income:', error);
       Alert.alert('Error', 'Failed to add income. Please try again.');
     }
-  };
+  }, [selectedPersonId, newIncome, addIncome]);
 
-  const handleRemoveIncome = (personId: string, incomeId: string, incomeLabel: string) => {
+  const handleRemoveIncome = useCallback((personId: string, incomeId: string, incomeLabel: string) => {
     console.log('PeopleScreen: Attempting to remove income:', { personId, incomeId, incomeLabel });
     
     // Prevent multiple deletion attempts
@@ -214,9 +214,9 @@ export default function PeopleScreen() {
         },
       ]
     );
-  };
+  }, [deletingIncomeId, saving, removeIncome]);
 
-  const calculateRemainingIncome = (person: Person) => {
+  const calculateRemainingIncome = useCallback((person: Person) => {
     const totalIncome = calculatePersonIncome(person);
     const personalExpenses = calculatePersonalExpenses(data.expenses, person.id);
     const householdExpenses = calculateHouseholdExpenses(data.expenses);
@@ -228,7 +228,7 @@ export default function PeopleScreen() {
     );
     
     return totalIncome - personalExpenses - householdShare;
-  };
+  }, [data.expenses, data.people, data.householdSettings.distributionMethod]);
 
   const FrequencyPicker = ({ value, onChange }: { value: string, onChange: (value: string) => void }) => (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>

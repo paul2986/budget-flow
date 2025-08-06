@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   calculatePersonIncome, 
   calculateMonthlyAmount, 
@@ -50,15 +50,15 @@ export default function EditPersonScreen() {
         setPerson(null);
       }
     }
-  }, [personId, data.people, data.expenses]); // Include data.expenses to refresh calculations
+  }, [personId, data.people, data.expenses, person]); // Include person in dependencies
 
   // Force refresh data when component mounts
   useEffect(() => {
     console.log('EditPersonScreen: Component mounted, refreshing data...');
     refreshData();
-  }, []);
+  }, [refreshData]);
 
-  const handleSavePerson = async () => {
+  const handleSavePerson = useCallback(async () => {
     if (!person) return;
 
     try {
@@ -74,9 +74,9 @@ export default function EditPersonScreen() {
       console.error('EditPersonScreen: Error updating person:', error);
       Alert.alert('Error', 'Failed to update person. Please try again.');
     }
-  };
+  }, [person, updatePerson]);
 
-  const handleAddIncome = async () => {
+  const handleAddIncome = useCallback(async () => {
     if (!person || !newIncome.amount || !newIncome.label.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -110,9 +110,9 @@ export default function EditPersonScreen() {
       console.error('EditPersonScreen: Error adding income:', error);
       Alert.alert('Error', 'Failed to add income. Please try again.');
     }
-  };
+  }, [person, newIncome, addIncome]);
 
-  const handleRemoveIncome = (incomeId: string, incomeLabel: string) => {
+  const handleRemoveIncome = useCallback((incomeId: string, incomeLabel: string) => {
     if (!person) return;
     
     // Prevent multiple deletion attempts
@@ -150,9 +150,9 @@ export default function EditPersonScreen() {
         },
       ]
     );
-  };
+  }, [person, deletingIncomeId, saving, removeIncome]);
 
-  const calculateRemainingIncome = () => {
+  const calculateRemainingIncome = useCallback(() => {
     if (!person) return 0;
     
     const totalIncome = calculatePersonIncome(person);
@@ -166,7 +166,7 @@ export default function EditPersonScreen() {
     );
     
     return totalIncome - personalExpenses - householdShare;
-  };
+  }, [person, data.expenses, data.people, data.householdSettings.distributionMethod]);
 
   const FrequencyPicker = ({ value, onChange }: { value: string, onChange: (value: string) => void }) => (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
