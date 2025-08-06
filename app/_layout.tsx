@@ -76,7 +76,7 @@ function CustomTabBar() {
 
 export default function RootLayout() {
   const actualInsets = useSafeAreaInsets();
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, currentColors } = useTheme();
 
   useEffect(() => {
     // Set up global error logging
@@ -112,7 +112,12 @@ export default function RootLayout() {
           paddingBottom: 0,
        }]}>
         <StatusBar style={isDarkMode ? "light" : "dark"} />
-        <View style={{ flex: 1, paddingTop: insetsToUse.top }}>
+        {/* Top safe area with header background color */}
+        <View style={{ 
+          height: insetsToUse.top, 
+          backgroundColor: currentColors.backgroundAlt 
+        }} />
+        <View style={{ flex: 1 }}>
           <Tabs
             screenOptions={{
               headerShown: false,
