@@ -6,6 +6,10 @@ const STORAGE_KEYS = {
   BUDGET_DATA: 'budget_data',
 };
 
+// Mutex-like protection for save operations
+let saveInProgress = false;
+const saveQueue: BudgetData[] = [];
+
 const defaultData: BudgetData = {
   people: [],
   expenses: [],
@@ -116,100 +120,147 @@ export const loadBudgetData = async (): Promise<BudgetData> => {
   }
 };
 
-// Atomic save operation with proper error handling
+// Process the save queue
+const processSaveQueue = async (): Promise<void> => {
+  if (saveInProgress || saveQueue.length === 0) {
+    return;
+  }
+
+  saveInProgress = true;
+  console.log('storage: Processing save queue, items:', saveQueue.length);
+
+  try {
+    // Get the most recent data from the queue (discard older saves)
+    const dataToSave = saveQueue[saveQueue.length - 1];
+    saveQueue.length = 0; // Clear the queue
+
+    console.log('storage: Saving queued data:', {
+      peopleCount: dataToSave.people?.length || 0,
+      expensesCount: dataToSave.expenses?.length || 0,
+      expenseIds: dataToSave.expenses?.map(e => e.id) || []
+    });
+
+    await performSave(dataToSave);
+    console.log('storage: Queue processing completed successfully');
+  } catch (error) {
+    console.error('storage: Error processing save queue:', error);
+    throw error;
+  } finally {
+    saveInProgress = false;
+    
+    // Process any new items that were added while we were saving
+    if (saveQueue.length > 0) {
+      setImmediate(() => processSaveQueue());
+    }
+  }
+};
+
+// Perform the actual save operation
+const performSave = async (data: BudgetData): Promise<void> => {
+  // Validate data before saving
+  const validatedData = validateBudgetData(data);
+  
+  // Double-check that we're not losing data during validation
+  if (data.people?.length && validatedData.people.length !== data.people.length) {
+    console.warn('storage: People count mismatch after validation!', {
+      original: data.people.length,
+      validated: validatedData.people.length
+    });
+  }
+  
+  if (data.expenses?.length && validatedData.expenses.length !== data.expenses.length) {
+    console.warn('storage: Expenses count mismatch after validation!', {
+      original: data.expenses.length,
+      validated: validatedData.expenses.length,
+      originalIds: data.expenses.map(e => e.id),
+      validatedIds: validatedData.expenses.map(e => e.id)
+    });
+  }
+  
+  console.log('storage: About to save validated data:', {
+    peopleCount: validatedData.people?.length || 0,
+    expensesCount: validatedData.expenses?.length || 0,
+    expenseIds: validatedData.expenses?.map(e => e.id) || []
+  });
+  
+  // Create a deep copy to ensure immutability
+  const dataToSave = JSON.parse(JSON.stringify(validatedData));
+  const jsonData = JSON.stringify(dataToSave);
+  
+  // Perform the save operation
+  await AsyncStorage.setItem(STORAGE_KEYS.BUDGET_DATA, jsonData);
+  
+  console.log('storage: Budget data saved successfully');
+  
+  // Verify the save by reading it back immediately
+  const verification = await AsyncStorage.getItem(STORAGE_KEYS.BUDGET_DATA);
+  if (verification) {
+    try {
+      const verifiedData = JSON.parse(verification);
+      const revalidatedData = validateBudgetData(verifiedData);
+      
+      console.log('storage: Save verification successful:', {
+        peopleCount: revalidatedData.people?.length || 0,
+        expensesCount: revalidatedData.expenses?.length || 0,
+        expenseIds: revalidatedData.expenses?.map(e => e.id) || []
+      });
+      
+      // Verify that the data matches what we tried to save
+      const originalExpenseIds = validatedData.expenses?.map(e => e.id).sort() || [];
+      const verifiedExpenseIds = revalidatedData.expenses?.map(e => e.id).sort() || [];
+      
+      const dataMatches = 
+        revalidatedData.people?.length === validatedData.people?.length && 
+        revalidatedData.expenses?.length === validatedData.expenses?.length &&
+        originalExpenseIds.length === verifiedExpenseIds.length &&
+        originalExpenseIds.every((id, index) => id === verifiedExpenseIds[index]);
+      
+      if (!dataMatches) {
+        console.error('storage: Save verification failed - data mismatch', {
+          expected: { 
+            people: validatedData.people?.length, 
+            expenses: validatedData.expenses?.length,
+            expenseIds: originalExpenseIds
+          },
+          actual: { 
+            people: revalidatedData.people?.length, 
+            expenses: revalidatedData.expenses?.length,
+            expenseIds: verifiedExpenseIds
+          }
+        });
+        throw new Error('Save verification failed - data mismatch');
+      }
+      
+      console.log('storage: Save verification passed - data integrity confirmed');
+    } catch (parseError) {
+      console.error('storage: Save verification failed - parse error:', parseError);
+      throw new Error('Save verification failed - parse error');
+    }
+  } else {
+    console.error('storage: Save verification failed - no data found after save');
+    throw new Error('Save verification failed - no data found');
+  }
+};
+
+// Enhanced save function with mutex-like protection
 export const saveBudgetData = async (data: BudgetData): Promise<{ success: boolean; error?: Error }> => {
   try {
     console.log('storage: Save request received:', {
       peopleCount: data.people?.length || 0,
       expensesCount: data.expenses?.length || 0,
       distributionMethod: data.householdSettings?.distributionMethod,
-      expenseIds: data.expenses?.map(e => e.id) || []
+      expenseIds: data.expenses?.map(e => e.id) || [],
+      saveInProgress,
+      queueLength: saveQueue.length
     });
     
-    // Validate data before saving
-    const validatedData = validateBudgetData(data);
+    // Add to queue
+    saveQueue.push(data);
     
-    // Double-check that we're not losing data during validation
-    if (data.people?.length && validatedData.people.length !== data.people.length) {
-      console.warn('storage: People count mismatch after validation!', {
-        original: data.people.length,
-        validated: validatedData.people.length
-      });
-    }
+    // Process the queue
+    await processSaveQueue();
     
-    if (data.expenses?.length && validatedData.expenses.length !== data.expenses.length) {
-      console.warn('storage: Expenses count mismatch after validation!', {
-        original: data.expenses.length,
-        validated: validatedData.expenses.length,
-        originalIds: data.expenses.map(e => e.id),
-        validatedIds: validatedData.expenses.map(e => e.id)
-      });
-    }
-    
-    console.log('storage: About to save validated data:', {
-      peopleCount: validatedData.people?.length || 0,
-      expensesCount: validatedData.expenses?.length || 0,
-      expenseIds: validatedData.expenses?.map(e => e.id) || []
-    });
-    
-    // Create a deep copy to ensure immutability
-    const dataToSave = JSON.parse(JSON.stringify(validatedData));
-    const jsonData = JSON.stringify(dataToSave);
-    
-    // Perform the save operation
-    await AsyncStorage.setItem(STORAGE_KEYS.BUDGET_DATA, jsonData);
-    
-    console.log('storage: Budget data saved successfully');
-    
-    // Verify the save by reading it back immediately
-    const verification = await AsyncStorage.getItem(STORAGE_KEYS.BUDGET_DATA);
-    if (verification) {
-      try {
-        const verifiedData = JSON.parse(verification);
-        const revalidatedData = validateBudgetData(verifiedData);
-        
-        console.log('storage: Save verification successful:', {
-          peopleCount: revalidatedData.people?.length || 0,
-          expensesCount: revalidatedData.expenses?.length || 0,
-          expenseIds: revalidatedData.expenses?.map(e => e.id) || []
-        });
-        
-        // Verify that the data matches what we tried to save
-        const originalExpenseIds = validatedData.expenses?.map(e => e.id).sort() || [];
-        const verifiedExpenseIds = revalidatedData.expenses?.map(e => e.id).sort() || [];
-        
-        const dataMatches = 
-          revalidatedData.people?.length === validatedData.people?.length && 
-          revalidatedData.expenses?.length === validatedData.expenses?.length &&
-          originalExpenseIds.length === verifiedExpenseIds.length &&
-          originalExpenseIds.every((id, index) => id === verifiedExpenseIds[index]);
-        
-        if (dataMatches) {
-          console.log('storage: Save verification passed - data integrity confirmed');
-          return { success: true };
-        } else {
-          console.error('storage: Save verification failed - data mismatch', {
-            expected: { 
-              people: validatedData.people?.length, 
-              expenses: validatedData.expenses?.length,
-              expenseIds: originalExpenseIds
-            },
-            actual: { 
-              people: revalidatedData.people?.length, 
-              expenses: revalidatedData.expenses?.length,
-              expenseIds: verifiedExpenseIds
-            }
-          });
-          return { success: false, error: new Error('Save verification failed - data mismatch') };
-        }
-      } catch (parseError) {
-        console.error('storage: Save verification failed - parse error:', parseError);
-        return { success: false, error: new Error('Save verification failed - parse error') };
-      }
-    } else {
-      console.error('storage: Save verification failed - no data found after save');
-      return { success: false, error: new Error('Save verification failed - no data found') };
-    }
+    return { success: true };
   } catch (error) {
     console.error('storage: Error saving budget data:', error);
     return { success: false, error: error as Error };

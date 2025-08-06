@@ -13,7 +13,7 @@ import StandardHeader from '../components/StandardHeader';
 type SortOption = 'date' | 'highest' | 'lowest';
 
 export default function ExpensesScreen() {
-  const { data, removeExpense, saving, refreshData } = useBudgetData();
+  const { data, removeExpense, saving } = useBudgetData();
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
   const { formatCurrency } = useCurrency();
@@ -22,18 +22,14 @@ export default function ExpensesScreen() {
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('date');
 
-  // Refresh data when screen comes into focus to ensure we have the latest expenses
+  // Remove the refresh on focus - let the useBudgetData hook handle data consistency
   useFocusEffect(
     useCallback(() => {
-      console.log('ExpensesScreen: Screen focused, refreshing data to ensure latest expenses are shown');
-      console.log('ExpensesScreen: Current expenses before refresh:', {
+      console.log('ExpensesScreen: Screen focused, current expenses:', {
         totalExpenses: data.expenses.length,
         expenseIds: data.expenses.map(e => e.id)
       });
-      
-      // Refresh data to ensure we have the latest state
-      refreshData();
-    }, [refreshData])
+    }, [data.expenses])
   );
 
   const handleRemoveExpense = useCallback(async (expenseId: string, description: string) => {
@@ -56,16 +52,9 @@ export default function ExpensesScreen() {
         targetExpenseId: expenseId
       });
       
-      const result = await removeExpense(expenseId);
-      console.log('ExpensesScreen: Expense removal result:', result);
-      
-      if (result.success) {
-        console.log('ExpensesScreen: Expense removed successfully');
-        // The useBudgetData hook will handle state updates automatically
-      } else {
-        console.error('ExpensesScreen: Expense removal failed:', result.error);
-        Alert.alert('Error', 'Failed to remove expense. Please try again.');
-      }
+      await removeExpense(expenseId);
+      console.log('ExpensesScreen: Expense removed successfully');
+      // The useBudgetData hook will handle state updates automatically
     } catch (error) {
       console.error('ExpensesScreen: Error removing expense:', error);
       Alert.alert('Error', 'Failed to remove expense. Please try again.');

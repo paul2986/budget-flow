@@ -12,27 +12,40 @@ export const useBudgetData = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
-  // Use a ref to store the most current data state to prevent stale closures
-  const currentDataRef = useRef<BudgetData>(data);
+  // Save operation queue to prevent concurrent saves
+  const saveQueue = useRef<(() => Promise<void>)[]>([]);
+  const isQueueRunning = useRef(false);
   const isLoadingRef = useRef(false);
-  const saveQueueRef = useRef<BudgetData | null>(null);
-  const saveInProgressRef = useRef(false);
   const lastRefreshTimeRef = useRef<number>(0);
 
-  // Update the ref whenever data changes
-  useEffect(() => {
-    currentDataRef.current = data;
-    console.log('useBudgetData: Data ref updated:', {
+  // Function to get the most current data - always use React state
+  const getCurrentData = useCallback((): BudgetData => {
+    console.log('useBudgetData: getCurrentData called, returning current state:', {
       peopleCount: data.people.length,
       expensesCount: data.expenses.length,
       expenseIds: data.expenses.map(e => e.id)
     });
+    return data;
   }, [data]);
 
-  // Function to get the most current data
-  const getCurrentData = useCallback((): BudgetData => {
-    return currentDataRef.current;
-  }, []);
+  // Helper function to create deep copy of data for immutability
+  const createDataCopy = useCallback((sourceData?: BudgetData): BudgetData => {
+    const dataToUse = sourceData || getCurrentData();
+    const copy = {
+      people: dataToUse.people.map(person => ({
+        ...person,
+        income: [...person.income.map(income => ({ ...income }))]
+      })),
+      expenses: [...dataToUse.expenses.map(expense => ({ ...expense }))],
+      householdSettings: { ...dataToUse.householdSettings }
+    };
+    console.log('useBudgetData: Created data copy:', {
+      peopleCount: copy.people.length,
+      expensesCount: copy.expenses.length,
+      expenseIds: copy.expenses.map(e => e.id)
+    });
+    return copy;
+  }, [getCurrentData]);
 
   const loadData = useCallback(async () => {
     if (isLoadingRef.current) {
@@ -53,7 +66,6 @@ export const useBudgetData = () => {
       });
       
       setData(budgetData);
-      currentDataRef.current = budgetData;
       lastRefreshTimeRef.current = Date.now();
     } catch (error) {
       console.error('useBudgetData: Error loading budget data:', error);
@@ -67,59 +79,58 @@ export const useBudgetData = () => {
     loadData();
   }, [loadData]);
 
-  // Centralized save function with queuing to prevent race conditions
+  // Queue save operations to prevent race conditions
+  const queueSave = useCallback((saveFn: () => Promise<void>) => {
+    console.log('useBudgetData: Queueing save operation');
+    saveQueue.current.push(saveFn);
+    if (!isQueueRunning.current) {
+      runQueue();
+    }
+  }, []);
+
+  const runQueue = useCallback(async () => {
+    if (isQueueRunning.current) {
+      console.log('useBudgetData: Queue already running, skipping');
+      return;
+    }
+    
+    isQueueRunning.current = true;
+    console.log('useBudgetData: Starting queue processing');
+    
+    while (saveQueue.current.length > 0) {
+      const saveFn = saveQueue.current.shift();
+      if (saveFn) {
+        setSaving(true);
+        try {
+          await saveFn();
+          console.log('useBudgetData: Queue operation completed successfully');
+        } catch (error) {
+          console.error('useBudgetData: Error during queued save operation:', error);
+        } finally {
+          setSaving(false);
+        }
+      }
+    }
+    
+    isQueueRunning.current = false;
+    console.log('useBudgetData: Queue processing completed');
+  }, []);
+
+  // Atomic save operation
   const saveData = useCallback(async (newData: BudgetData): Promise<{ success: boolean; error?: Error }> => {
     try {
-      console.log('useBudgetData: Save request received:', {
+      console.log('useBudgetData: Atomic save operation started:', {
         peopleCount: newData.people?.length || 0,
         expensesCount: newData.expenses?.length || 0,
         expenseIds: newData.expenses?.map(e => e.id) || [],
-        distributionMethod: newData.householdSettings?.distributionMethod,
-        saveInProgress: saveInProgressRef.current
-      });
-
-      // If a save is already in progress, queue this data
-      if (saveInProgressRef.current) {
-        console.log('useBudgetData: Save in progress, queuing data...');
-        saveQueueRef.current = newData;
-        
-        // Wait for current save to complete
-        while (saveInProgressRef.current) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
-        
-        // If we have queued data, save it
-        if (saveQueueRef.current) {
-          const queuedData = saveQueueRef.current;
-          saveQueueRef.current = null;
-          return await saveData(queuedData);
-        }
-        
-        return { success: true };
-      }
-
-      saveInProgressRef.current = true;
-      setSaving(true);
-      
-      // Validate data integrity before saving
-      const validatedData = {
-        people: Array.isArray(newData.people) ? newData.people : [],
-        expenses: Array.isArray(newData.expenses) ? newData.expenses : [],
-        householdSettings: newData.householdSettings || { distributionMethod: 'even' }
-      };
-      
-      console.log('useBudgetData: Saving validated data:', {
-        peopleCount: validatedData.people.length,
-        expensesCount: validatedData.expenses.length,
-        expenseIds: validatedData.expenses.map(e => e.id)
+        distributionMethod: newData.householdSettings?.distributionMethod
       });
       
-      const result = await saveBudgetData(validatedData);
+      const result = await saveBudgetData(newData);
       
       if (result.success) {
-        // Update both state and ref immediately after successful save
-        setData(validatedData);
-        currentDataRef.current = validatedData;
+        // Update state immediately after successful save
+        setData(newData);
         lastRefreshTimeRef.current = Date.now();
         console.log('useBudgetData: Data saved and state updated successfully');
         return { success: true };
@@ -128,55 +139,32 @@ export const useBudgetData = () => {
         return { success: false, error: result.error };
       }
     } catch (error) {
-      console.error('useBudgetData: Error saving budget data:', error);
+      console.error('useBudgetData: Error in atomic save operation:', error);
       return { success: false, error: error as Error };
-    } finally {
-      setSaving(false);
-      saveInProgressRef.current = false;
     }
-  }, []);
-
-  // Helper function to create deep copy of data
-  const createDataCopy = useCallback((sourceData: BudgetData): BudgetData => {
-    return {
-      people: sourceData.people.map(person => ({
-        ...person,
-        income: [...person.income]
-      })),
-      expenses: [...sourceData.expenses],
-      householdSettings: { ...sourceData.householdSettings }
-    };
   }, []);
 
   const addPerson = useCallback(async (person: Person) => {
     console.log('useBudgetData: Adding person:', person);
-    try {
-      const currentData = getCurrentData();
-      const newData = createDataCopy(currentData);
+    queueSave(async () => {
+      const newData = createDataCopy();
       newData.people.push(person);
-      
-      const result = await saveData(newData);
-      console.log('useBudgetData: Person added successfully');
-      return result;
-    } catch (error) {
-      console.error('useBudgetData: Error adding person:', error);
-      return { success: false, error: error as Error };
-    }
-  }, [saveData, getCurrentData, createDataCopy]);
+      await saveData(newData);
+    });
+  }, [queueSave, createDataCopy, saveData]);
 
   const removePerson = useCallback(async (personId: string) => {
     console.log('useBudgetData: Removing person:', personId);
-    try {
-      const currentData = getCurrentData();
+    queueSave(async () => {
+      const newData = createDataCopy();
       
       // Verify person exists before attempting removal
-      const personExists = currentData.people.find(p => p.id === personId);
+      const personExists = newData.people.find(p => p.id === personId);
       if (!personExists) {
         console.error('useBudgetData: Person not found:', personId);
-        return { success: false, error: new Error('Person not found') };
+        throw new Error('Person not found');
       }
 
-      const newData = createDataCopy(currentData);
       newData.people = newData.people.filter(p => p.id !== personId);
       newData.expenses = newData.expenses.filter(e => e.personId !== personId);
       
@@ -185,89 +173,63 @@ export const useBudgetData = () => {
         expensesCount: newData.expenses.length
       });
       
-      const result = await saveData(newData);
-      console.log('useBudgetData: Person removed successfully');
-      return result;
-    } catch (error) {
-      console.error('useBudgetData: Error removing person:', error);
-      return { success: false, error: error as Error };
-    }
-  }, [saveData, getCurrentData, createDataCopy]);
+      await saveData(newData);
+    });
+  }, [queueSave, createDataCopy, saveData]);
 
   const updatePerson = useCallback(async (updatedPerson: Person) => {
     console.log('useBudgetData: Updating person:', updatedPerson);
-    try {
-      const currentData = getCurrentData();
-      const newData = createDataCopy(currentData);
+    queueSave(async () => {
+      const newData = createDataCopy();
       newData.people = newData.people.map(p => p.id === updatedPerson.id ? updatedPerson : p);
-      
-      const result = await saveData(newData);
-      console.log('useBudgetData: Person updated successfully');
-      return result;
-    } catch (error) {
-      console.error('useBudgetData: Error updating person:', error);
-      return { success: false, error: error as Error };
-    }
-  }, [saveData, getCurrentData, createDataCopy]);
+      await saveData(newData);
+    });
+  }, [queueSave, createDataCopy, saveData]);
 
   const addIncome = useCallback(async (personId: string, income: Income) => {
     console.log('useBudgetData: Adding income to person:', personId, income);
-    try {
-      const currentData = getCurrentData();
+    queueSave(async () => {
+      const newData = createDataCopy();
       
       // Find the person first to verify they exist
-      const person = currentData.people.find(p => p.id === personId);
-      if (!person) {
+      const personIndex = newData.people.findIndex(p => p.id === personId);
+      if (personIndex === -1) {
         console.error('useBudgetData: Person not found:', personId);
-        return { success: false, error: new Error('Person not found') };
+        throw new Error('Person not found');
       }
       
-      const newData = createDataCopy(currentData);
-      const personIndex = newData.people.findIndex(p => p.id === personId);
-      if (personIndex !== -1) {
-        newData.people[personIndex].income.push(income);
-      }
+      newData.people[personIndex].income.push(income);
       
       console.log('useBudgetData: New data after adding income:', {
         peopleCount: newData.people.length,
         expensesCount: newData.expenses.length,
-        incomeCount: newData.people.find(p => p.id === personId)?.income.length || 0
+        incomeCount: newData.people[personIndex].income.length
       });
       
-      const result = await saveData(newData);
-      console.log('useBudgetData: Income added successfully');
-      return result;
-    } catch (error) {
-      console.error('useBudgetData: Error adding income:', error);
-      return { success: false, error: error as Error };
-    }
-  }, [saveData, getCurrentData, createDataCopy]);
+      await saveData(newData);
+    });
+  }, [queueSave, createDataCopy, saveData]);
 
   const removeIncome = useCallback(async (personId: string, incomeId: string) => {
     console.log('useBudgetData: Removing income from person:', personId, incomeId);
-    
-    try {
-      const currentData = getCurrentData();
+    queueSave(async () => {
+      const newData = createDataCopy();
       
       // Find the person first to verify they exist
-      const person = currentData.people.find(p => p.id === personId);
-      if (!person) {
+      const personIndex = newData.people.findIndex(p => p.id === personId);
+      if (personIndex === -1) {
         console.error('useBudgetData: Person not found:', personId);
-        return { success: false, error: new Error('Person not found') };
+        throw new Error('Person not found');
       }
       
       // Check if the income exists
-      const incomeExists = person.income.find(i => i.id === incomeId);
+      const incomeExists = newData.people[personIndex].income.find(i => i.id === incomeId);
       if (!incomeExists) {
         console.error('useBudgetData: Income not found:', incomeId);
-        return { success: false, error: new Error('Income not found') };
+        throw new Error('Income not found');
       }
       
-      const newData = createDataCopy(currentData);
-      const personIndex = newData.people.findIndex(p => p.id === personId);
-      if (personIndex !== -1) {
-        newData.people[personIndex].income = newData.people[personIndex].income.filter(i => i.id !== incomeId);
-      }
+      newData.people[personIndex].income = newData.people[personIndex].income.filter(i => i.id !== incomeId);
       
       console.log('useBudgetData: New data after removing income:', {
         personId,
@@ -275,58 +237,43 @@ export const useBudgetData = () => {
         peopleCount: newData.people.length,
         expensesCount: newData.expenses.length,
         expenseIds: newData.expenses.map(e => e.id),
-        remainingIncomeCount: newData.people.find(p => p.id === personId)?.income.length || 0
+        remainingIncomeCount: newData.people[personIndex].income.length
       });
       
-      const result = await saveData(newData);
-      console.log('useBudgetData: Income removed successfully');
-      return result;
-    } catch (error) {
-      console.error('useBudgetData: Error removing income:', error);
-      return { success: false, error: error as Error };
-    }
-  }, [saveData, getCurrentData, createDataCopy]);
+      await saveData(newData);
+    });
+  }, [queueSave, createDataCopy, saveData]);
 
   const updateIncome = useCallback(async (personId: string, incomeId: string, updates: Partial<Income>) => {
     console.log('useBudgetData: Updating income:', personId, incomeId, updates);
-    
-    try {
-      const currentData = getCurrentData();
+    queueSave(async () => {
+      const newData = createDataCopy();
       
       console.log('useBudgetData: Current data for income update:', {
-        peopleCount: currentData.people.length,
-        expensesCount: currentData.expenses.length,
-        expenseIds: currentData.expenses.map(e => e.id)
+        peopleCount: newData.people.length,
+        expensesCount: newData.expenses.length,
+        expenseIds: newData.expenses.map(e => e.id)
       });
       
       // Find the person first to verify they exist
-      const person = currentData.people.find(p => p.id === personId);
-      if (!person) {
+      const personIndex = newData.people.findIndex(p => p.id === personId);
+      if (personIndex === -1) {
         console.error('useBudgetData: Person not found:', personId);
-        return { success: false, error: new Error('Person not found') };
+        throw new Error('Person not found');
       }
       
       // Check if the income exists
-      const incomeExists = person.income.find(i => i.id === incomeId);
-      if (!incomeExists) {
+      const incomeIndex = newData.people[personIndex].income.findIndex(i => i.id === incomeId);
+      if (incomeIndex === -1) {
         console.error('useBudgetData: Income not found:', incomeId);
-        return { success: false, error: new Error('Income not found') };
+        throw new Error('Income not found');
       }
-      
-      // Create a deep copy of the current data
-      const newData = createDataCopy(currentData);
       
       // Update the specific income
-      const personIndex = newData.people.findIndex(p => p.id === personId);
-      if (personIndex !== -1) {
-        const incomeIndex = newData.people[personIndex].income.findIndex(i => i.id === incomeId);
-        if (incomeIndex !== -1) {
-          newData.people[personIndex].income[incomeIndex] = {
-            ...newData.people[personIndex].income[incomeIndex],
-            ...updates
-          };
-        }
-      }
+      newData.people[personIndex].income[incomeIndex] = {
+        ...newData.people[personIndex].income[incomeIndex],
+        ...updates
+      };
       
       console.log('useBudgetData: New data after updating income:', {
         personId,
@@ -335,22 +282,17 @@ export const useBudgetData = () => {
         peopleCount: newData.people.length,
         expensesCount: newData.expenses.length,
         expenseIds: newData.expenses.map(e => e.id),
-        updatedIncome: newData.people.find(p => p.id === personId)?.income.find(i => i.id === incomeId)
+        updatedIncome: newData.people[personIndex].income[incomeIndex]
       });
       
-      const result = await saveData(newData);
-      console.log('useBudgetData: Income updated successfully');
-      return result;
-    } catch (error) {
-      console.error('useBudgetData: Error updating income:', error);
-      return { success: false, error: error as Error };
-    }
-  }, [saveData, getCurrentData, createDataCopy]);
+      await saveData(newData);
+    });
+  }, [queueSave, createDataCopy, saveData]);
 
   const addExpense = useCallback(async (expense: Expense) => {
     console.log('useBudgetData: Adding expense:', expense);
-    try {
-      const currentData = getCurrentData();
+    queueSave(async () => {
+      const newData = createDataCopy();
       
       // Generate a proper ID if not provided
       const expenseWithId = {
@@ -360,7 +302,6 @@ export const useBudgetData = () => {
       
       console.log('useBudgetData: Expense with ID:', expenseWithId);
       
-      const newData = createDataCopy(currentData);
       newData.expenses.push(expenseWithId);
       
       console.log('useBudgetData: New data after adding expense:', {
@@ -369,34 +310,28 @@ export const useBudgetData = () => {
         expenseIds: newData.expenses.map(e => e.id)
       });
       
-      const result = await saveData(newData);
-      console.log('useBudgetData: Expense added successfully');
-      return result;
-    } catch (error) {
-      console.error('useBudgetData: Error adding expense:', error);
-      return { success: false, error: error as Error };
-    }
-  }, [saveData, getCurrentData, createDataCopy]);
+      await saveData(newData);
+    });
+  }, [queueSave, createDataCopy, saveData]);
 
   const removeExpense = useCallback(async (expenseId: string) => {
     console.log('useBudgetData: Removing expense:', expenseId);
-    try {
-      const currentData = getCurrentData();
+    queueSave(async () => {
+      const newData = createDataCopy();
       
       console.log('useBudgetData: Current data before expense removal:', {
-        expensesCount: currentData.expenses.length,
-        expenseIds: currentData.expenses.map(e => e.id),
+        expensesCount: newData.expenses.length,
+        expenseIds: newData.expenses.map(e => e.id),
         targetExpenseId: expenseId
       });
       
       // Verify expense exists before attempting removal
-      const expenseExists = currentData.expenses.find(e => e.id === expenseId);
+      const expenseExists = newData.expenses.find(e => e.id === expenseId);
       if (!expenseExists) {
         console.error('useBudgetData: Expense not found:', expenseId);
-        return { success: false, error: new Error('Expense not found') };
+        throw new Error('Expense not found');
       }
 
-      const newData = createDataCopy(currentData);
       newData.expenses = newData.expenses.filter(e => e.id !== expenseId);
       
       console.log('useBudgetData: New data after removing expense:', {
@@ -406,20 +341,14 @@ export const useBudgetData = () => {
         remainingExpenseIds: newData.expenses.map(e => e.id)
       });
       
-      const result = await saveData(newData);
-      console.log('useBudgetData: Expense removed successfully');
-      return result;
-    } catch (error) {
-      console.error('useBudgetData: Error removing expense:', error);
-      return { success: false, error: error as Error };
-    }
-  }, [saveData, getCurrentData, createDataCopy]);
+      await saveData(newData);
+    });
+  }, [queueSave, createDataCopy, saveData]);
 
   const updateExpense = useCallback(async (updatedExpense: Expense) => {
     console.log('useBudgetData: Updating expense:', updatedExpense);
-    try {
-      const currentData = getCurrentData();
-      const newData = createDataCopy(currentData);
+    queueSave(async () => {
+      const newData = createDataCopy();
       newData.expenses = newData.expenses.map(e => e.id === updatedExpense.id ? updatedExpense : e);
       
       console.log('useBudgetData: New data after updating expense:', {
@@ -428,65 +357,62 @@ export const useBudgetData = () => {
         expenseIds: newData.expenses.map(e => e.id)
       });
       
-      const result = await saveData(newData);
-      console.log('useBudgetData: Expense updated successfully');
-      return result;
-    } catch (error) {
-      console.error('useBudgetData: Error updating expense:', error);
-      return { success: false, error: error as Error };
-    }
-  }, [saveData, getCurrentData, createDataCopy]);
+      await saveData(newData);
+    });
+  }, [queueSave, createDataCopy, saveData]);
 
   const updateHouseholdSettings = useCallback(async (settings: Partial<HouseholdSettings>) => {
     console.log('useBudgetData: Updating household settings:', settings);
-    try {
-      const currentData = getCurrentData();
+    queueSave(async () => {
+      const newData = createDataCopy();
       
       console.log('useBudgetData: Current data before household settings update:', {
-        peopleCount: currentData.people.length,
-        expensesCount: currentData.expenses.length,
-        expenseIds: currentData.expenses.map(e => e.id),
-        oldSettings: currentData.householdSettings
+        peopleCount: newData.people.length,
+        expensesCount: newData.expenses.length,
+        expenseIds: newData.expenses.map(e => e.id),
+        oldSettings: newData.householdSettings
       });
       
-      const newData = createDataCopy(currentData);
       newData.householdSettings = {
         ...newData.householdSettings,
         ...settings
       };
       
       console.log('useBudgetData: New data with updated household settings:', {
-        oldSettings: currentData.householdSettings,
+        oldSettings: getCurrentData().householdSettings,
         newSettings: newData.householdSettings,
         peopleCount: newData.people.length,
         expensesCount: newData.expenses.length,
-        expenseIds: newData.expenses.map(e => e.id),
-        totalIncomeCount: newData.people.reduce((total, person) => total + person.income.length, 0)
+        expenseIds: newData.expenses.map(e => e.id)
       });
       
-      const result = await saveData(newData);
-      console.log('useBudgetData: Household settings updated successfully');
-      return result;
-    } catch (error) {
-      console.error('useBudgetData: Error updating household settings:', error);
-      return { success: false, error: error as Error };
-    }
-  }, [saveData, getCurrentData, createDataCopy]);
+      await saveData(newData);
+    });
+  }, [queueSave, createDataCopy, saveData, getCurrentData]);
 
-  // Improved refresh function that always loads fresh data from storage
+  // Throttled refresh function to prevent excessive refreshes
   const refreshData = useCallback(async () => {
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefreshTimeRef.current;
+    
     console.log('useBudgetData: Refresh requested...', {
       saving,
       loading,
       isLoading: isLoadingRef.current,
-      saveInProgress: saveInProgressRef.current,
+      queueRunning: isQueueRunning.current,
       lastRefreshTime: lastRefreshTimeRef.current,
-      timeSinceLastRefresh: Date.now() - lastRefreshTimeRef.current
+      timeSinceLastRefresh
     });
     
     // Don't refresh if we're currently saving or have a save in progress
-    if (saveInProgressRef.current) {
+    if (isQueueRunning.current) {
       console.log('useBudgetData: Skipping refresh - save operation in progress');
+      return;
+    }
+    
+    // Throttle refreshes to prevent excessive calls (minimum 1 second between refreshes)
+    if (timeSinceLastRefresh < 1000) {
+      console.log('useBudgetData: Skipping refresh - too soon since last refresh');
       return;
     }
     
@@ -501,7 +427,7 @@ export const useBudgetData = () => {
     
     console.log('useBudgetData: Executing refresh...');
     await loadData();
-  }, [loadData]);
+  }, [loadData, saving, loading]);
 
   return {
     data,
