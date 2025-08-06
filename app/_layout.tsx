@@ -7,7 +7,7 @@ import { useEffect, useCallback, useMemo } from 'react';
 import { setupErrorLogging } from '../utils/errorLogger';
 import { router, usePathname } from 'expo-router';
 import Icon from '../components/Icon';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme, ThemeProvider } from '../hooks/useTheme';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 
 const STORAGE_KEY = 'emulated_device';
@@ -122,14 +122,14 @@ function CustomTabBar() {
   );
 }
 
-export default function RootLayout() {
+function RootLayoutContent() {
   const actualInsets = useSafeAreaInsets();
   const { isDarkMode, currentColors, themeMode } = useTheme();
   const { themedStyles } = useThemedStyles();
 
   // Add debug logging for theme changes in root layout
   useEffect(() => {
-    console.log('RootLayout: Theme changed', {
+    console.log('RootLayoutContent: Theme changed', {
       isDarkMode,
       themeMode,
       background: currentColors.background,
@@ -186,75 +186,83 @@ export default function RootLayout() {
   }), [currentColors.background]);
 
   return (
-    <SafeAreaProvider>
-      <View style={wrapperStyle}>
-        <StatusBar 
-          style={isDarkMode ? "light" : "dark"} 
-          backgroundColor={currentColors.backgroundAlt}
-          translucent={false}
-        />
-        {/* Top safe area with header background color that matches theme */}
-        <View style={topSafeAreaStyle} />
-        <View style={mainContainerStyle}>
-          <Tabs
-            screenOptions={{
-              headerShown: false,
-              tabBarStyle: { display: 'none' }, // Hide the default tab bar
-            }}
-            tabBar={() => <CustomTabBar />}
-          >
-            <Tabs.Screen 
-              name="index" 
-              options={{ 
-                title: 'Home',
-                href: '/',
-              }} 
-            />
-            <Tabs.Screen 
-              name="expenses" 
-              options={{ 
-                title: 'Expenses',
-                href: '/expenses',
-              }} 
-            />
-            <Tabs.Screen 
-              name="people" 
-              options={{ 
-                title: 'People',
-                href: '/people',
-              }} 
-            />
-            <Tabs.Screen 
-              name="settings" 
-              options={{ 
-                title: 'Settings',
-                href: '/settings',
-              }} 
-            />
-            <Tabs.Screen 
-              name="add-expense" 
-              options={{ 
-                title: 'Add Expense',
-                href: null, // This makes it not appear in tabs but still accessible via navigation
-              }} 
-            />
-            <Tabs.Screen 
-              name="edit-person" 
-              options={{ 
-                title: 'Edit Person',
-                href: null, // This makes it not appear in tabs but still accessible via navigation
-              }} 
-            />
-            <Tabs.Screen 
-              name="edit-income" 
-              options={{ 
-                title: 'Edit Income',
-                href: null, // This makes it not appear in tabs but still accessible via navigation
-              }} 
-            />
-          </Tabs>
-        </View>
+    <View style={wrapperStyle}>
+      <StatusBar 
+        style={isDarkMode ? "light" : "dark"} 
+        backgroundColor={currentColors.backgroundAlt}
+        translucent={false}
+      />
+      {/* Top safe area with header background color that matches theme */}
+      <View style={topSafeAreaStyle} />
+      <View style={mainContainerStyle}>
+        <Tabs
+          screenOptions={{
+            headerShown: false,
+            tabBarStyle: { display: 'none' }, // Hide the default tab bar
+          }}
+          tabBar={() => <CustomTabBar />}
+        >
+          <Tabs.Screen 
+            name="index" 
+            options={{ 
+              title: 'Home',
+              href: '/',
+            }} 
+          />
+          <Tabs.Screen 
+            name="expenses" 
+            options={{ 
+              title: 'Expenses',
+              href: '/expenses',
+            }} 
+          />
+          <Tabs.Screen 
+            name="people" 
+            options={{ 
+              title: 'People',
+              href: '/people',
+            }} 
+          />
+          <Tabs.Screen 
+            name="settings" 
+            options={{ 
+              title: 'Settings',
+              href: '/settings',
+            }} 
+          />
+          <Tabs.Screen 
+            name="add-expense" 
+            options={{ 
+              title: 'Add Expense',
+              href: null, // This makes it not appear in tabs but still accessible via navigation
+            }} 
+          />
+          <Tabs.Screen 
+            name="edit-person" 
+            options={{ 
+              title: 'Edit Person',
+              href: null, // This makes it not appear in tabs but still accessible via navigation
+            }} 
+          />
+          <Tabs.Screen 
+            name="edit-income" 
+            options={{ 
+              title: 'Edit Income',
+              href: null, // This makes it not appear in tabs but still accessible via navigation
+            }} 
+          />
+        </Tabs>
       </View>
+    </View>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <RootLayoutContent />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
