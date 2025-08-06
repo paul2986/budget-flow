@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface Currency {
@@ -23,12 +23,42 @@ export const CURRENCIES: Currency[] = [
 
 const CURRENCY_STORAGE_KEY = 'app_currency';
 
+// Global currency state to ensure all components stay in sync
+let globalCurrency: Currency = CURRENCIES[0];
+let globalCurrencyListeners: Set<(currency: Currency) => void> = new Set();
+
+const notifyListeners = (currency: Currency) => {
+  console.log('useCurrency: Notifying', globalCurrencyListeners.size, 'listeners of currency change:', currency);
+  globalCurrencyListeners.forEach(listener => {
+    try {
+      listener(currency);
+    } catch (error) {
+      console.error('useCurrency: Error notifying listener:', error);
+    }
+  });
+};
+
 export const useCurrency = () => {
-  const [currency, setCurrency] = useState<Currency>(CURRENCIES[0]); // Default to USD
+  const [currency, setCurrencyState] = useState<Currency>(globalCurrency);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadCurrency();
+  }, []);
+
+  useEffect(() => {
+    // Subscribe to global currency changes
+    const listener = (newCurrency: Currency) => {
+      console.log('useCurrency: Received currency update:', newCurrency);
+      setCurrencyState(newCurrency);
+    };
+    
+    globalCurrencyListeners.add(listener);
+    
+    // Cleanup listener on unmount
+    return () => {
+      globalCurrencyListeners.delete(listener);
+    };
   }, []);
 
   const loadCurrency = async () => {
@@ -40,10 +70,14 @@ export const useCurrency = () => {
         const foundCurrency = CURRENCIES.find(c => c.code === parsedCurrency.code);
         if (foundCurrency) {
           console.log('useCurrency: Loaded currency:', foundCurrency);
-          setCurrency(foundCurrency);
+          globalCurrency = foundCurrency;
+          setCurrencyState(foundCurrency);
+          // Don't notify listeners here as this is initial load
         }
       } else {
         console.log('useCurrency: No saved currency found, using default USD');
+        globalCurrency = CURRENCIES[0];
+        setCurrencyState(CURRENCIES[0]);
       }
     } catch (error) {
       console.error('useCurrency: Error loading currency:', error);
@@ -52,18 +86,23 @@ export const useCurrency = () => {
     }
   };
 
-  const saveCurrency = async (newCurrency: Currency) => {
+  const saveCurrency = useCallback(async (newCurrency: Currency) => {
     try {
       console.log('useCurrency: Saving currency:', newCurrency);
       await AsyncStorage.setItem(CURRENCY_STORAGE_KEY, JSON.stringify(newCurrency));
-      setCurrency(newCurrency);
-      console.log('useCurrency: Currency saved successfully');
+      
+      // Update global state and notify all listeners
+      globalCurrency = newCurrency;
+      setCurrencyState(newCurrency);
+      notifyListeners(newCurrency);
+      
+      console.log('useCurrency: Currency saved and broadcasted successfully');
     } catch (error) {
       console.error('useCurrency: Error saving currency:', error);
     }
-  };
+  }, []);
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = useCallback((amount: number) => {
     try {
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -76,7 +115,7 @@ export const useCurrency = () => {
       // Fallback to simple formatting
       return `${currency.symbol}${amount.toFixed(2)}`;
     }
-  };
+  }, [currency]);
 
   return {
     currency,

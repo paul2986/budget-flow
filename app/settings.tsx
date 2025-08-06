@@ -12,8 +12,28 @@ export default function SettingsScreen() {
   const { currentColors, themeMode, setThemeMode } = useTheme();
   const { currency, setCurrency } = useCurrency();
 
-  const handleDistributionMethodChange = (method: 'even' | 'income-based') => {
-    updateHouseholdSettings({ distributionMethod: method });
+  const handleDistributionMethodChange = async (method: 'even' | 'income-based') => {
+    console.log('Settings: Changing distribution method to:', method);
+    console.log('Settings: Current data before change:', {
+      peopleCount: data.people.length,
+      expensesCount: data.expenses.length,
+      currentMethod: data.householdSettings.distributionMethod
+    });
+    
+    try {
+      // Only update the distribution method, preserve all other data
+      const result = await updateHouseholdSettings({ distributionMethod: method });
+      
+      if (result.success) {
+        console.log('Settings: Distribution method updated successfully');
+      } else {
+        console.error('Settings: Failed to update distribution method:', result.error);
+        Alert.alert('Error', 'Failed to update household expense distribution method.');
+      }
+    } catch (error) {
+      console.error('Settings: Error updating distribution method:', error);
+      Alert.alert('Error', 'An unexpected error occurred while updating the distribution method.');
+    }
   };
 
   const clearAllData = () => {
@@ -26,13 +46,30 @@ export default function SettingsScreen() {
           text: 'Clear All', 
           style: 'destructive',
           onPress: async () => {
-            const emptyData = {
-              people: [],
-              expenses: [],
-              householdSettings: { distributionMethod: 'even' as const },
-            };
-            await updateHouseholdSettings(emptyData.householdSettings);
-            Alert.alert('Success', 'All data has been cleared.');
+            try {
+              console.log('Settings: Clearing all data...');
+              
+              // Reset to empty data structure
+              const emptyData = {
+                people: [],
+                expenses: [],
+                householdSettings: { distributionMethod: 'even' as const },
+              };
+              
+              // Use the updateHouseholdSettings to clear everything
+              const result = await updateHouseholdSettings(emptyData.householdSettings);
+              
+              if (result.success) {
+                console.log('Settings: All data cleared successfully');
+                Alert.alert('Success', 'All data has been cleared.');
+              } else {
+                console.error('Settings: Failed to clear data:', result.error);
+                Alert.alert('Error', 'Failed to clear all data.');
+              }
+            } catch (error) {
+              console.error('Settings: Error clearing data:', error);
+              Alert.alert('Error', 'An unexpected error occurred while clearing data.');
+            }
           }
         },
       ]
@@ -126,7 +163,10 @@ export default function SettingsScreen() {
                       borderBottomColor: currentColors.border,
                     }
                   ]}
-                  onPress={() => setCurrency(curr)}
+                  onPress={() => {
+                    console.log('Settings: Changing currency to:', curr);
+                    setCurrency(curr);
+                  }}
                 >
                   <View style={commonStyles.rowStart}>
                     <Icon 

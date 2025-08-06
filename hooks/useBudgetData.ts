@@ -267,10 +267,27 @@ export const useBudgetData = () => {
     }
   }, [data, saveData]);
 
-  const updateHouseholdSettings = useCallback(async (settings: HouseholdSettings) => {
+  const updateHouseholdSettings = useCallback(async (settings: Partial<HouseholdSettings>) => {
     console.log('useBudgetData: Updating household settings:', settings);
     try {
-      const newData = { ...data, householdSettings: settings };
+      // Merge with existing household settings instead of replacing
+      const newHouseholdSettings = {
+        ...data.householdSettings,
+        ...settings
+      };
+      
+      const newData = { 
+        ...data, 
+        householdSettings: newHouseholdSettings 
+      };
+      
+      console.log('useBudgetData: New data with updated household settings:', {
+        oldSettings: data.householdSettings,
+        newSettings: newHouseholdSettings,
+        peopleCount: newData.people.length,
+        expensesCount: newData.expenses.length
+      });
+      
       const result = await saveData(newData);
       console.log('useBudgetData: Household settings updated successfully');
       return result;
