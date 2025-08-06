@@ -101,8 +101,8 @@ export default function ExpensesScreen() {
           flex: 1,
           marginHorizontal: 4,
           paddingHorizontal: 12,
-          paddingVertical: 12,
-          borderRadius: 24,
+          paddingVertical: 8,
+          borderRadius: 20,
           alignItems: 'center',
           justifyContent: 'center',
         }
@@ -121,6 +121,7 @@ export default function ExpensesScreen() {
           color: filter === filterType ? '#FFFFFF' : currentColors.text,
           fontWeight: '600',
           textAlign: 'center',
+          fontSize: 13,
         }
       ]}>
         {label}
@@ -171,12 +172,11 @@ export default function ExpensesScreen() {
       </View>
 
       {/* Filters */}
-      <View style={[commonStyles.section, { paddingBottom: 0, paddingTop: 16 }]}>
+      <View style={[commonStyles.section, { paddingBottom: 0, paddingTop: 12, paddingHorizontal: 12 }]}>
         {/* Main filter buttons - distributed horizontally */}
         <View style={{ 
           flexDirection: 'row', 
-          marginBottom: 16, 
-          paddingHorizontal: 16,
+          marginBottom: 12, 
         }}>
           <FilterButton filterType="all" label="All Expenses" />
           <FilterButton filterType="household" label="Household" />
@@ -192,10 +192,10 @@ export default function ExpensesScreen() {
                   commonStyles.badge,
                   { 
                     backgroundColor: personFilter === null ? currentColors.secondary : currentColors.border,
-                    marginRight: 12,
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    borderRadius: 24,
+                    marginRight: 8,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 16,
                   }
                 ]}
                 onPress={() => setPersonFilter(null)}
@@ -206,6 +206,7 @@ export default function ExpensesScreen() {
                   { 
                     color: personFilter === null ? '#FFFFFF' : currentColors.text,
                     fontWeight: '600',
+                    fontSize: 12,
                   }
                 ]}>
                   All People
@@ -219,10 +220,10 @@ export default function ExpensesScreen() {
                     commonStyles.badge,
                     { 
                       backgroundColor: personFilter === person.id ? currentColors.secondary : currentColors.border,
-                      marginRight: 12,
-                      paddingHorizontal: 16,
-                      paddingVertical: 10,
-                      borderRadius: 24,
+                      marginRight: 8,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 16,
                     }
                   ]}
                   onPress={() => setPersonFilter(person.id)}
@@ -233,6 +234,7 @@ export default function ExpensesScreen() {
                     { 
                       color: personFilter === person.id ? '#FFFFFF' : currentColors.text,
                       fontWeight: '600',
+                      fontSize: 12,
                     }
                   ]}>
                     {person.name}
@@ -244,7 +246,7 @@ export default function ExpensesScreen() {
         )}
       </View>
 
-      <ScrollView style={commonStyles.content} contentContainerStyle={commonStyles.scrollContent}>
+      <ScrollView style={commonStyles.content} contentContainerStyle={[commonStyles.scrollContent, { paddingHorizontal: 12 }]}>
         {filteredExpenses.length === 0 ? (
           <View style={[commonStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
             <View style={commonStyles.centerContent}>
@@ -274,7 +276,8 @@ export default function ExpensesScreen() {
                   { 
                     backgroundColor: currentColors.backgroundAlt, 
                     borderColor: currentColors.border,
-                    marginBottom: 8,
+                    marginBottom: 6,
+                    padding: 12,
                     opacity: isDeleting ? 0.6 : 1,
                   }
                 ]}
@@ -286,71 +289,62 @@ export default function ExpensesScreen() {
                   disabled={saving || isDeleting}
                   style={{ flex: 1 }}
                 >
-                  {/* Top row with title and metadata */}
-                  <View style={[commonStyles.row, { marginBottom: 12, alignItems: 'flex-start', paddingRight: 60 }]}>
+                  {/* Top row with title and amount */}
+                  <View style={[commonStyles.row, { marginBottom: 6, alignItems: 'flex-start', paddingRight: 50 }]}>
                     <View style={commonStyles.flex1}>
-                      <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.text, fontSize: 18 }]}>
+                      <Text style={[commonStyles.text, { fontWeight: '700', color: currentColors.text, fontSize: 16 }]}>
                         {expense.description}
                       </Text>
-                      <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, marginTop: 4 }]}>
-                        {expense.category === 'personal' && person ? `${person.name} • ` : ''}
-                        {expense.frequency} • {new Date(expense.date).toLocaleDateString()}
-                      </Text>
                     </View>
-                  </View>
-                  
-                  {/* Amount row */}
-                  <View style={[commonStyles.row, { marginBottom: 12, paddingRight: 60 }]}>
-                    <View style={{ alignItems: 'flex-end', flex: 1 }}>
+                    <View style={{ alignItems: 'flex-end' }}>
                       <Text style={[
                         commonStyles.text, 
                         { 
                           fontWeight: '800', 
                           color: expense.category === 'household' ? currentColors.household : currentColors.personal,
-                          fontSize: 18,
+                          fontSize: 16,
                         }
                       ]}>
                         {formatCurrency(expense.amount)}
                       </Text>
-                      <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, marginTop: 2 }]}>
+                      <Text style={[commonStyles.textSecondary, { color: currentColors.textSecondary, fontSize: 11 }]}>
                         {formatCurrency(monthlyAmount)}/mo
                       </Text>
                     </View>
                   </View>
                   
-                  {/* Bottom row with category badge and edit indicator */}
-                  <View style={[commonStyles.row, { alignItems: 'center', paddingRight: 60 }]}>
+                  {/* Bottom row with metadata and category badge */}
+                  <View style={[commonStyles.row, { alignItems: 'center', paddingRight: 50 }]}>
                     <View style={[
                       commonStyles.badge,
                       { 
                         backgroundColor: expense.category === 'household' ? currentColors.household : currentColors.personal,
-                        marginRight: 12,
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        borderRadius: 16,
+                        marginRight: 8,
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                        borderRadius: 12,
                       }
                     ]}>
                       <Text style={[
                         commonStyles.badgeText,
-                        { color: '#FFFFFF', fontSize: 12, fontWeight: '700' }
+                        { color: '#FFFFFF', fontSize: 10, fontWeight: '700' }
                       ]}>
                         {expense.category.toUpperCase()}
                       </Text>
                     </View>
                     
-                    <Text style={[commonStyles.textSecondary, { flex: 1, color: currentColors.textSecondary }]}>
-                      {isDeleting ? 'Deleting...' : 'Tap to edit'}
+                    <Text style={[commonStyles.textSecondary, { flex: 1, color: currentColors.textSecondary, fontSize: 12 }]}>
+                      {expense.category === 'personal' && person ? `${person.name} • ` : ''}
+                      {expense.frequency} • {new Date(expense.date).toLocaleDateString()}
                     </Text>
-                    
-                    <Icon name="chevron-forward-outline" size={16} style={{ color: currentColors.textSecondary }} />
                   </View>
                 </TouchableOpacity>
 
                 {/* Delete button - positioned absolutely in top right, outside the edit touch area */}
                 <View style={{ 
                   position: 'absolute',
-                  top: 16,
-                  right: 16,
+                  top: 8,
+                  right: 8,
                   zIndex: 100,
                 }}>
                   <TouchableOpacity
@@ -360,13 +354,13 @@ export default function ExpensesScreen() {
                     }}
                     disabled={saving || isDeleting}
                     style={{
-                      padding: 8,
-                      borderRadius: 20,
+                      padding: 6,
+                      borderRadius: 16,
                       backgroundColor: currentColors.error + '20',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      minWidth: 40,
-                      minHeight: 40,
+                      minWidth: 32,
+                      minHeight: 32,
                       // Add shadow for better visibility
                       shadowColor: '#000',
                       shadowOffset: {
@@ -377,12 +371,12 @@ export default function ExpensesScreen() {
                       shadowRadius: 3.84,
                       elevation: 5,
                     }}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
                     {isDeleting ? (
                       <ActivityIndicator size="small" color={currentColors.error} />
                     ) : (
-                      <Icon name="trash-outline" size={20} style={{ color: currentColors.error }} />
+                      <Icon name="trash-outline" size={16} style={{ color: currentColors.error }} />
                     )}
                   </TouchableOpacity>
                 </View>
