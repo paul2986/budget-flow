@@ -27,11 +27,11 @@ export const darkColors = {
   expense: '#EF5350',      // Lighter red for expenses
   household: '#AB47BC',    // Lighter purple for household
   personal: '#FFA726',     // Lighter orange for personal
-  background: '#121212',   // Dark background
-  backgroundAlt: '#1E1E1E', // Slightly lighter dark for cards
-  text: '#FFFFFF',         // White text
-  textSecondary: '#B0B0B0', // Light grey text
-  border: '#333333',       // Dark border
+  background: '#0F1419',   // Modern dark blue background
+  backgroundAlt: '#1A2332', // Slightly lighter dark blue for cards
+  text: '#E8F4FD',         // Light blue-tinted white text
+  textSecondary: '#8FA2B7', // Medium blue-grey text
+  border: '#2A3441',       // Dark blue-grey border
   success: '#66BB6A',      // Success green
   warning: '#FFA726',      // Warning orange
   error: '#EF5350',        // Error red
