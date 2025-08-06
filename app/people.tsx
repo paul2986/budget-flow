@@ -62,8 +62,7 @@ export default function PeopleScreen() {
       if (result.success) {
         setNewPersonName('');
         setShowAddPerson(false);
-        // Force refresh to ensure UI updates
-        await refreshData();
+        console.log('PeopleScreen: Person added successfully');
       } else {
         Alert.alert('Error', 'Failed to add person. Please try again.');
       }
@@ -99,8 +98,7 @@ export default function PeopleScreen() {
               console.log('PeopleScreen: Person removal result:', result);
               
               if (result.success) {
-                // Force refresh to ensure UI updates
-                await refreshData();
+                console.log('PeopleScreen: Person removed successfully');
               } else {
                 console.error('PeopleScreen: Person removal failed:', result.error);
                 Alert.alert('Error', 'Failed to remove person. Please try again.');
@@ -157,8 +155,7 @@ export default function PeopleScreen() {
         setNewIncome({ amount: '', label: '', frequency: 'monthly' });
         setShowAddIncome(false);
         setSelectedPersonId(null);
-        // Force refresh to ensure UI updates
-        await refreshData();
+        console.log('PeopleScreen: Income added successfully');
       } else {
         Alert.alert('Error', 'Failed to add income. Please try again.');
       }
@@ -194,8 +191,7 @@ export default function PeopleScreen() {
               console.log('PeopleScreen: Income removal result:', result);
               
               if (result.success) {
-                // Force refresh to ensure UI updates
-                await refreshData();
+                console.log('PeopleScreen: Income removed successfully');
               } else {
                 console.error('PeopleScreen: Income removal failed:', result.error);
                 Alert.alert('Error', 'Failed to remove income. Please try again.');

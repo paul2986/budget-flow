@@ -25,8 +25,15 @@ export default function AddExpenseScreen() {
   const isEditMode = !!params.id;
   const expenseToEdit = isEditMode ? data.expenses.find(e => e.id === params.id) : null;
 
+  // Force refresh data when component mounts
   useEffect(() => {
-    if (isEditMode && expenseToEdit) {
+    console.log('AddExpenseScreen: Component mounted, refreshing data...');
+    refreshData();
+  }, []);
+
+  // Load expense data for editing
+  useEffect(() => {
+    if (isEditMode && expenseToEdit && data.people.length > 0) {
       console.log('AddExpenseScreen: Loading expense for editing:', expenseToEdit);
       setDescription(expenseToEdit.description);
       setAmount(expenseToEdit.amount.toString());
@@ -35,6 +42,7 @@ export default function AddExpenseScreen() {
       setPersonId(expenseToEdit.personId || '');
     } else if (!isEditMode) {
       // Reset form for new expense
+      console.log('AddExpenseScreen: Resetting form for new expense');
       setDescription('');
       setAmount('');
       setCategory('household');
@@ -83,8 +91,7 @@ export default function AddExpenseScreen() {
       }
 
       if (result.success) {
-        // Force refresh to ensure UI updates
-        await refreshData();
+        console.log('AddExpenseScreen: Expense saved successfully, navigating back');
         // Navigate back to expenses screen
         router.back();
       } else {

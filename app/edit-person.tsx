@@ -34,13 +34,23 @@ export default function EditPersonScreen() {
   
   const { data, updatePerson, addIncome, removeIncome, saving, refreshData } = useBudgetData();
 
+  // Update person state whenever data changes
   useEffect(() => {
     if (personId && data.people.length > 0) {
       const foundPerson = data.people.find(p => p.id === personId);
       console.log('EditPersonScreen: Found person:', foundPerson);
-      setPerson(foundPerson || null);
+      console.log('EditPersonScreen: Current person state:', person);
+      
+      // Always update the person state with fresh data
+      if (foundPerson) {
+        setPerson(foundPerson);
+        console.log('EditPersonScreen: Updated person state with fresh data');
+      } else {
+        console.log('EditPersonScreen: Person not found in data');
+        setPerson(null);
+      }
     }
-  }, [personId, data.people]);
+  }, [personId, data.people, data.expenses]); // Include data.expenses to refresh calculations
 
   // Force refresh data when component mounts
   useEffect(() => {
@@ -52,10 +62,10 @@ export default function EditPersonScreen() {
     if (!person) return;
 
     try {
+      console.log('EditPersonScreen: Saving person:', person);
       const result = await updatePerson(person);
       if (result.success) {
-        // Force refresh to ensure UI updates
-        await refreshData();
+        console.log('EditPersonScreen: Person saved successfully, navigating back');
         router.back();
       } else {
         Alert.alert('Error', 'Failed to update person. Please try again.');
@@ -87,12 +97,12 @@ export default function EditPersonScreen() {
         personId: person.id,
       };
 
+      console.log('EditPersonScreen: Adding income:', income);
       const result = await addIncome(person.id, income);
       if (result.success) {
         setNewIncome({ amount: '', label: '', frequency: 'monthly' });
         setShowAddIncome(false);
-        // Force refresh to ensure UI updates
-        await refreshData();
+        console.log('EditPersonScreen: Income added successfully');
       } else {
         Alert.alert('Error', 'Failed to add income. Please try again.');
       }
@@ -122,11 +132,11 @@ export default function EditPersonScreen() {
           onPress: async () => {
             try {
               setDeletingIncomeId(incomeId);
+              console.log('EditPersonScreen: Removing income:', incomeId);
               
               const result = await removeIncome(person.id, incomeId);
               if (result.success) {
-                // Force refresh to ensure UI updates
-                await refreshData();
+                console.log('EditPersonScreen: Income removed successfully');
               } else {
                 Alert.alert('Error', 'Failed to remove income. Please try again.');
               }

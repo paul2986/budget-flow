@@ -39,9 +39,21 @@ export const useBudgetData = () => {
       console.log('useBudgetData: Save result:', saveResult);
       
       if (saveResult.success) {
-        // Then update the UI state
+        // Immediately update the UI state
         setData(newData);
         console.log('useBudgetData: UI state updated successfully');
+        
+        // Force a refresh to ensure consistency
+        setTimeout(async () => {
+          try {
+            const freshData = await loadBudgetData();
+            setData(freshData);
+            console.log('useBudgetData: Data refreshed after save');
+          } catch (error) {
+            console.error('useBudgetData: Error refreshing data after save:', error);
+          }
+        }, 100);
+        
         return { success: true };
       } else {
         console.error('useBudgetData: Save failed:', saveResult.error);
@@ -264,6 +276,18 @@ export const useBudgetData = () => {
     }
   };
 
+  // Force refresh function that components can call
+  const refreshData = async () => {
+    console.log('useBudgetData: Force refreshing data...');
+    try {
+      const freshData = await loadBudgetData();
+      setData(freshData);
+      console.log('useBudgetData: Data force refreshed successfully');
+    } catch (error) {
+      console.error('useBudgetData: Error force refreshing data:', error);
+    }
+  };
+
   return {
     data,
     loading,
@@ -277,6 +301,6 @@ export const useBudgetData = () => {
     removeExpense,
     updateExpense,
     updateHouseholdSettings,
-    refreshData: loadData,
+    refreshData,
   };
 };
