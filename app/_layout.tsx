@@ -3,18 +3,19 @@ import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Platform, SafeAreaView, View, TouchableOpacity, Text } from 'react-native';
-import { commonStyles, colors, darkColors } from '../styles/commonStyles';
 import { useEffect, useCallback } from 'react';
 import { setupErrorLogging } from '../utils/errorLogger';
 import { router, usePathname } from 'expo-router';
 import Icon from '../components/Icon';
 import { useTheme } from '../hooks/useTheme';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 
 const STORAGE_KEY = 'emulated_device';
 
 function CustomTabBar() {
   const pathname = usePathname();
   const { isDarkMode, currentColors } = useTheme();
+  const { themedStyles } = useThemedStyles();
   const insets = useSafeAreaInsets();
 
   const navItems = [
@@ -39,9 +40,9 @@ function CustomTabBar() {
       paddingHorizontal: 16,
       paddingBottom: insets.bottom,
       elevation: 8,
-      shadowColor: '#000',
+      shadowColor: isDarkMode ? '#000000' : '#000000',
       shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: 0.1,
+      shadowOpacity: isDarkMode ? 0.4 : 0.1,
       shadowRadius: 8,
     }}>
       {navItems.map((item) => {
@@ -55,7 +56,7 @@ function CustomTabBar() {
               paddingVertical: 8,
               paddingHorizontal: 4,
               borderRadius: 12,
-              backgroundColor: isActive ? currentColors.primary + '15' : 'transparent',
+              backgroundColor: isActive ? currentColors.primary + (isDarkMode ? '30' : '15') : 'transparent',
             }}
             onPress={() => handleNavigation(item.route)}
             activeOpacity={0.7}
@@ -77,6 +78,7 @@ function CustomTabBar() {
 export default function RootLayout() {
   const actualInsets = useSafeAreaInsets();
   const { isDarkMode, currentColors } = useTheme();
+  const { themedStyles } = useThemedStyles();
 
   useEffect(() => {
     // Set up global error logging
@@ -105,19 +107,23 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <View style={[commonStyles.wrapper, {
+      <View style={[themedStyles.wrapper, {
           paddingTop: 0,
           paddingLeft: insetsToUse.left,
           paddingRight: insetsToUse.right,
           paddingBottom: 0,
        }]}>
-        <StatusBar style={isDarkMode ? "light" : "dark"} />
-        {/* Top safe area with header background color */}
+        <StatusBar 
+          style={isDarkMode ? "light" : "dark"} 
+          backgroundColor={currentColors.backgroundAlt}
+          translucent={false}
+        />
+        {/* Top safe area with header background color that matches theme */}
         <View style={{ 
           height: insetsToUse.top, 
           backgroundColor: currentColors.backgroundAlt 
         }} />
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, backgroundColor: currentColors.background }}>
           <Tabs
             screenOptions={{
               headerShown: false,
