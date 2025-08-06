@@ -57,25 +57,27 @@ function CustomTabBar() {
     shadowRadius: 8,
   }), [currentColors.backgroundAlt, currentColors.border, insets.bottom, isDarkMode]);
 
+  // Pre-calculate styles for active and inactive states
+  const getButtonStyle = useCallback((isActive: boolean) => ({
+    flex: 1,
+    alignItems: 'center' as const,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderRadius: 12,
+    backgroundColor: isActive ? currentColors.primary + (isDarkMode ? '30' : '15') : 'transparent',
+  }), [currentColors.primary, isDarkMode]);
+
+  const getIconColor = useCallback((isActive: boolean) => 
+    isActive ? currentColors.primary : currentColors.textSecondary,
+    [currentColors.primary, currentColors.textSecondary]
+  );
+
   return (
     <View style={tabBarStyle}>
       {navItems.map((item) => {
         const isActive = pathname === item.route;
-        
-        // Memoize button style for each item
-        const buttonStyle = useMemo(() => ({
-          flex: 1,
-          alignItems: 'center' as const,
-          paddingVertical: 8,
-          paddingHorizontal: 4,
-          borderRadius: 12,
-          backgroundColor: isActive ? currentColors.primary + (isDarkMode ? '30' : '15') : 'transparent',
-        }), [isActive, currentColors.primary, isDarkMode]);
-
-        const iconColor = useMemo(() => 
-          isActive ? currentColors.primary : currentColors.textSecondary,
-          [isActive, currentColors.primary, currentColors.textSecondary]
-        );
+        const buttonStyle = getButtonStyle(isActive);
+        const iconColor = getIconColor(isActive);
 
         return (
           <TouchableOpacity
@@ -160,7 +162,7 @@ export default function RootLayout() {
   }), [currentColors.background]);
 
   // Create a memoized CustomTabBar component that will re-render when theme changes
-  const MemoizedCustomTabBar = useCallback(() => <CustomTabBar />, [isDarkMode, currentColors]);
+  const MemoizedCustomTabBar = useCallback(() => <CustomTabBar />, []);
 
   return (
     <SafeAreaProvider>
