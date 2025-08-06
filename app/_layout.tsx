@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Platform, SafeAreaView, View, TouchableOpacity, Text } from 'react-native';
 import { commonStyles, colors, darkColors } from '../styles/commonStyles';
-import { useEffect, useState } from 'react';
+import { useEffect, useCallback } from 'react';
 import { setupErrorLogging } from '../utils/errorLogger';
 import { router, usePathname } from 'expo-router';
 import Icon from '../components/Icon';
@@ -22,6 +22,11 @@ function CustomTabBar() {
     { name: 'People', icon: 'people-outline', activeIcon: 'people', route: '/people' },
     { name: 'Settings', icon: 'settings-outline', activeIcon: 'settings', route: '/settings' },
   ];
+
+  const handleNavigation = useCallback((route: string) => {
+    console.log('CustomTabBar: Navigating to:', route);
+    router.replace(route);
+  }, []);
 
   return (
     <View style={{
@@ -51,7 +56,7 @@ function CustomTabBar() {
               borderRadius: 12,
               backgroundColor: isActive ? currentColors.primary + '15' : 'transparent',
             }}
-            onPress={() => router.replace(item.route)}
+            onPress={() => handleNavigation(item.route)}
             activeOpacity={0.7}
           >
             <Icon

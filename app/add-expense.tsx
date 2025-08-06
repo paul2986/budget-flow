@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
@@ -11,7 +11,7 @@ import Icon from '../components/Icon';
 import { Expense } from '../types/budget';
 
 export default function AddExpenseScreen() {
-  const { data, addExpense, updateExpense, saving, refreshData } = useBudgetData();
+  const { data, addExpense, updateExpense, saving } = useBudgetData();
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
   const params = useLocalSearchParams<{ id?: string }>();
@@ -25,15 +25,9 @@ export default function AddExpenseScreen() {
   const isEditMode = !!params.id;
   const expenseToEdit = isEditMode ? data.expenses.find(e => e.id === params.id) : null;
 
-  // Force refresh data when component mounts
-  useEffect(() => {
-    console.log('AddExpenseScreen: Component mounted, refreshing data...');
-    refreshData();
-  }, []);
-
   // Load expense data for editing
   useEffect(() => {
-    if (isEditMode && expenseToEdit && data.people.length > 0) {
+    if (isEditMode && expenseToEdit && data.people.length >= 0) {
       console.log('AddExpenseScreen: Loading expense for editing:', expenseToEdit);
       setDescription(expenseToEdit.description);
       setAmount(expenseToEdit.amount.toString());
@@ -51,7 +45,7 @@ export default function AddExpenseScreen() {
     }
   }, [isEditMode, expenseToEdit, data.people, params.id]);
 
-  const handleSaveExpense = async () => {
+  const handleSaveExpense = useCallback(async () => {
     if (!description.trim()) {
       Alert.alert('Error', 'Please enter a description');
       return;
@@ -101,9 +95,13 @@ export default function AddExpenseScreen() {
       console.error('AddExpenseScreen: Error saving expense:', error);
       Alert.alert('Error', 'Failed to save expense. Please try again.');
     }
-  };
+  }, [description, amount, category, frequency, personId, isEditMode, expenseToEdit, addExpense, updateExpense]);
 
-  const CategoryPicker = () => (
+  const handleGoBack = useCallback(() => {
+    router.back();
+  }, []);
+
+  const CategoryPicker = useCallback(() => (
     <View style={[commonStyles.section, { paddingTop: 0 }]}>
       <Text style={[commonStyles.label, { color: currentColors.text }]}>Category</Text>
       <View style={[commonStyles.row, { marginTop: 8 }]}>
@@ -164,9 +162,9 @@ export default function AddExpenseScreen() {
         </TouchableOpacity>
       </View>
     </View>
-  );
+  ), [category, currentColors, saving]);
 
-  const FrequencyPicker = () => (
+  const FrequencyPicker = useCallback(() => (
     <View style={commonStyles.section}>
       <Text style={[commonStyles.label, { color: currentColors.text }]}>Frequency</Text>
       <View style={[commonStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
@@ -201,9 +199,9 @@ export default function AddExpenseScreen() {
         ))}
       </View>
     </View>
-  );
+  ), [frequency, currentColors, saving]);
 
-  const PersonPicker = () => {
+  const PersonPicker = useCallback(() => {
     if (category !== 'personal' || data.people.length === 0) return null;
 
     return (
@@ -241,13 +239,13 @@ export default function AddExpenseScreen() {
         </View>
       </View>
     );
-  };
+  }, [category, data.people, personId, currentColors, saving]);
 
   return (
     <View style={[commonStyles.container, { backgroundColor: currentColors.background }]}>
       <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
         <TouchableOpacity 
-          onPress={() => router.back()}
+          onPress={handleGoBack}
           disabled={saving}
           style={{
             backgroundColor: currentColors.border,

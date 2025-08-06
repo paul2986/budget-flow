@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { BudgetData, Person, Expense, Income, HouseholdSettings } from '../types/budget';
 import { loadBudgetData, saveBudgetData } from '../utils/storage';
 
@@ -11,13 +11,27 @@ export const useBudgetData = () => {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isLoadingRef = useRef(false);
 
   useEffect(() => {
     loadData();
+    return () => {
+      // Cleanup timeout on unmount
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
   }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    if (isLoadingRef.current) {
+      console.log('useBudgetData: Load already in progress, skipping...');
+      return;
+    }
+
     try {
+      isLoadingRef.current = true;
       console.log('useBudgetData: Loading data...');
       const budgetData = await loadBudgetData();
       console.log('useBudgetData: Loaded data:', budgetData);
@@ -26,10 +40,11 @@ export const useBudgetData = () => {
       console.error('useBudgetData: Error loading budget data:', error);
     } finally {
       setLoading(false);
+      isLoadingRef.current = false;
     }
-  };
+  }, []);
 
-  const saveData = async (newData: BudgetData) => {
+  const saveData = useCallback(async (newData: BudgetData) => {
     try {
       console.log('useBudgetData: Saving data:', newData);
       setSaving(true);
@@ -43,17 +58,6 @@ export const useBudgetData = () => {
         setData(newData);
         console.log('useBudgetData: UI state updated successfully');
         
-        // Force a refresh to ensure consistency
-        setTimeout(async () => {
-          try {
-            const freshData = await loadBudgetData();
-            setData(freshData);
-            console.log('useBudgetData: Data refreshed after save');
-          } catch (error) {
-            console.error('useBudgetData: Error refreshing data after save:', error);
-          }
-        }, 100);
-        
         return { success: true };
       } else {
         console.error('useBudgetData: Save failed:', saveResult.error);
@@ -65,9 +69,9 @@ export const useBudgetData = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, []);
 
-  const addPerson = async (person: Person) => {
+  const addPerson = useCallback(async (person: Person) => {
     console.log('useBudgetData: Adding person:', person);
     try {
       const newData = { ...data, people: [...data.people, person] };
@@ -78,9 +82,9 @@ export const useBudgetData = () => {
       console.error('useBudgetData: Error adding person:', error);
       return { success: false, error: error as Error };
     }
-  };
+  }, [data, saveData]);
 
-  const removePerson = async (personId: string) => {
+  const removePerson = useCallback(async (personId: string) => {
     console.log('useBudgetData: Removing person:', personId);
     try {
       // Verify person exists before attempting removal
@@ -108,9 +112,9 @@ export const useBudgetData = () => {
       console.error('useBudgetData: Error removing person:', error);
       return { success: false, error: error as Error };
     }
-  };
+  }, [data, saveData]);
 
-  const updatePerson = async (updatedPerson: Person) => {
+  const updatePerson = useCallback(async (updatedPerson: Person) => {
     console.log('useBudgetData: Updating person:', updatedPerson);
     try {
       const newData = {
@@ -124,9 +128,9 @@ export const useBudgetData = () => {
       console.error('useBudgetData: Error updating person:', error);
       return { success: false, error: error as Error };
     }
-  };
+  }, [data, saveData]);
 
-  const addIncome = async (personId: string, income: Income) => {
+  const addIncome = useCallback(async (personId: string, income: Income) => {
     console.log('useBudgetData: Adding income to person:', personId, income);
     try {
       // Find the person first to verify they exist
@@ -153,9 +157,9 @@ export const useBudgetData = () => {
       console.error('useBudgetData: Error adding income:', error);
       return { success: false, error: error as Error };
     }
-  };
+  }, [data, saveData]);
 
-  const removeIncome = async (personId: string, incomeId: string) => {
+  const removeIncome = useCallback(async (personId: string, incomeId: string) => {
     console.log('useBudgetData: Removing income from person:', personId, incomeId);
     
     try {
@@ -195,9 +199,9 @@ export const useBudgetData = () => {
       console.error('useBudgetData: Error removing income:', error);
       return { success: false, error: error as Error };
     }
-  };
+  }, [data, saveData]);
 
-  const addExpense = async (expense: Expense) => {
+  const addExpense = useCallback(async (expense: Expense) => {
     console.log('useBudgetData: Adding expense:', expense);
     try {
       // Generate a proper ID if not provided
@@ -216,9 +220,9 @@ export const useBudgetData = () => {
       console.error('useBudgetData: Error adding expense:', error);
       return { success: false, error: error as Error };
     }
-  };
+  }, [data, saveData]);
 
-  const removeExpense = async (expenseId: string) => {
+  const removeExpense = useCallback(async (expenseId: string) => {
     console.log('useBudgetData: Removing expense:', expenseId);
     try {
       // Verify expense exists before attempting removal
@@ -245,9 +249,9 @@ export const useBudgetData = () => {
       console.error('useBudgetData: Error removing expense:', error);
       return { success: false, error: error as Error };
     }
-  };
+  }, [data, saveData]);
 
-  const updateExpense = async (updatedExpense: Expense) => {
+  const updateExpense = useCallback(async (updatedExpense: Expense) => {
     console.log('useBudgetData: Updating expense:', updatedExpense);
     try {
       const newData = {
@@ -261,9 +265,9 @@ export const useBudgetData = () => {
       console.error('useBudgetData: Error updating expense:', error);
       return { success: false, error: error as Error };
     }
-  };
+  }, [data, saveData]);
 
-  const updateHouseholdSettings = async (settings: HouseholdSettings) => {
+  const updateHouseholdSettings = useCallback(async (settings: HouseholdSettings) => {
     console.log('useBudgetData: Updating household settings:', settings);
     try {
       const newData = { ...data, householdSettings: settings };
@@ -274,19 +278,27 @@ export const useBudgetData = () => {
       console.error('useBudgetData: Error updating household settings:', error);
       return { success: false, error: error as Error };
     }
-  };
+  }, [data, saveData]);
 
-  // Force refresh function that components can call
-  const refreshData = async () => {
-    console.log('useBudgetData: Force refreshing data...');
-    try {
-      const freshData = await loadBudgetData();
-      setData(freshData);
-      console.log('useBudgetData: Data force refreshed successfully');
-    } catch (error) {
-      console.error('useBudgetData: Error force refreshing data:', error);
+  // Throttled refresh function that components can call
+  const refreshData = useCallback(() => {
+    console.log('useBudgetData: Refresh requested...');
+    
+    // Clear any existing timeout
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
     }
-  };
+    
+    // Throttle refresh calls to prevent excessive loading
+    refreshTimeoutRef.current = setTimeout(async () => {
+      if (!isLoadingRef.current && !saving) {
+        console.log('useBudgetData: Executing throttled refresh...');
+        await loadData();
+      } else {
+        console.log('useBudgetData: Skipping refresh - operation in progress');
+      }
+    }, 100);
+  }, [loadData, saving]);
 
   return {
     data,

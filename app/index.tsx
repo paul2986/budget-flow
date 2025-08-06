@@ -1,7 +1,7 @@
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Text, View, ScrollView, TouchableOpacity } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { commonStyles } from '../styles/commonStyles';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
@@ -23,19 +23,13 @@ export default function HomeScreen() {
   const { currentColors } = useTheme();
   const { formatCurrency, loading: currencyLoading } = useCurrency();
 
-  // Add console logs to track when data changes
-  useEffect(() => {
-    console.log('HomeScreen: Data changed - People:', data.people.length, 'Expenses:', data.expenses.length);
-    console.log('HomeScreen: People data:', data.people);
-    console.log('HomeScreen: Expenses data:', data.expenses);
-    console.log('HomeScreen: Household settings:', data.householdSettings);
-  }, [data.people, data.expenses, data.householdSettings]);
-
-  // Force refresh data when component mounts
-  useEffect(() => {
-    console.log('HomeScreen: Component mounted, refreshing data...');
-    refreshData();
-  }, []);
+  // Only refresh data when screen comes into focus, not on every mount
+  useFocusEffect(
+    useCallback(() => {
+      console.log('HomeScreen: Screen focused, refreshing data...');
+      refreshData();
+    }, [refreshData])
+  );
 
   // Memoize calculations to ensure they update when data changes
   const calculations = useMemo(() => {
@@ -102,17 +96,6 @@ export default function HomeScreen() {
       const monthlyHouseholdShare = calculateMonthlyAmount(personHouseholdShare, 'yearly');
       const monthlyRemaining = calculateMonthlyAmount(remainingIncome, 'yearly');
 
-      console.log(`HomeScreen: Person ${person.name} breakdown:`, {
-        personIncome,
-        personPersonalExpenses,
-        personHouseholdShare,
-        remainingIncome,
-        monthlyPersonIncome,
-        monthlyPersonalExpenses,
-        monthlyHouseholdShare,
-        monthlyRemaining
-      });
-
       return {
         person,
         personIncome,
@@ -128,13 +111,29 @@ export default function HomeScreen() {
     });
   }, [data.people, data.expenses, data.householdSettings.distributionMethod, calculations.householdExpenses]);
 
-  const handleEditExpense = (expenseId: string) => {
+  const handleEditExpense = useCallback((expenseId: string) => {
     console.log('HomeScreen: Navigating to edit expense:', expenseId);
     router.push({
       pathname: '/add-expense',
       params: { id: expenseId }
     });
-  };
+  }, []);
+
+  const handleNavigateToAddExpense = useCallback(() => {
+    router.push('/add-expense');
+  }, []);
+
+  const handleNavigateToPeople = useCallback(() => {
+    router.push('/people');
+  }, []);
+
+  const handleNavigateToExpenses = useCallback(() => {
+    router.push('/expenses');
+  }, []);
+
+  const handleNavigateToEditPerson = useCallback((personId: string) => {
+    router.push(`/edit-person?personId=${personId}`);
+  }, []);
 
   // Show loading state if data is still loading
   if (loading || currencyLoading) {
@@ -157,7 +156,7 @@ export default function HomeScreen() {
       <View style={[commonStyles.header, { backgroundColor: currentColors.backgroundAlt, borderBottomColor: currentColors.border }]}>
         <View style={{ width: 24 }} />
         <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Budget Overview</Text>
-        <TouchableOpacity onPress={() => router.push('/add-expense')}>
+        <TouchableOpacity onPress={handleNavigateToAddExpense}>
           <Icon name="add-circle" size={28} style={{ color: currentColors.primary }} />
         </TouchableOpacity>
       </View>
@@ -291,7 +290,7 @@ export default function HomeScreen() {
                         </Text>
                       </View>
                     </View>
-                    <TouchableOpacity onPress={() => router.push(`/edit-person?personId=${person.id}`)}>
+                    <TouchableOpacity onPress={() => handleNavigateToEditPerson(person.id)}>
                       <Icon name="create-outline" size={24} style={{ color: currentColors.primary }} />
                     </TouchableOpacity>
                   </View>
@@ -452,7 +451,7 @@ export default function HomeScreen() {
           <View style={commonStyles.section}>
             <View style={[commonStyles.row, { marginBottom: 20 }]}>
               <Text style={[commonStyles.subtitle, { color: currentColors.text, marginBottom: 0 }]}>Recent Expenses</Text>
-              <TouchableOpacity onPress={() => router.push('/expenses')}>
+              <TouchableOpacity onPress={handleNavigateToExpenses}>
                 <Text style={[commonStyles.text, { color: currentColors.primary, fontWeight: '600' }]}>View All</Text>
               </TouchableOpacity>
             </View>
@@ -559,7 +558,7 @@ export default function HomeScreen() {
                         padding: 16,
                       }
                     ]}
-                    onPress={() => router.push('/people')}
+                    onPress={handleNavigateToPeople}
                   >
                     <View style={[commonStyles.row, { alignItems: 'center' }]}>
                       <Icon name="people" size={24} style={{ color: currentColors.primary, marginRight: 12 }} />
@@ -584,7 +583,7 @@ export default function HomeScreen() {
                         padding: 16,
                       }
                     ]}
-                    onPress={() => router.push('/add-expense')}
+                    onPress={handleNavigateToAddExpense}
                   >
                     <View style={[commonStyles.row, { alignItems: 'center' }]}>
                       <Icon name="receipt" size={24} style={{ color: currentColors.secondary, marginRight: 12 }} />
@@ -627,7 +626,7 @@ export default function HomeScreen() {
                       width: '100%',
                     }
                   ]}
-                  onPress={() => router.push('/people')}
+                  onPress={handleNavigateToPeople}
                 >
                   <View style={[commonStyles.row, { alignItems: 'center', justifyContent: 'center' }]}>
                     <Icon name="people" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
@@ -663,7 +662,7 @@ export default function HomeScreen() {
                       width: '100%',
                     }
                   ]}
-                  onPress={() => router.push('/add-expense')}
+                  onPress={handleNavigateToAddExpense}
                 >
                   <View style={[commonStyles.row, { alignItems: 'center', justifyContent: 'center' }]}>
                     <Icon name="add-circle" size={20} style={{ color: currentColors.secondary, marginRight: 8 }} />

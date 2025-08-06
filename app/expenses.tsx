@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { router, useFocusEffect } from 'expo-router';
 import { Text, View, ScrollView, TouchableOpacity, Alert, Animated, ActivityIndicator } from 'react-native';
@@ -9,7 +9,6 @@ import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler'
 import { commonStyles } from '../styles/commonStyles';
 import { useCurrency } from '../hooks/useCurrency';
 import Icon from '../components/Icon';
-import { useCallback } from 'react';
 
 export default function ExpensesScreen() {
   const { data, removeExpense, saving, refreshData } = useBudgetData();
@@ -19,12 +18,6 @@ export default function ExpensesScreen() {
   const [personFilter, setPersonFilter] = useState<string | null>(null);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
 
-  // Force refresh data when component mounts
-  useEffect(() => {
-    console.log('ExpensesScreen: Component mounted, refreshing data...');
-    refreshData();
-  }, []);
-
   // Refresh data when screen comes into focus (e.g., after adding an expense)
   useFocusEffect(
     useCallback(() => {
@@ -33,7 +26,7 @@ export default function ExpensesScreen() {
     }, [refreshData])
   );
 
-  const handleRemoveExpense = (expenseId: string, description: string) => {
+  const handleRemoveExpense = useCallback((expenseId: string, description: string) => {
     console.log('ExpensesScreen: Attempting to remove expense:', expenseId, description);
     
     // Prevent multiple deletion attempts
@@ -58,10 +51,7 @@ export default function ExpensesScreen() {
               const result = await removeExpense(expenseId);
               console.log('ExpensesScreen: Expense removal result:', result);
               
-              if (result.success) {
-                // Force refresh to ensure UI updates
-                await refreshData();
-              } else {
+              if (!result.success) {
                 console.error('ExpensesScreen: Expense removal failed:', result.error);
                 Alert.alert('Error', 'Failed to remove expense. Please try again.');
               }
@@ -75,17 +65,21 @@ export default function ExpensesScreen() {
         },
       ]
     );
-  };
+  }, [deletingExpenseId, saving, removeExpense]);
 
-  const handleEditExpense = (expense: any) => {
+  const handleEditExpense = useCallback((expense: any) => {
     console.log('ExpensesScreen: Navigating to edit expense:', expense);
     router.push({
       pathname: '/add-expense',
       params: { id: expense.id }
     });
-  };
+  }, []);
 
-  const FilterButton = ({ filterType, label }: { filterType: typeof filter, label: string }) => (
+  const handleNavigateToAddExpense = useCallback(() => {
+    router.push('/add-expense');
+  }, []);
+
+  const FilterButton = useCallback(({ filterType, label }: { filterType: typeof filter, label: string }) => (
     <TouchableOpacity
       style={[
         commonStyles.badge,
@@ -119,9 +113,9 @@ export default function ExpensesScreen() {
         {label}
       </Text>
     </TouchableOpacity>
-  );
+  ), [filter, currentColors, saving, deletingExpenseId]);
 
-  const renderRightActions = (expenseId: string, description: string) => {
+  const renderRightActions = useCallback((expenseId: string, description: string) => {
     const isDeleting = deletingExpenseId === expenseId;
     
     return (
@@ -156,13 +150,12 @@ export default function ExpensesScreen() {
         </TouchableOpacity>
       </Animated.View>
     );
-  };
+  }, [deletingExpenseId, saving, currentColors.error, handleRemoveExpense]);
 
   // Filter expenses
   let filteredExpenses = data.expenses;
   
   console.log('ExpensesScreen: Total expenses:', data.expenses.length);
-  console.log('ExpensesScreen: All expenses:', data.expenses);
   
   if (filter === 'household') {
     filteredExpenses = filteredExpenses.filter(e => e.category === 'household');
@@ -186,7 +179,7 @@ export default function ExpensesScreen() {
           <View style={{ width: 24 }} />
           <Text style={[commonStyles.headerTitle, { color: currentColors.text }]}>Expenses</Text>
           <TouchableOpacity 
-            onPress={() => router.push('/add-expense')} 
+            onPress={handleNavigateToAddExpense} 
             disabled={saving || deletingExpenseId !== null}
             style={{
               backgroundColor: currentColors.primary,
