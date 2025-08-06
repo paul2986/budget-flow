@@ -17,6 +17,7 @@ export const useBudgetData = () => {
   const isLoadingRef = useRef(false);
   const saveQueueRef = useRef<BudgetData | null>(null);
   const saveInProgressRef = useRef(false);
+  const lastRefreshTimeRef = useRef<number>(0);
 
   // Update the ref whenever data changes
   useEffect(() => {
@@ -53,6 +54,7 @@ export const useBudgetData = () => {
       
       setData(budgetData);
       currentDataRef.current = budgetData;
+      lastRefreshTimeRef.current = Date.now();
     } catch (error) {
       console.error('useBudgetData: Error loading budget data:', error);
     } finally {
@@ -118,6 +120,7 @@ export const useBudgetData = () => {
         // Update both state and ref immediately after successful save
         setData(validatedData);
         currentDataRef.current = validatedData;
+        lastRefreshTimeRef.current = Date.now();
         console.log('useBudgetData: Data saved and state updated successfully');
         return { success: true };
       } else {
@@ -470,24 +473,35 @@ export const useBudgetData = () => {
     }
   }, [saveData, getCurrentData, createDataCopy]);
 
-  // Simplified refresh function that only loads when necessary
-  const refreshData = useCallback(() => {
+  // Improved refresh function that always loads fresh data from storage
+  const refreshData = useCallback(async () => {
     console.log('useBudgetData: Refresh requested...', {
       saving,
       loading,
       isLoading: isLoadingRef.current,
-      saveInProgress: saveInProgressRef.current
+      saveInProgress: saveInProgressRef.current,
+      lastRefreshTime: lastRefreshTimeRef.current,
+      timeSinceLastRefresh: Date.now() - lastRefreshTimeRef.current
     });
     
-    // Don't refresh if we're currently saving, loading, or have a save in progress
-    if (saving || isLoadingRef.current || saveInProgressRef.current) {
-      console.log('useBudgetData: Skipping refresh - operation in progress');
+    // Don't refresh if we're currently saving or have a save in progress
+    if (saveInProgressRef.current) {
+      console.log('useBudgetData: Skipping refresh - save operation in progress');
+      return;
+    }
+    
+    // If we're already loading, wait for it to complete
+    if (isLoadingRef.current) {
+      console.log('useBudgetData: Load already in progress, waiting...');
+      while (isLoadingRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
       return;
     }
     
     console.log('useBudgetData: Executing refresh...');
-    loadData();
-  }, [loadData, saving]);
+    await loadData();
+  }, [loadData]);
 
   return {
     data,
