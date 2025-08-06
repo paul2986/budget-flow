@@ -3,7 +3,7 @@ import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Platform, SafeAreaView, View, TouchableOpacity, Text } from 'react-native';
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
 import { setupErrorLogging } from '../utils/errorLogger';
 import { router, usePathname } from 'expo-router';
 import Icon from '../components/Icon';
@@ -29,55 +29,65 @@ function CustomTabBar() {
     });
   }, [isDarkMode, themeMode, currentColors]);
 
-  const navItems = [
+  const navItems = useMemo(() => [
     { name: 'Home', icon: 'home-outline', activeIcon: 'home', route: '/' },
     { name: 'Expenses', icon: 'receipt-outline', activeIcon: 'receipt', route: '/expenses' },
     { name: 'People', icon: 'people-outline', activeIcon: 'people', route: '/people' },
     { name: 'Settings', icon: 'settings-outline', activeIcon: 'settings', route: '/settings' },
-  ];
+  ], []);
 
   const handleNavigation = useCallback((route: string) => {
     console.log('CustomTabBar: Navigating to:', route);
     router.replace(route);
   }, []);
 
+  // Memoize the tab bar style to ensure it updates when theme changes
+  const tabBarStyle = useMemo(() => ({
+    flexDirection: 'row' as const,
+    backgroundColor: currentColors.backgroundAlt,
+    borderTopWidth: 1,
+    borderTopColor: currentColors.border,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingBottom: insets.bottom,
+    elevation: 8,
+    shadowColor: isDarkMode ? '#000000' : '#000000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: isDarkMode ? 0.4 : 0.1,
+    shadowRadius: 8,
+  }), [currentColors.backgroundAlt, currentColors.border, insets.bottom, isDarkMode]);
+
   return (
-    <View style={{
-      flexDirection: 'row',
-      backgroundColor: currentColors.backgroundAlt,
-      borderTopWidth: 1,
-      borderTopColor: currentColors.border,
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      paddingBottom: insets.bottom,
-      elevation: 8,
-      shadowColor: isDarkMode ? '#000000' : '#000000',
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: isDarkMode ? 0.4 : 0.1,
-      shadowRadius: 8,
-    }}>
+    <View style={tabBarStyle}>
       {navItems.map((item) => {
         const isActive = pathname === item.route;
+        
+        // Memoize button style for each item
+        const buttonStyle = useMemo(() => ({
+          flex: 1,
+          alignItems: 'center' as const,
+          paddingVertical: 8,
+          paddingHorizontal: 4,
+          borderRadius: 12,
+          backgroundColor: isActive ? currentColors.primary + (isDarkMode ? '30' : '15') : 'transparent',
+        }), [isActive, currentColors.primary, isDarkMode]);
+
+        const iconColor = useMemo(() => 
+          isActive ? currentColors.primary : currentColors.textSecondary,
+          [isActive, currentColors.primary, currentColors.textSecondary]
+        );
+
         return (
           <TouchableOpacity
             key={item.route}
-            style={{
-              flex: 1,
-              alignItems: 'center',
-              paddingVertical: 8,
-              paddingHorizontal: 4,
-              borderRadius: 12,
-              backgroundColor: isActive ? currentColors.primary + (isDarkMode ? '30' : '15') : 'transparent',
-            }}
+            style={buttonStyle}
             onPress={() => handleNavigation(item.route)}
             activeOpacity={0.7}
           >
             <Icon
               name={isActive ? item.activeIcon : item.icon}
               size={28}
-              style={{ 
-                color: isActive ? currentColors.primary : currentColors.textSecondary,
-              }}
+              style={{ color: iconColor }}
             />
           </TouchableOpacity>
         );
@@ -126,31 +136,49 @@ export default function RootLayout() {
     insetsToUse = deviceToEmulate ? simulatedInsets[deviceToEmulate as keyof typeof simulatedInsets] || actualInsets : actualInsets;
   }
 
+  // Memoize the wrapper style to ensure it updates when theme changes
+  const wrapperStyle = useMemo(() => ([
+    themedStyles.wrapper,
+    {
+      paddingTop: 0,
+      paddingLeft: insetsToUse.left,
+      paddingRight: insetsToUse.right,
+      paddingBottom: 0,
+    }
+  ]), [themedStyles.wrapper, insetsToUse.left, insetsToUse.right]);
+
+  // Memoize the top safe area style
+  const topSafeAreaStyle = useMemo(() => ({ 
+    height: insetsToUse.top, 
+    backgroundColor: currentColors.backgroundAlt 
+  }), [insetsToUse.top, currentColors.backgroundAlt]);
+
+  // Memoize the main container style
+  const mainContainerStyle = useMemo(() => ({ 
+    flex: 1, 
+    backgroundColor: currentColors.background 
+  }), [currentColors.background]);
+
+  // Create a memoized CustomTabBar component that will re-render when theme changes
+  const MemoizedCustomTabBar = useCallback(() => <CustomTabBar />, [isDarkMode, currentColors]);
+
   return (
     <SafeAreaProvider>
-      <View style={[themedStyles.wrapper, {
-          paddingTop: 0,
-          paddingLeft: insetsToUse.left,
-          paddingRight: insetsToUse.right,
-          paddingBottom: 0,
-       }]}>
+      <View style={wrapperStyle}>
         <StatusBar 
           style={isDarkMode ? "light" : "dark"} 
           backgroundColor={currentColors.backgroundAlt}
           translucent={false}
         />
         {/* Top safe area with header background color that matches theme */}
-        <View style={{ 
-          height: insetsToUse.top, 
-          backgroundColor: currentColors.backgroundAlt 
-        }} />
-        <View style={{ flex: 1, backgroundColor: currentColors.background }}>
+        <View style={topSafeAreaStyle} />
+        <View style={mainContainerStyle}>
           <Tabs
             screenOptions={{
               headerShown: false,
               tabBarStyle: { display: 'none' }, // Hide the default tab bar
             }}
-            tabBar={() => <CustomTabBar />}
+            tabBar={MemoizedCustomTabBar}
           >
             <Tabs.Screen 
               name="index" 
