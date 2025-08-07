@@ -9,7 +9,7 @@ import Icon from '../components/Icon';
 import StandardHeader from '../components/StandardHeader';
 
 export default function SettingsScreen() {
-  const { data, updateHouseholdSettings } = useBudgetData();
+  const { data, updateHouseholdSettings, clearAllData: clearData } = useBudgetData();
   const { currentColors, themeMode, setThemeMode, isDarkMode } = useTheme();
   const { themedStyles, themedButtonStyles } = useThemedStyles();
   const { currency, setCurrency } = useCurrency();
@@ -62,15 +62,8 @@ export default function SettingsScreen() {
             try {
               console.log('Settings: Clearing all data...');
               
-              // Reset to empty data structure
-              const emptyData = {
-                people: [],
-                expenses: [],
-                householdSettings: { distributionMethod: 'even' as const },
-              };
-              
-              // Use the updateHouseholdSettings to clear everything
-              const result = await updateHouseholdSettings(emptyData.householdSettings);
+              // Use the clearAllData function from useBudgetData
+              const result = await clearData();
               
               if (result.success) {
                 console.log('Settings: All data cleared successfully');

@@ -472,6 +472,20 @@ export const useBudgetData = () => {
     await loadData();
   }, [loadData]); // Only depend on loadData which is stable
 
+  const clearAllData = useCallback(async (): Promise<{ success: boolean; error?: Error }> => {
+    console.log('useBudgetData: Clearing all data...');
+    return queueSave(async () => {
+      const emptyData: BudgetData = {
+        people: [],
+        expenses: [],
+        householdSettings: { distributionMethod: 'even' },
+      };
+      
+      console.log('useBudgetData: Saving empty data structure');
+      return await saveData(emptyData);
+    });
+  }, [queueSave, saveData]);
+
   return {
     data,
     loading,
@@ -486,6 +500,7 @@ export const useBudgetData = () => {
     removeExpense,
     updateExpense,
     updateHouseholdSettings,
+    clearAllData,
     refreshData,
   };
 };
