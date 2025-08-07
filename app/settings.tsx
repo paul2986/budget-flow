@@ -4,7 +4,6 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
 import { useCurrency, CURRENCIES } from '../hooks/useCurrency';
-import { useToast } from '../hooks/useToast';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
 import StandardHeader from '../components/StandardHeader';
@@ -14,7 +13,6 @@ export default function SettingsScreen() {
   const { currentColors, themeMode, setThemeMode, isDarkMode } = useTheme();
   const { themedStyles, themedButtonStyles } = useThemedStyles();
   const { currency, setCurrency } = useCurrency();
-  const { showToast } = useToast();
 
   const handleDistributionMethodChange = async (method: 'even' | 'income-based') => {
     console.log('Settings: Changing distribution method to:', method);
@@ -30,14 +28,13 @@ export default function SettingsScreen() {
       
       if (result.success) {
         console.log('Settings: Distribution method updated successfully');
-        showToast('Household expense distribution method updated!', 'success');
       } else {
         console.error('Settings: Failed to update distribution method:', result.error);
-        showToast('Failed to update household expense distribution method.', 'error');
+        Alert.alert('Error', 'Failed to update household expense distribution method.');
       }
     } catch (error) {
       console.error('Settings: Error updating distribution method:', error);
-      showToast('An unexpected error occurred while updating the distribution method.', 'error');
+      Alert.alert('Error', 'An unexpected error occurred while updating the distribution method.');
     }
   };
 
@@ -46,10 +43,9 @@ export default function SettingsScreen() {
     try {
       await setThemeMode(newTheme);
       console.log('Settings: Theme change completed');
-      showToast(`Theme changed to ${newTheme === 'system' ? 'system default' : newTheme + ' mode'}!`, 'success');
     } catch (error) {
       console.error('Settings: Error changing theme:', error);
-      showToast('Failed to change theme.', 'error');
+      Alert.alert('Error', 'Failed to change theme.');
     }
   };
 
@@ -79,14 +75,13 @@ export default function SettingsScreen() {
               
               if (result.success) {
                 console.log('Settings: All data cleared successfully');
-                showToast('All data has been cleared successfully!', 'success');
               } else {
                 console.error('Settings: Failed to clear data:', result.error);
-                showToast('Failed to clear all data. Please try again.', 'error');
+                Alert.alert('Error', 'Failed to clear all data. Please try again.');
               }
             } catch (error) {
               console.error('Settings: Error clearing data:', error);
-              showToast('An unexpected error occurred while clearing data.', 'error');
+              Alert.alert('Error', 'An unexpected error occurred while clearing data.');
             }
           }
         },
@@ -97,7 +92,6 @@ export default function SettingsScreen() {
   const handleCurrencyChange = (curr: typeof CURRENCIES[0]) => {
     console.log('Settings: Changing currency to:', curr);
     setCurrency(curr);
-    showToast(`Currency changed to ${curr.name} (${curr.symbol})!`, 'success');
   };
 
   return (

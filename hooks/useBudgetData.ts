@@ -141,7 +141,7 @@ export const useBudgetData = () => {
     console.log('useBudgetData: Queue processing completed');
   }, []);
 
-  // Atomic save operation
+  // Atomic save operation with immediate state update
   const saveData = useCallback(async (newData: BudgetData): Promise<{ success: boolean; error?: Error }> => {
     try {
       console.log('useBudgetData: Atomic save operation started:', {
@@ -151,22 +151,27 @@ export const useBudgetData = () => {
         distributionMethod: newData.householdSettings?.distributionMethod
       });
       
+      // Update state immediately for optimistic updates
+      setData(newData);
+      
       const result = await saveBudgetData(newData);
       
       if (result.success) {
-        // Update state immediately after successful save
-        setData(newData);
-        console.log('useBudgetData: Data saved and state updated successfully');
+        console.log('useBudgetData: Data saved successfully');
         return { success: true };
       } else {
-        console.error('useBudgetData: Save failed:', result.error);
+        console.error('useBudgetData: Save failed, reverting state:', result.error);
+        // Revert state by reloading from storage
+        await loadData();
         return { success: false, error: result.error };
       }
     } catch (error) {
       console.error('useBudgetData: Error in atomic save operation:', error);
+      // Revert state by reloading from storage
+      await loadData();
       return { success: false, error: error as Error };
     }
-  }, []);
+  }, [loadData]);
 
   const addPerson = useCallback(async (person: Person): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Adding person:', person);
