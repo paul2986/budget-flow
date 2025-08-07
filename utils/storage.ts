@@ -54,8 +54,32 @@ const validateBudgetData = (data: any): BudgetData => {
   
   // Validate and sanitize expenses array
   const expenses = Array.isArray(data.expenses) ? data.expenses.filter((expense: any) => {
-    if (!expense || typeof expense !== 'object' || !expense.id || typeof expense.amount !== 'number') {
-      console.warn('storage: Invalid expense object found, filtering out:', expense);
+    if (!expense || typeof expense !== 'object') {
+      console.warn('storage: Invalid expense object (not object):', expense);
+      return false;
+    }
+    if (!expense.id) {
+      console.warn('storage: Invalid expense object (no id):', expense);
+      return false;
+    }
+    if (typeof expense.amount !== 'number' || isNaN(expense.amount)) {
+      console.warn('storage: Invalid expense object (invalid amount):', expense);
+      return false;
+    }
+    if (!expense.description || typeof expense.description !== 'string') {
+      console.warn('storage: Invalid expense object (invalid description):', expense);
+      return false;
+    }
+    if (!expense.category || !['household', 'personal'].includes(expense.category)) {
+      console.warn('storage: Invalid expense object (invalid category):', expense);
+      return false;
+    }
+    if (!expense.frequency || !['daily', 'weekly', 'monthly', 'yearly'].includes(expense.frequency)) {
+      console.warn('storage: Invalid expense object (invalid frequency):', expense);
+      return false;
+    }
+    if (!expense.date) {
+      console.warn('storage: Invalid expense object (no date):', expense);
       return false;
     }
     return true;
@@ -77,10 +101,13 @@ const validateBudgetData = (data: any): BudgetData => {
   };
   
   console.log('storage: Data validation complete:', {
-    peopleCount: validatedData.people.length,
-    expensesCount: validatedData.expenses.length,
+    originalPeopleCount: Array.isArray(data.people) ? data.people.length : 0,
+    validatedPeopleCount: validatedData.people.length,
+    originalExpensesCount: Array.isArray(data.expenses) ? data.expenses.length : 0,
+    validatedExpensesCount: validatedData.expenses.length,
     distributionMethod: validatedData.householdSettings.distributionMethod,
-    expenseIds: validatedData.expenses.map(e => e.id)
+    originalExpenseIds: Array.isArray(data.expenses) ? data.expenses.map(e => e?.id).filter(Boolean) : [],
+    validatedExpenseIds: validatedData.expenses.map(e => e.id)
   });
   
   return validatedData;
@@ -162,19 +189,25 @@ const performSave = async (data: BudgetData): Promise<void> => {
   
   // Double-check that we're not losing data during validation
   if (data.people?.length && validatedData.people.length !== data.people.length) {
-    console.warn('storage: People count mismatch after validation!', {
+    console.error('storage: People count mismatch after validation!', {
       original: data.people.length,
-      validated: validatedData.people.length
+      validated: validatedData.people.length,
+      originalPeople: data.people.map(p => ({ id: p.id, name: p.name })),
+      validatedPeople: validatedData.people.map(p => ({ id: p.id, name: p.name }))
     });
+    throw new Error('Data validation failed - people count mismatch');
   }
   
   if (data.expenses?.length && validatedData.expenses.length !== data.expenses.length) {
-    console.warn('storage: Expenses count mismatch after validation!', {
+    console.error('storage: Expenses count mismatch after validation!', {
       original: data.expenses.length,
       validated: validatedData.expenses.length,
       originalIds: data.expenses.map(e => e.id),
-      validatedIds: validatedData.expenses.map(e => e.id)
+      validatedIds: validatedData.expenses.map(e => e.id),
+      originalExpenses: data.expenses.map(e => ({ id: e.id, description: e.description, amount: e.amount })),
+      validatedExpenses: validatedData.expenses.map(e => ({ id: e.id, description: e.description, amount: e.amount }))
     });
+    throw new Error('Data validation failed - expenses count mismatch');
   }
   
   console.log('storage: About to save validated data:', {

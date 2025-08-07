@@ -269,10 +269,10 @@ export default function EditIncomeScreen() {
       <StandardHeader
         title="Edit Income"
         onLeftPress={handleGoBack}
-        rightIcon="trash-outline"
-        onRightPress={handleDeleteIncome}
+        rightIcon="checkmark"
+        onRightPress={handleSaveIncome}
         loading={saving}
-        rightIconColor={currentColors.error}
+        rightIconColor="#22C55E"
       />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
@@ -347,7 +347,7 @@ export default function EditIncomeScreen() {
             <Button
               text={saving ? 'Saving...' : 'Save Changes'}
               onPress={handleSaveIncome}
-              style={[themedButtonStyles.primary, { marginTop: 0, backgroundColor: saving ? currentColors.textSecondary : currentColors.income }]}
+              style={[themedButtonStyles.primary, { marginTop: 0, backgroundColor: saving ? currentColors.textSecondary : '#22C55E' }]}
               disabled={saving}
             />
           </View>

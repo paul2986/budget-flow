@@ -147,7 +147,6 @@ export const useBudgetData = () => {
       if (result.success) {
         // Update state immediately after successful save
         setData(newData);
-        lastRefreshTimeRef.current = Date.now();
         console.log('useBudgetData: Data saved and state updated successfully');
         return { success: true };
       } else {
@@ -406,12 +405,13 @@ export const useBudgetData = () => {
     });
   }, [queueSave, createDataCopy, saveData, getCurrentData]);
 
-  // Throttled refresh function to prevent excessive refreshes
-  const refreshData = useCallback(async () => {
+  // Refresh function with improved logic
+  const refreshData = useCallback(async (force: boolean = false) => {
     const now = Date.now();
     const timeSinceLastRefresh = now - lastRefreshTimeRef.current;
     
     console.log('useBudgetData: Refresh requested...', {
+      force,
       saving,
       loading,
       isLoading: isLoadingRef.current,
@@ -420,14 +420,14 @@ export const useBudgetData = () => {
       timeSinceLastRefresh
     });
     
-    // Don't refresh if we're currently saving or have a save in progress
-    if (isQueueRunning.current) {
+    // Don't refresh if we're currently saving or have a save in progress (unless forced)
+    if (isQueueRunning.current && !force) {
       console.log('useBudgetData: Skipping refresh - save operation in progress');
       return;
     }
     
-    // Throttle refreshes to prevent excessive calls (minimum 1 second between refreshes)
-    if (timeSinceLastRefresh < 1000) {
+    // Throttle refreshes to prevent excessive calls (minimum 500ms between refreshes, unless forced)
+    if (timeSinceLastRefresh < 500 && !force) {
       console.log('useBudgetData: Skipping refresh - too soon since last refresh');
       return;
     }
@@ -435,10 +435,15 @@ export const useBudgetData = () => {
     // If we're already loading, wait for it to complete
     if (isLoadingRef.current) {
       console.log('useBudgetData: Load already in progress, waiting...');
-      while (isLoadingRef.current) {
+      let attempts = 0;
+      while (isLoadingRef.current && attempts < 20) { // Max 1 second wait
         await new Promise(resolve => setTimeout(resolve, 50));
+        attempts++;
       }
-      return;
+      if (isLoadingRef.current) {
+        console.log('useBudgetData: Load still in progress after waiting, skipping refresh');
+        return;
+      }
     }
     
     console.log('useBudgetData: Executing refresh...');

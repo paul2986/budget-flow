@@ -89,8 +89,10 @@ export default function AddExpenseScreen() {
 
       if (result && result.success) {
         console.log('AddExpenseScreen: Expense saved successfully, navigating to expenses page');
-        // Navigate to expenses screen to show the newly created/updated expense
-        router.replace('/expenses');
+        // Small delay to ensure state is updated before navigation
+        setTimeout(() => {
+          router.replace('/expenses');
+        }, 100);
       } else {
         console.error('AddExpenseScreen: Expense save failed:', result?.error);
         Alert.alert('Error', result?.error?.message || 'Failed to save expense. Please try again.');
@@ -130,7 +132,10 @@ export default function AddExpenseScreen() {
               
               if (result && result.success) {
                 console.log('AddExpenseScreen: Expense deleted successfully, navigating to expenses page');
-                router.replace('/expenses');
+                // Small delay to ensure state is updated before navigation
+                setTimeout(() => {
+                  router.replace('/expenses');
+                }, 100);
               } else {
                 console.error('AddExpenseScreen: Expense deletion failed:', result?.error);
                 Alert.alert('Error', result?.error?.message || 'Failed to delete expense. Please try again.');
@@ -296,11 +301,11 @@ export default function AddExpenseScreen() {
       <StandardHeader
         title={isEditMode ? 'Edit Expense' : 'Add Expense'}
         onLeftPress={handleGoBack}
-        rightIcon={isEditMode ? 'trash-outline' : undefined}
-        onRightPress={isEditMode ? handleDeleteExpense : undefined}
-        showRightIcon={isEditMode}
+        rightIcon={isEditMode ? 'checkmark' : 'add'}
+        onRightPress={isEditMode ? handleSaveExpense : handleSaveExpense}
+        showRightIcon={true}
         loading={saving || deleting}
-        rightIconColor={isEditMode ? currentColors.error : undefined}
+        rightIconColor={isEditMode ? '#22C55E' : '#FFFFFF'}
       />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
@@ -354,12 +359,12 @@ export default function AddExpenseScreen() {
             disabled={saving || deleting}
             style={[
               themedButtonStyles.primary,
-              { backgroundColor: currentColors.primary },
+              { backgroundColor: isEditMode ? '#22C55E' : currentColors.primary },
               (saving || deleting) && { opacity: 0.7 }
             ]}
           />
           
-          {/* Additional delete button for edit mode */}
+          {/* Delete button for edit mode */}
           {isEditMode && (
             <View style={{ marginTop: 16 }}>
               <Button

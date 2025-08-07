@@ -248,6 +248,7 @@ export default function EditPersonScreen() {
         rightIcon="checkmark"
         onRightPress={handleSavePerson}
         loading={saving}
+        rightIconColor="#22C55E"
       />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>

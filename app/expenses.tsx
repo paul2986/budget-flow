@@ -13,7 +13,7 @@ import StandardHeader from '../components/StandardHeader';
 type SortOption = 'date' | 'highest' | 'lowest';
 
 export default function ExpensesScreen() {
-  const { data, removeExpense, saving } = useBudgetData();
+  const { data, removeExpense, saving, refreshData } = useBudgetData();
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
   const { formatCurrency } = useCurrency();
@@ -22,14 +22,16 @@ export default function ExpensesScreen() {
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('date');
 
-  // Remove the refresh on focus - let the useBudgetData hook handle data consistency
+  // Refresh data when screen comes into focus to ensure consistency
   useFocusEffect(
     useCallback(() => {
       console.log('ExpensesScreen: Screen focused, current expenses:', {
         totalExpenses: data.expenses.length,
         expenseIds: data.expenses.map(e => e.id)
       });
-    }, [data.expenses])
+      // Force refresh data when screen comes into focus to ensure we have the latest data
+      refreshData(true);
+    }, [data.expenses, refreshData])
   );
 
   const handleRemoveExpense = useCallback(async (expenseId: string, description: string) => {
