@@ -25,7 +25,7 @@ export const useThemedStyles = () => {
       paddingBottom: 0, // Remove bottom padding from content, handled by scrollContent
     },
     scrollContent: {
-      paddingBottom: 160, // Further increased padding for floating nav bar to prevent clipping
+      paddingBottom: 120, // Reduced padding to allow content to scroll closer to bottom
       minHeight: '100%', // Ensure content takes full height to prevent clipping
     },
     title: {
@@ -173,7 +173,7 @@ export const useThemedStyles = () => {
       shadowRadius: 16,
       backdropFilter: 'blur(20px)',
       minHeight: 64,
-      marginBottom: 12, // Increased margin to lift the tab bar more
+      marginBottom: 20, // Set margin to match left/right padding (20px)
       pointerEvents: 'auto', // Ensure tab bar receives touches
     },
     floatingTabItem: {

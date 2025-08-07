@@ -40,7 +40,7 @@ function CustomTabBar() {
     <View style={[
       themedStyles.floatingTabContainer,
       {
-        paddingBottom: Math.max(insets.bottom + 10, 30), // Increased bottom padding for better spacing
+        paddingBottom: Math.max(insets.bottom, 20), // Match the left/right padding (20px)
       }
     ]}>
       <View style={[
