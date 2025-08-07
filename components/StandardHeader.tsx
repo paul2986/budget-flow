@@ -77,7 +77,7 @@ export default function StandardHeader({
               width: 44,
               height: 44,
               borderRadius: 22,
-              backgroundColor: currentColors.primary,
+              backgroundColor: rightIcon === 'checkmark' ? '#22C55E' : currentColors.primary,
               justifyContent: 'center',
               alignItems: 'center',
               shadowColor: '#000',
@@ -88,9 +88,13 @@ export default function StandardHeader({
             }}
           >
             {loading ? (
-              <ActivityIndicator size="small" color={defaultRightIconColor} />
+              <ActivityIndicator size="small" color={rightIcon === 'checkmark' ? '#FFFFFF' : defaultRightIconColor} />
             ) : (
-              <Icon name={rightIcon} size={24} style={{ color: defaultRightIconColor }} />
+              <Icon 
+                name={rightIcon} 
+                size={24} 
+                style={{ color: rightIcon === 'checkmark' ? '#FFFFFF' : defaultRightIconColor }} 
+              />
             )}
           </TouchableOpacity>
         ) : (

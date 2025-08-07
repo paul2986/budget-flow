@@ -280,7 +280,6 @@ export default function EditIncomeScreen() {
         rightIcon="checkmark"
         onRightPress={handleSaveIncome}
         loading={saving}
-        rightIconColor="#22C55E"
       />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>

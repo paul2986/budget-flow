@@ -305,7 +305,6 @@ export default function AddExpenseScreen() {
         onRightPress={isEditMode ? handleSaveExpense : handleSaveExpense}
         showRightIcon={true}
         loading={saving || deleting}
-        rightIconColor={isEditMode ? '#22C55E' : '#FFFFFF'}
       />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
