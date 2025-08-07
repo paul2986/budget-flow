@@ -194,6 +194,7 @@ export const useBudgetData = () => {
         throw new Error('Person not found');
       }
 
+      // Remove person and their associated expenses
       newData.people = newData.people.filter(p => p.id !== personId);
       newData.expenses = newData.expenses.filter(e => e.personId !== personId);
       
@@ -258,6 +259,7 @@ export const useBudgetData = () => {
         throw new Error('Income not found');
       }
       
+      // Remove the income
       newData.people[personIndex].income = newData.people[personIndex].income.filter(i => i.id !== incomeId);
       
       console.log('useBudgetData: New data after removing income:', {
@@ -345,34 +347,67 @@ export const useBudgetData = () => {
 
   const removeExpense = useCallback(async (expenseId: string): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Removing expense:', expenseId);
+    
+    // First, let's get the current data to verify the expense exists
+    const currentData = await getCurrentData();
+    console.log('useBudgetData: Current data before expense removal:', {
+      expensesCount: currentData.expenses.length,
+      expenseIds: currentData.expenses.map(e => e.id),
+      targetExpenseId: expenseId
+    });
+    
+    // Verify expense exists before attempting removal
+    const expenseExists = currentData.expenses.find(e => e.id === expenseId);
+    if (!expenseExists) {
+      console.error('useBudgetData: Expense not found:', expenseId);
+      return { success: false, error: new Error('Expense not found') };
+    }
+
+    console.log('useBudgetData: Expense found, proceeding with removal:', expenseExists);
+
     return queueSave(async () => {
+      // Get fresh data again for the actual removal operation
       const newData = await createDataCopy();
       
-      console.log('useBudgetData: Current data before expense removal:', {
+      console.log('useBudgetData: Fresh data for removal operation:', {
         expensesCount: newData.expenses.length,
         expenseIds: newData.expenses.map(e => e.id),
         targetExpenseId: expenseId
       });
       
-      // Verify expense exists before attempting removal
-      const expenseExists = newData.expenses.find(e => e.id === expenseId);
-      if (!expenseExists) {
-        console.error('useBudgetData: Expense not found:', expenseId);
-        throw new Error('Expense not found');
+      // Double-check the expense still exists in the fresh data
+      const expenseStillExists = newData.expenses.find(e => e.id === expenseId);
+      if (!expenseStillExists) {
+        console.error('useBudgetData: Expense no longer exists in fresh data:', expenseId);
+        throw new Error('Expense no longer exists');
       }
 
+      // Remove the expense
+      const originalCount = newData.expenses.length;
       newData.expenses = newData.expenses.filter(e => e.id !== expenseId);
+      const newCount = newData.expenses.length;
       
-      console.log('useBudgetData: New data after removing expense:', {
+      console.log('useBudgetData: Expense removal completed:', {
         expenseId,
+        originalCount,
+        newCount,
+        removed: originalCount - newCount,
         peopleCount: newData.people.length,
-        remainingExpensesCount: newData.expenses.length,
         remainingExpenseIds: newData.expenses.map(e => e.id)
       });
       
+      // Verify that exactly one expense was removed
+      if (originalCount - newCount !== 1) {
+        console.error('useBudgetData: Unexpected number of expenses removed:', {
+          expected: 1,
+          actual: originalCount - newCount
+        });
+        throw new Error('Unexpected number of expenses removed');
+      }
+      
       return await saveData(newData);
     });
-  }, [queueSave, createDataCopy, saveData]);
+  }, [queueSave, createDataCopy, saveData, getCurrentData]);
 
   const updateExpense = useCallback(async (updatedExpense: Expense): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Updating expense:', updatedExpense);
