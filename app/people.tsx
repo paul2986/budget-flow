@@ -288,7 +288,7 @@ export default function PeopleScreen() {
       />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
-        {/* Prominent Add Person Button */}
+        {/* Prominent Add Person Button - Only show when no people exist */}
         {data.people.length === 0 && !showAddPerson && (
           <View style={themedStyles.card}>
             <View style={themedStyles.centerContent}>
@@ -303,50 +303,6 @@ export default function PeopleScreen() {
                 text="Add Your First Person"
                 onPress={() => setShowAddPerson(true)}
                 style={[themedButtonStyles.primary, { backgroundColor: currentColors.primary }]}
-                disabled={saving}
-              />
-            </View>
-          </View>
-        )}
-
-        {/* Quick Add Person Button for existing users */}
-        {data.people.length > 0 && !showAddPerson && (
-          <View style={[themedStyles.card, { backgroundColor: currentColors.primary + '10' }]}>
-            <View style={[themedStyles.row, { alignItems: 'center' }]}>
-              <View style={[themedStyles.flex1, { marginRight: 12 }]}>
-                <Text style={[
-                  themedStyles.text, 
-                  { 
-                    fontWeight: '600', 
-                    flexWrap: 'wrap',
-                    textAlign: 'left'
-                  }
-                ]}>
-                  Add Another Person
-                </Text>
-                <Text style={[
-                  themedStyles.textSecondary, 
-                  { 
-                    flexWrap: 'wrap',
-                    textAlign: 'left',
-                    marginTop: 4
-                  }
-                ]}>
-                  Track expenses for family members or roommates
-                </Text>
-              </View>
-              <Button
-                text="Add Person"
-                onPress={() => setShowAddPerson(true)}
-                style={[
-                  themedButtonStyles.primary, 
-                  { 
-                    backgroundColor: currentColors.primary, 
-                    marginTop: 0,
-                    minWidth: 100,
-                    flexShrink: 0
-                  }
-                ]}
                 disabled={saving}
               />
             </View>
