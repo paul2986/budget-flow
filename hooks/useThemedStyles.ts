@@ -23,7 +23,7 @@ export const useThemedStyles = () => {
       padding: 16,
     },
     scrollContent: {
-      paddingBottom: 140, // Increased padding for the new nav bar position (moved down more)
+      paddingBottom: 120, // Adjusted for floating nav bar
     },
     title: {
       fontSize: 28,
@@ -146,7 +146,40 @@ export const useThemedStyles = () => {
       marginTop: 16,
       lineHeight: 24,
     },
-    // Tab Bar Styles
+    // iOS 26 Style Floating Tab Bar
+    floatingTabContainer: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+      paddingHorizontal: 20,
+    },
+    floatingTabBar: {
+      flexDirection: 'row',
+      borderRadius: 28,
+      paddingHorizontal: 8,
+      paddingVertical: 8,
+      borderWidth: 1,
+      boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.12)',
+      elevation: 12,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.12,
+      shadowRadius: 16,
+      backdropFilter: 'blur(20px)',
+      minHeight: 64,
+    },
+    floatingTabItem: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 20,
+      marginHorizontal: 2,
+      minHeight: 48,
+    },
+    // Legacy tab bar styles (kept for compatibility)
     tabBar: {
       position: 'absolute',
       bottom: 0,

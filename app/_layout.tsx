@@ -26,10 +26,10 @@ function CustomTabBar() {
   }, []);
 
   const tabs = useMemo(() => [
-    { route: '/', icon: 'home-outline', activeIcon: 'home', label: 'Home' },
-    { route: '/people', icon: 'people-outline', activeIcon: 'people', label: 'People' },
-    { route: '/expenses', icon: 'receipt-outline', activeIcon: 'receipt', label: 'Expenses' },
-    { route: '/settings', icon: 'settings-outline', activeIcon: 'settings', label: 'Settings' },
+    { route: '/', icon: 'home-outline', activeIcon: 'home' },
+    { route: '/people', icon: 'people-outline', activeIcon: 'people' },
+    { route: '/expenses', icon: 'receipt-outline', activeIcon: 'receipt' },
+    { route: '/settings', icon: 'settings-outline', activeIcon: 'settings' },
   ], []);
 
   useEffect(() => {
@@ -38,36 +38,44 @@ function CustomTabBar() {
 
   return (
     <View style={[
-      themedStyles.tabBar,
+      themedStyles.floatingTabContainer,
       {
-        paddingBottom: Math.max(insets.bottom, 16),
-        backgroundColor: currentColors.backgroundAlt,
-        borderTopColor: currentColors.border,
+        paddingBottom: Math.max(insets.bottom, 20),
       }
     ]}>
-      {tabs.map((tab) => {
-        const isActive = pathname === tab.route;
-        const iconColor = isActive ? currentColors.primary : currentColors.textSecondary;
-        const textColor = isActive ? currentColors.primary : currentColors.textSecondary;
+      <View style={[
+        themedStyles.floatingTabBar,
+        {
+          backgroundColor: currentColors.backgroundAlt,
+          borderColor: currentColors.border,
+          shadowColor: isDarkMode ? '#000' : '#000',
+        }
+      ]}>
+        {tabs.map((tab, index) => {
+          const isActive = pathname === tab.route;
+          const iconColor = isActive ? currentColors.primary : currentColors.textSecondary;
 
-        return (
-          <TouchableOpacity
-            key={tab.route}
-            style={themedStyles.tabItem}
-            onPress={() => navigateToTab(tab.route)}
-            activeOpacity={0.7}
-          >
-            <Icon
-              name={isActive ? tab.activeIcon : tab.icon}
-              size={24}
-              style={{ color: iconColor, marginBottom: 4 }}
-            />
-            <Text style={[themedStyles.tabLabel, { color: textColor }]}>
-              {tab.label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
+          return (
+            <TouchableOpacity
+              key={tab.route}
+              style={[
+                themedStyles.floatingTabItem,
+                isActive && {
+                  backgroundColor: `${currentColors.primary}15`,
+                }
+              ]}
+              onPress={() => navigateToTab(tab.route)}
+              activeOpacity={0.7}
+            >
+              <Icon
+                name={isActive ? tab.activeIcon : tab.icon}
+                size={26}
+                style={{ color: iconColor }}
+              />
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 }
