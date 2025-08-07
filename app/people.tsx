@@ -72,22 +72,10 @@ export default function PeopleScreen() {
       if (result.success) {
         setNewPersonName('');
         setShowAddPerson(false);
-        console.log('PeopleScreen: Person added successfully');
+        console.log('PeopleScreen: Person added successfully, staying on people screen');
         
-        // Wait a moment for the data to be updated, then refresh and navigate
-        setTimeout(async () => {
-          console.log('PeopleScreen: Refreshing data after person addition...');
-          await refreshData(true); // Force refresh
-          
-          // Wait another moment for the refresh to complete
-          setTimeout(() => {
-            console.log('PeopleScreen: Navigating to edit newly added person:', person.id);
-            router.push({
-              pathname: '/edit-person',
-              params: { personId: person.id, origin: 'people' }
-            });
-          }, 200);
-        }, 100);
+        // Just refresh the data to show the new person, don't navigate away
+        await refreshData(true);
       } else {
         Alert.alert('Error', 'Failed to add person. Please try again.');
       }
