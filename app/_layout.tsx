@@ -40,7 +40,7 @@ function CustomTabBar() {
     <View style={[
       themedStyles.floatingTabContainer,
       {
-        paddingBottom: Math.max(insets.bottom, 20),
+        paddingBottom: Math.max(insets.bottom + 10, 30), // Increased bottom padding for better spacing
       }
     ]}>
       <View style={[
@@ -93,7 +93,7 @@ function RootLayoutContent() {
   const containerStyle = useMemo(() => ({
     flex: 1,
     backgroundColor: currentColors.background,
-    paddingTop: insets.top,
+    paddingTop: Math.max(insets.top - 15, 0), // Further reduced top padding to lower nav bar position
   }), [currentColors.background, insets.top]);
 
   useEffect(() => {

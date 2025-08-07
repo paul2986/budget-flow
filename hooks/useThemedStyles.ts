@@ -17,13 +17,16 @@ export const useThemedStyles = () => {
       backgroundColor: currentColors.background,
       width: '100%',
       height: '100%',
+      position: 'relative', // Ensure proper positioning context
     },
     content: {
       flex: 1,
       padding: 16,
+      paddingBottom: 0, // Remove bottom padding from content, handled by scrollContent
     },
     scrollContent: {
-      paddingBottom: 120, // Adjusted for floating nav bar
+      paddingBottom: 160, // Further increased padding for floating nav bar to prevent clipping
+      minHeight: '100%', // Ensure content takes full height to prevent clipping
     },
     title: {
       fontSize: 28,
@@ -154,6 +157,8 @@ export const useThemedStyles = () => {
       right: 0,
       alignItems: 'center',
       paddingHorizontal: 20,
+      zIndex: 1000, // Ensure tab bar stays on top
+      pointerEvents: 'box-none', // Allow touches to pass through container but not the tab bar itself
     },
     floatingTabBar: {
       flexDirection: 'row',
@@ -168,6 +173,8 @@ export const useThemedStyles = () => {
       shadowRadius: 16,
       backdropFilter: 'blur(20px)',
       minHeight: 64,
+      marginBottom: 12, // Increased margin to lift the tab bar more
+      pointerEvents: 'auto', // Ensure tab bar receives touches
     },
     floatingTabItem: {
       flex: 1,
