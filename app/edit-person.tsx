@@ -555,6 +555,7 @@ export default function EditPersonScreen() {
                 themedButtonStyles.primary, 
                 { 
                   backgroundColor: (saving || isDeletingPerson) ? currentColors.textSecondary : currentColors.error,
+                  borderColor: (saving || isDeletingPerson) ? currentColors.textSecondary : currentColors.error,
                   marginTop: 0 
                 }
               ]}
