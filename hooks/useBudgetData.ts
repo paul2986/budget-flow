@@ -47,6 +47,7 @@ export const useBudgetData = () => {
     return copy;
   }, [getCurrentData]);
 
+  // Stable loadData function that doesn't change on every render
   const loadData = useCallback(async () => {
     if (isLoadingRef.current) {
       console.log('useBudgetData: Load already in progress, skipping...');
@@ -73,8 +74,9 @@ export const useBudgetData = () => {
       setLoading(false);
       isLoadingRef.current = false;
     }
-  }, []);
+  }, []); // No dependencies to prevent infinite loops
 
+  // Load data only once on mount
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -405,7 +407,7 @@ export const useBudgetData = () => {
     });
   }, [queueSave, createDataCopy, saveData, getCurrentData]);
 
-  // Refresh function with improved logic
+  // Refresh function with improved logic - stable function that doesn't change
   const refreshData = useCallback(async (force: boolean = false) => {
     const now = Date.now();
     const timeSinceLastRefresh = now - lastRefreshTimeRef.current;
@@ -448,7 +450,7 @@ export const useBudgetData = () => {
     
     console.log('useBudgetData: Executing refresh...');
     await loadData();
-  }, [loadData, saving, loading]);
+  }, [loadData]); // Only depend on loadData which is stable
 
   return {
     data,

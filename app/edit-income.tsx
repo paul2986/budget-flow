@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useThemedStyles } from '../hooks/useThemedStyles';
@@ -28,7 +28,10 @@ export default function EditIncomeScreen() {
   
   const { data, updateIncome, removeIncome, saving, loading } = useBudgetData();
 
-  // Remove the refresh on focus - let the useBudgetData hook handle data consistency
+  // Use ref to track if we've already refreshed on this focus
+  const hasRefreshedOnFocus = useRef(false);
+
+  // Only log when screen comes into focus, don't trigger refreshes
   useFocusEffect(
     useCallback(() => {
       console.log('EditIncomeScreen: Screen focused, current data:', {
@@ -36,7 +39,12 @@ export default function EditIncomeScreen() {
         expensesCount: data.expenses.length,
         expenseIds: data.expenses.map(e => e.id)
       });
-    }, [data.people, data.expenses])
+      
+      // Reset the flag when the screen loses focus
+      return () => {
+        hasRefreshedOnFocus.current = false;
+      };
+    }, []) // Remove data dependencies to prevent infinite loops
   );
 
   // Find the income and person when data changes

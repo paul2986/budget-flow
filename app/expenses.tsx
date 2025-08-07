@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { router, useFocusEffect } from 'expo-router';
 import { Text, View, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
@@ -21,17 +21,28 @@ export default function ExpensesScreen() {
   const [personFilter, setPersonFilter] = useState<string | null>(null);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('date');
+  
+  // Use ref to track if we've already refreshed on this focus
+  const hasRefreshedOnFocus = useRef(false);
 
-  // Refresh data when screen comes into focus to ensure consistency
+  // Refresh data when screen comes into focus, but only once per focus
   useFocusEffect(
     useCallback(() => {
-      console.log('ExpensesScreen: Screen focused, current expenses:', {
-        totalExpenses: data.expenses.length,
-        expenseIds: data.expenses.map(e => e.id)
-      });
-      // Force refresh data when screen comes into focus to ensure we have the latest data
-      refreshData(true);
-    }, [data.expenses, refreshData])
+      console.log('ExpensesScreen: Screen focused, checking if refresh needed');
+      
+      // Only refresh if we haven't already refreshed on this focus
+      if (!hasRefreshedOnFocus.current) {
+        console.log('ExpensesScreen: Refreshing data on focus');
+        hasRefreshedOnFocus.current = true;
+        refreshData(true);
+      }
+      
+      // Reset the flag when the screen loses focus
+      return () => {
+        console.log('ExpensesScreen: Screen lost focus, resetting refresh flag');
+        hasRefreshedOnFocus.current = false;
+      };
+    }, [refreshData]) // Only depend on refreshData, not on data.expenses
   );
 
   const handleRemoveExpense = useCallback(async (expenseId: string, description: string) => {

@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useThemedStyles } from '../hooks/useThemedStyles';
@@ -25,12 +25,27 @@ export default function HomeScreen() {
   const { themedStyles } = useThemedStyles();
   const { formatCurrency, loading: currencyLoading } = useCurrency();
 
-  // Only refresh data when screen comes into focus, not on every mount
+  // Use ref to track if we've already refreshed on this focus
+  const hasRefreshedOnFocus = useRef(false);
+
+  // Only refresh data when screen comes into focus, but only once per focus
   useFocusEffect(
     useCallback(() => {
-      console.log('HomeScreen: Screen focused, refreshing data...');
-      refreshData();
-    }, [refreshData])
+      console.log('HomeScreen: Screen focused');
+      
+      // Only refresh if we haven't already refreshed on this focus
+      if (!hasRefreshedOnFocus.current) {
+        console.log('HomeScreen: Refreshing data on focus');
+        hasRefreshedOnFocus.current = true;
+        refreshData();
+      }
+      
+      // Reset the flag when the screen loses focus
+      return () => {
+        console.log('HomeScreen: Screen lost focus, resetting refresh flag');
+        hasRefreshedOnFocus.current = false;
+      };
+    }, [refreshData]) // Only depend on refreshData, not on data
   );
 
   // Memoize calculations to ensure they update when data changes
