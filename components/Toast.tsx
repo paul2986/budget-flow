@@ -104,16 +104,12 @@ export default function Toast({ message, type, visible, onHide, duration = 3000 
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    top: 60,
-    left: 16,
-    right: 16,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    marginHorizontal: 16,
     borderRadius: 8,
-    zIndex: 1000,
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

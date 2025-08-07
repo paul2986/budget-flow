@@ -4,15 +4,17 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
 import { useCurrency, CURRENCIES } from '../hooks/useCurrency';
+import { useToast } from '../hooks/useToast';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
 import StandardHeader from '../components/StandardHeader';
 
 export default function SettingsScreen() {
-  const { data, updateHouseholdSettings, clearAllData: clearData } = useBudgetData();
+  const { data, updateHouseholdSettings, clearAllData } = useBudgetData();
   const { currentColors, themeMode, setThemeMode, isDarkMode } = useTheme();
   const { themedStyles, themedButtonStyles } = useThemedStyles();
   const { currency, setCurrency } = useCurrency();
+  const { showToast } = useToast();
 
   const handleDistributionMethodChange = async (method: 'even' | 'income-based') => {
     console.log('Settings: Changing distribution method to:', method);
@@ -28,13 +30,14 @@ export default function SettingsScreen() {
       
       if (result.success) {
         console.log('Settings: Distribution method updated successfully');
+        showToast('Household expense distribution method updated!', 'success');
       } else {
         console.error('Settings: Failed to update distribution method:', result.error);
-        Alert.alert('Error', 'Failed to update household expense distribution method.');
+        showToast('Failed to update household expense distribution method.', 'error');
       }
     } catch (error) {
       console.error('Settings: Error updating distribution method:', error);
-      Alert.alert('Error', 'An unexpected error occurred while updating the distribution method.');
+      showToast('An unexpected error occurred while updating the distribution method.', 'error');
     }
   };
 
@@ -43,43 +46,58 @@ export default function SettingsScreen() {
     try {
       await setThemeMode(newTheme);
       console.log('Settings: Theme change completed');
+      showToast(`Theme changed to ${newTheme === 'system' ? 'system default' : newTheme + ' mode'}!`, 'success');
     } catch (error) {
       console.error('Settings: Error changing theme:', error);
-      Alert.alert('Error', 'Failed to change theme.');
+      showToast('Failed to change theme.', 'error');
     }
   };
 
-  const clearAllData = () => {
+  const handleClearAllData = () => {
     Alert.alert(
       'Clear All Data',
-      'Are you sure you want to clear all data? This action cannot be undone.',
+      'Are you sure you want to delete all data? This action cannot be undone.\n\nThis will permanently remove:\n• All people and their income information\n• All expenses (personal and household)\n• All settings will be reset to defaults',
       [
-        { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Clear All', 
+          text: 'Cancel', 
+          style: 'cancel' 
+        },
+        { 
+          text: 'Clear All Data', 
           style: 'destructive',
           onPress: async () => {
             try {
               console.log('Settings: Clearing all data...');
+              console.log('Settings: Current data before clearing:', {
+                peopleCount: data.people.length,
+                expensesCount: data.expenses.length,
+                distributionMethod: data.householdSettings.distributionMethod
+              });
               
               // Use the clearAllData function from useBudgetData
-              const result = await clearData();
+              const result = await clearAllData();
               
               if (result.success) {
                 console.log('Settings: All data cleared successfully');
-                Alert.alert('Success', 'All data has been cleared.');
+                showToast('All data has been cleared successfully!', 'success');
               } else {
                 console.error('Settings: Failed to clear data:', result.error);
-                Alert.alert('Error', 'Failed to clear all data.');
+                showToast('Failed to clear all data. Please try again.', 'error');
               }
             } catch (error) {
               console.error('Settings: Error clearing data:', error);
-              Alert.alert('Error', 'An unexpected error occurred while clearing data.');
+              showToast('An unexpected error occurred while clearing data.', 'error');
             }
           }
         },
       ]
     );
+  };
+
+  const handleCurrencyChange = (curr: typeof CURRENCIES[0]) => {
+    console.log('Settings: Changing currency to:', curr);
+    setCurrency(curr);
+    showToast(`Currency changed to ${curr.name} (${curr.symbol})!`, 'success');
   };
 
   return (
@@ -169,10 +187,7 @@ export default function SettingsScreen() {
                       borderBottomColor: currentColors.border,
                     }
                   ]}
-                  onPress={() => {
-                    console.log('Settings: Changing currency to:', curr);
-                    setCurrency(curr);
-                  }}
+                  onPress={() => handleCurrencyChange(curr)}
                 >
                   <View style={themedStyles.rowStart}>
                     <Icon 
@@ -276,18 +291,44 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Data Summary */}
+        <View style={themedStyles.section}>
+          <Text style={themedStyles.subtitle}>Data Summary</Text>
+          
+          <View style={themedStyles.card}>
+            <View style={[themedStyles.row, { marginBottom: 8 }]}>
+              <Text style={themedStyles.text}>People:</Text>
+              <Text style={[themedStyles.text, { fontWeight: '600' }]}>
+                {data.people.length}
+              </Text>
+            </View>
+            <View style={[themedStyles.row, { marginBottom: 8 }]}>
+              <Text style={themedStyles.text}>Total Expenses:</Text>
+              <Text style={[themedStyles.text, { fontWeight: '600' }]}>
+                {data.expenses.length}
+              </Text>
+            </View>
+            <View style={themedStyles.row}>
+              <Text style={themedStyles.text}>Distribution Method:</Text>
+              <Text style={[themedStyles.text, { fontWeight: '600' }]}>
+                {data.householdSettings.distributionMethod === 'even' ? 'Even Split' : 'Income-Based'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
         {/* Danger Zone */}
         <View style={themedStyles.section}>
           <Text style={[themedStyles.subtitle, { color: currentColors.error }]}>Danger Zone</Text>
           
           <View style={[themedStyles.card, { borderColor: currentColors.error, borderWidth: 1 }]}>
             <Text style={[themedStyles.text, { marginBottom: 12 }]}>
-              This will permanently delete all your data including people, income, and expenses.
+              This will permanently delete all your data including people, income, and expenses. This action cannot be undone.
             </Text>
             
             <Button
               text="Clear All Data"
-              onPress={clearAllData}
+              onPress={handleClearAllData}
               style={[themedButtonStyles.danger, { backgroundColor: currentColors.error }]}
             />
           </View>
