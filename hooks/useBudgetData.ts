@@ -18,19 +18,26 @@ export const useBudgetData = () => {
   const isLoadingRef = useRef(false);
   const lastRefreshTimeRef = useRef<number>(0);
 
-  // Function to get the most current data - always use React state
-  const getCurrentData = useCallback((): BudgetData => {
-    console.log('useBudgetData: getCurrentData called, returning current state:', {
-      peopleCount: data.people.length,
-      expensesCount: data.expenses.length,
-      expenseIds: data.expenses.map(e => e.id)
-    });
-    return data;
+  // Function to get the most current data - ALWAYS load from AsyncStorage for operations
+  const getCurrentData = useCallback(async (): Promise<BudgetData> => {
+    console.log('useBudgetData: getCurrentData called, loading fresh data from AsyncStorage');
+    try {
+      const freshData = await loadBudgetData();
+      console.log('useBudgetData: Fresh data loaded:', {
+        peopleCount: freshData.people.length,
+        expensesCount: freshData.expenses.length,
+        expenseIds: freshData.expenses.map(e => e.id)
+      });
+      return freshData;
+    } catch (error) {
+      console.error('useBudgetData: Error loading fresh data, falling back to state:', error);
+      return data;
+    }
   }, [data]);
 
   // Helper function to create deep copy of data for immutability
-  const createDataCopy = useCallback((sourceData?: BudgetData): BudgetData => {
-    const dataToUse = sourceData || getCurrentData();
+  const createDataCopy = useCallback(async (sourceData?: BudgetData): Promise<BudgetData> => {
+    const dataToUse = sourceData || await getCurrentData();
     const copy = {
       people: dataToUse.people.map(person => ({
         ...person,
@@ -164,7 +171,7 @@ export const useBudgetData = () => {
   const addPerson = useCallback(async (person: Person): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Adding person:', person);
     return queueSave(async () => {
-      const newData = createDataCopy();
+      const newData = await createDataCopy();
       newData.people.push(person);
       return await saveData(newData);
     });
@@ -173,7 +180,7 @@ export const useBudgetData = () => {
   const removePerson = useCallback(async (personId: string): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Removing person:', personId);
     return queueSave(async () => {
-      const newData = createDataCopy();
+      const newData = await createDataCopy();
       
       // Verify person exists before attempting removal
       const personExists = newData.people.find(p => p.id === personId);
@@ -197,7 +204,7 @@ export const useBudgetData = () => {
   const updatePerson = useCallback(async (updatedPerson: Person): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Updating person:', updatedPerson);
     return queueSave(async () => {
-      const newData = createDataCopy();
+      const newData = await createDataCopy();
       newData.people = newData.people.map(p => p.id === updatedPerson.id ? updatedPerson : p);
       return await saveData(newData);
     });
@@ -206,7 +213,7 @@ export const useBudgetData = () => {
   const addIncome = useCallback(async (personId: string, income: Income): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Adding income to person:', personId, income);
     return queueSave(async () => {
-      const newData = createDataCopy();
+      const newData = await createDataCopy();
       
       // Find the person first to verify they exist
       const personIndex = newData.people.findIndex(p => p.id === personId);
@@ -230,7 +237,7 @@ export const useBudgetData = () => {
   const removeIncome = useCallback(async (personId: string, incomeId: string): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Removing income from person:', personId, incomeId);
     return queueSave(async () => {
-      const newData = createDataCopy();
+      const newData = await createDataCopy();
       
       // Find the person first to verify they exist
       const personIndex = newData.people.findIndex(p => p.id === personId);
@@ -264,7 +271,7 @@ export const useBudgetData = () => {
   const updateIncome = useCallback(async (personId: string, incomeId: string, updates: Partial<Income>): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Updating income:', personId, incomeId, updates);
     return queueSave(async () => {
-      const newData = createDataCopy();
+      const newData = await createDataCopy();
       
       console.log('useBudgetData: Current data for income update:', {
         peopleCount: newData.people.length,
@@ -309,7 +316,7 @@ export const useBudgetData = () => {
   const addExpense = useCallback(async (expense: Expense): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Adding expense:', expense);
     return queueSave(async () => {
-      const newData = createDataCopy();
+      const newData = await createDataCopy();
       
       // Generate a proper ID if not provided
       const expenseWithId = {
@@ -334,7 +341,7 @@ export const useBudgetData = () => {
   const removeExpense = useCallback(async (expenseId: string): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Removing expense:', expenseId);
     return queueSave(async () => {
-      const newData = createDataCopy();
+      const newData = await createDataCopy();
       
       console.log('useBudgetData: Current data before expense removal:', {
         expensesCount: newData.expenses.length,
@@ -365,7 +372,21 @@ export const useBudgetData = () => {
   const updateExpense = useCallback(async (updatedExpense: Expense): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Updating expense:', updatedExpense);
     return queueSave(async () => {
-      const newData = createDataCopy();
+      const newData = await createDataCopy();
+      
+      console.log('useBudgetData: Current data before expense update:', {
+        expensesCount: newData.expenses.length,
+        expenseIds: newData.expenses.map(e => e.id),
+        targetExpenseId: updatedExpense.id
+      });
+      
+      // Verify expense exists before attempting update
+      const expenseExists = newData.expenses.find(e => e.id === updatedExpense.id);
+      if (!expenseExists) {
+        console.error('useBudgetData: Expense not found for update:', updatedExpense.id);
+        throw new Error('Expense not found');
+      }
+      
       newData.expenses = newData.expenses.map(e => e.id === updatedExpense.id ? updatedExpense : e);
       
       console.log('useBudgetData: New data after updating expense:', {
@@ -381,7 +402,7 @@ export const useBudgetData = () => {
   const updateHouseholdSettings = useCallback(async (settings: Partial<HouseholdSettings>): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Updating household settings:', settings);
     return queueSave(async () => {
-      const newData = createDataCopy();
+      const newData = await createDataCopy();
       
       console.log('useBudgetData: Current data before household settings update:', {
         peopleCount: newData.people.length,
@@ -396,7 +417,6 @@ export const useBudgetData = () => {
       };
       
       console.log('useBudgetData: New data with updated household settings:', {
-        oldSettings: getCurrentData().householdSettings,
         newSettings: newData.householdSettings,
         peopleCount: newData.people.length,
         expensesCount: newData.expenses.length,
@@ -405,7 +425,7 @@ export const useBudgetData = () => {
       
       return await saveData(newData);
     });
-  }, [queueSave, createDataCopy, saveData, getCurrentData]);
+  }, [queueSave, createDataCopy, saveData]);
 
   // Refresh function with improved logic - stable function that doesn't change
   const refreshData = useCallback(async (force: boolean = false) => {
