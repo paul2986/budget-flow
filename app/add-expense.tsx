@@ -16,7 +16,7 @@ export default function AddExpenseScreen() {
   const { currentColors } = useTheme();
   const { themedStyles, themedButtonStyles } = useThemedStyles();
   const { formatCurrency } = useCurrency();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; origin?: string }>();
   
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -26,6 +26,7 @@ export default function AddExpenseScreen() {
   const [deleting, setDeleting] = useState(false);
 
   const isEditMode = !!params.id;
+  const origin = params.origin || 'expenses'; // Default to expenses if no origin specified
   const expenseToEdit = isEditMode ? data.expenses.find(e => e.id === params.id) : null;
 
   // Load expense data for editing
@@ -47,6 +48,19 @@ export default function AddExpenseScreen() {
       setPersonId('');
     }
   }, [isEditMode, expenseToEdit, data.people, params.id]);
+
+  const navigateToOrigin = useCallback(() => {
+    console.log('AddExpenseScreen: Navigating back to origin:', origin);
+    
+    // Small delay to ensure state is updated before navigation
+    setTimeout(() => {
+      if (origin === 'home') {
+        router.replace('/');
+      } else {
+        router.replace('/expenses');
+      }
+    }, 100);
+  }, [origin]);
 
   const handleSaveExpense = useCallback(async () => {
     if (!description.trim()) {
@@ -88,11 +102,8 @@ export default function AddExpenseScreen() {
       }
 
       if (result && result.success) {
-        console.log('AddExpenseScreen: Expense saved successfully, navigating to expenses page');
-        // Small delay to ensure state is updated before navigation
-        setTimeout(() => {
-          router.replace('/expenses');
-        }, 100);
+        console.log('AddExpenseScreen: Expense saved successfully, navigating back to origin');
+        navigateToOrigin();
       } else {
         console.error('AddExpenseScreen: Expense save failed:', result?.error);
         Alert.alert('Error', result?.error?.message || 'Failed to save expense. Please try again.');
@@ -101,7 +112,7 @@ export default function AddExpenseScreen() {
       console.error('AddExpenseScreen: Error saving expense:', error);
       Alert.alert('Error', 'Failed to save expense. Please try again.');
     }
-  }, [description, amount, category, frequency, personId, isEditMode, expenseToEdit, addExpense, updateExpense]);
+  }, [description, amount, category, frequency, personId, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin]);
 
   const handleDeleteExpense = useCallback(async () => {
     if (!isEditMode || !expenseToEdit) {
@@ -131,11 +142,8 @@ export default function AddExpenseScreen() {
               console.log('AddExpenseScreen: Expense deletion result:', result);
               
               if (result && result.success) {
-                console.log('AddExpenseScreen: Expense deleted successfully, navigating to expenses page');
-                // Small delay to ensure state is updated before navigation
-                setTimeout(() => {
-                  router.replace('/expenses');
-                }, 100);
+                console.log('AddExpenseScreen: Expense deleted successfully, navigating back to origin');
+                navigateToOrigin();
               } else {
                 console.error('AddExpenseScreen: Expense deletion failed:', result?.error);
                 Alert.alert('Error', result?.error?.message || 'Failed to delete expense. Please try again.');
@@ -150,7 +158,7 @@ export default function AddExpenseScreen() {
         },
       ]
     );
-  }, [isEditMode, expenseToEdit, removeExpense]);
+  }, [isEditMode, expenseToEdit, removeExpense, navigateToOrigin]);
 
   const handleGoBack = useCallback(() => {
     router.back();

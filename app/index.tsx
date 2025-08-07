@@ -132,7 +132,7 @@ export default function HomeScreen() {
     console.log('HomeScreen: Navigating to edit expense:', expenseId);
     router.push({
       pathname: '/add-expense',
-      params: { id: expenseId }
+      params: { id: expenseId, origin: 'home' }
     });
   }, []);
 

@@ -103,7 +103,7 @@ export default function ExpensesScreen() {
     console.log('ExpensesScreen: Navigating to edit expense:', expense);
     router.push({
       pathname: '/add-expense',
-      params: { id: expense.id }
+      params: { id: expense.id, origin: 'expenses' }
     });
   }, []);
 
