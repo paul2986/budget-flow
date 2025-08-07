@@ -28,6 +28,7 @@ export default function EditPersonScreen() {
   const [showAddIncome, setShowAddIncome] = useState(false);
   const [deletingIncomeId, setDeletingIncomeId] = useState<string | null>(null);
   const [isLoadingPerson, setIsLoadingPerson] = useState(true);
+  const [isDeletingPerson, setIsDeletingPerson] = useState(false);
   
   const { formatCurrency } = useCurrency();
   const { currentColors } = useTheme();
@@ -36,7 +37,7 @@ export default function EditPersonScreen() {
   const personId = params.personId;
   const origin = params.origin || 'people'; // Default to people if no origin specified
   
-  const { data, updatePerson, addIncome, removeIncome, updateIncome, saving, refreshData } = useBudgetData();
+  const { data, updatePerson, addIncome, removeIncome, updateIncome, removePerson, saving, refreshData } = useBudgetData();
 
   // Update person state whenever data changes
   useEffect(() => {
@@ -109,6 +110,47 @@ export default function EditPersonScreen() {
       Alert.alert('Error', 'Failed to update person. Please try again.');
     }
   }, [person, updatePerson, navigateToOrigin]);
+
+  const handleDeletePerson = useCallback(() => {
+    if (!person) return;
+    
+    // Prevent multiple deletion attempts
+    if (isDeletingPerson || saving) {
+      console.log('EditPersonScreen: Person deletion already in progress, ignoring');
+      return;
+    }
+
+    Alert.alert(
+      'Delete Person',
+      `Are you sure you want to delete ${person.name}? This will also remove all their income sources and personal expenses. This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsDeletingPerson(true);
+              console.log('EditPersonScreen: Deleting person:', person.id);
+              
+              const result = await removePerson(person.id);
+              if (result.success) {
+                console.log('EditPersonScreen: Person deleted successfully, navigating back');
+                navigateToOrigin();
+              } else {
+                Alert.alert('Error', 'Failed to delete person. Please try again.');
+              }
+            } catch (error) {
+              console.error('EditPersonScreen: Error deleting person:', error);
+              Alert.alert('Error', 'Failed to delete person. Please try again.');
+            } finally {
+              setIsDeletingPerson(false);
+            }
+          }
+        },
+      ]
+    );
+  }, [person, isDeletingPerson, saving, removePerson, navigateToOrigin]);
 
   const handleGoBack = useCallback(() => {
     router.back();
@@ -300,7 +342,7 @@ export default function EditPersonScreen() {
         onLeftPress={handleGoBack}
         rightIcon="checkmark"
         onRightPress={handleSavePerson}
-        loading={saving}
+        loading={saving || isDeletingPerson}
       />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
@@ -317,7 +359,7 @@ export default function EditPersonScreen() {
             onChangeText={(text) => setPerson({ ...person, name: text })}
             placeholder="Enter person's name"
             placeholderTextColor={currentColors.textSecondary}
-            editable={!saving}
+            editable={!saving && !isDeletingPerson}
           />
         </View>
 
@@ -364,7 +406,7 @@ export default function EditPersonScreen() {
               placeholderTextColor={currentColors.textSecondary}
               value={newIncome.label}
               onChangeText={(text) => setNewIncome({ ...newIncome, label: text })}
-              editable={!saving}
+              editable={!saving && !isDeletingPerson}
             />
             
             <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
@@ -377,7 +419,7 @@ export default function EditPersonScreen() {
               value={newIncome.amount}
               onChangeText={(text) => setNewIncome({ ...newIncome, amount: text })}
               keyboardType="numeric"
-              editable={!saving}
+              editable={!saving && !isDeletingPerson}
             />
             
             <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
@@ -398,15 +440,15 @@ export default function EditPersonScreen() {
                   }}
                   style={[themedButtonStyles.outline, { marginTop: 0, borderColor: currentColors.income }]}
                   textStyle={{ color: currentColors.income }}
-                  disabled={saving}
+                  disabled={saving || isDeletingPerson}
                 />
               </View>
               <View style={{ flex: 1 }}>
                 <Button
                   text={saving ? 'Adding...' : 'Add Income'}
                   onPress={handleAddIncome}
-                  style={[themedButtonStyles.primary, { marginTop: 0, backgroundColor: saving ? currentColors.textSecondary : currentColors.income }]}
-                  disabled={saving}
+                  style={[themedButtonStyles.primary, { marginTop: 0, backgroundColor: (saving || isDeletingPerson) ? currentColors.textSecondary : currentColors.income }]}
+                  disabled={saving || isDeletingPerson}
                 />
               </View>
             </View>
@@ -419,9 +461,9 @@ export default function EditPersonScreen() {
             <Text style={[themedStyles.subtitle, { marginBottom: 0 }]}>Income Sources</Text>
             <TouchableOpacity 
               onPress={() => setShowAddIncome(true)}
-              disabled={saving}
+              disabled={saving || isDeletingPerson}
             >
-              <Icon name="add-circle-outline" size={24} style={{ color: saving ? currentColors.textSecondary : currentColors.income }} />
+              <Icon name="add-circle-outline" size={24} style={{ color: (saving || isDeletingPerson) ? currentColors.textSecondary : currentColors.income }} />
             </TouchableOpacity>
           </View>
           
@@ -449,7 +491,7 @@ export default function EditPersonScreen() {
                         params: { personId: person.id, incomeId: income.id }
                       });
                     }}
-                    disabled={saving || isDeletingIncome}
+                    disabled={saving || isDeletingIncome || isDeletingPerson}
                     activeOpacity={0.7}
                   >
                     <View style={[themedStyles.row, { marginBottom: 8 }]}>
@@ -460,18 +502,18 @@ export default function EditPersonScreen() {
                         </Text>
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Icon name="pencil-outline" size={20} style={{ color: saving || isDeletingIncome ? currentColors.textSecondary : currentColors.primary }} />
+                        <Icon name="pencil-outline" size={20} style={{ color: (saving || isDeletingIncome || isDeletingPerson) ? currentColors.textSecondary : currentColors.primary }} />
                         <TouchableOpacity 
                           onPress={(e) => {
                             e.stopPropagation(); // Prevent triggering the edit action
                             handleRemoveIncome(income.id, income.label);
                           }}
-                          disabled={saving || isDeletingIncome}
+                          disabled={saving || isDeletingIncome || isDeletingPerson}
                         >
                           {isDeletingIncome ? (
                             <ActivityIndicator size="small" color={currentColors.error} />
                           ) : (
-                            <Icon name="trash-outline" size={20} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
+                            <Icon name="trash-outline" size={20} style={{ color: (saving || isDeletingPerson) ? currentColors.textSecondary : currentColors.error }} />
                           )}
                         </TouchableOpacity>
                       </View>
@@ -490,6 +532,35 @@ export default function EditPersonScreen() {
               })}
             </View>
           )}
+        </View>
+
+        {/* Delete Person Section */}
+        <View style={themedStyles.section}>
+          <Text style={[themedStyles.subtitle, { marginBottom: 12, color: currentColors.error }]}>
+            Danger Zone
+          </Text>
+          
+          <View style={[themedStyles.card, { backgroundColor: currentColors.error + '10', borderColor: currentColors.error + '30', borderWidth: 1 }]}>
+            <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
+              Delete Person
+            </Text>
+            <Text style={[themedStyles.textSecondary, { marginBottom: 16 }]}>
+              This will permanently delete {person.name} and all their income sources and personal expenses. This action cannot be undone.
+            </Text>
+            
+            <Button
+              text={isDeletingPerson ? 'Deleting...' : 'Delete Person'}
+              onPress={handleDeletePerson}
+              style={[
+                themedButtonStyles.primary, 
+                { 
+                  backgroundColor: (saving || isDeletingPerson) ? currentColors.textSecondary : currentColors.error,
+                  marginTop: 0 
+                }
+              ]}
+              disabled={saving || isDeletingPerson}
+            />
+          </View>
         </View>
       </ScrollView>
     </View>

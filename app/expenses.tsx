@@ -65,9 +65,16 @@ export default function ExpensesScreen() {
         targetExpenseId: expenseId
       });
       
-      await removeExpense(expenseId);
-      console.log('ExpensesScreen: Expense removed successfully');
-      // The useBudgetData hook will handle state updates automatically
+      const result = await removeExpense(expenseId);
+      console.log('ExpensesScreen: Expense removal result:', result);
+      
+      if (result.success) {
+        console.log('ExpensesScreen: Expense removed successfully');
+        // The useBudgetData hook will handle state updates automatically
+      } else {
+        console.error('ExpensesScreen: Expense removal failed:', result.error);
+        Alert.alert('Error', 'Failed to remove expense. Please try again.');
+      }
     } catch (error) {
       console.error('ExpensesScreen: Error removing expense:', error);
       Alert.alert('Error', 'Failed to remove expense. Please try again.');
@@ -416,18 +423,18 @@ export default function ExpensesScreen() {
                 }}>
                   <TouchableOpacity
                     onPress={() => {
-                      console.log('ExpensesScreen: Bin icon pressed for expense:', expense.id, expense.description);
+                      console.log('ExpensesScreen: Delete button pressed for expense:', expense.id, expense.description);
                       handleDeletePress(expense.id, expense.description);
                     }}
                     disabled={saving || isDeleting}
                     style={{
-                      padding: 6,
-                      borderRadius: 16,
+                      padding: 8,
+                      borderRadius: 20,
                       backgroundColor: currentColors.error + '20',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      minWidth: 32,
-                      minHeight: 32,
+                      minWidth: 36,
+                      minHeight: 36,
                       // Add shadow for better visibility
                       shadowColor: '#000',
                       shadowOffset: {
@@ -438,12 +445,12 @@ export default function ExpensesScreen() {
                       shadowRadius: 3.84,
                       elevation: 5,
                     }}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
                     {isDeleting ? (
                       <ActivityIndicator size="small" color={currentColors.error} />
                     ) : (
-                      <Icon name="trash-outline" size={16} style={{ color: currentColors.error }} />
+                      <Icon name="trash-outline" size={18} style={{ color: currentColors.error }} />
                     )}
                   </TouchableOpacity>
                 </View>

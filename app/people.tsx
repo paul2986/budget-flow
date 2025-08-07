@@ -491,14 +491,25 @@ export default function PeopleScreen() {
                   <TouchableOpacity 
                     onPress={(e) => {
                       e.stopPropagation(); // Prevent triggering the edit action
+                      console.log('PeopleScreen: Delete button pressed for person:', person.id, person.name);
                       handleRemovePerson(person);
                     }}
                     disabled={saving || isDeleting}
+                    style={{
+                      padding: 4,
+                      borderRadius: 12,
+                      backgroundColor: currentColors.error + '20',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: 28,
+                      minHeight: 28,
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
                     {isDeleting ? (
                       <ActivityIndicator size="small" color={currentColors.error} />
                     ) : (
-                      <Icon name="trash-outline" size={20} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
+                      <Icon name="trash-outline" size={16} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
                     )}
                   </TouchableOpacity>
                 </View>
@@ -574,14 +585,25 @@ export default function PeopleScreen() {
                               <TouchableOpacity 
                                 onPress={(e) => {
                                   e.stopPropagation(); // Prevent triggering the edit action
+                                  console.log('PeopleScreen: Delete income button pressed:', income.id, income.label);
                                   handleRemoveIncome(person.id, income.id, income.label);
                                 }}
                                 disabled={saving || isDeletingIncome}
+                                style={{
+                                  padding: 2,
+                                  borderRadius: 8,
+                                  backgroundColor: currentColors.error + '20',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  minWidth: 20,
+                                  minHeight: 20,
+                                }}
+                                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                               >
                                 {isDeletingIncome ? (
                                   <ActivityIndicator size="small" color={currentColors.error} />
                                 ) : (
-                                  <Icon name="close-circle-outline" size={16} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
+                                  <Icon name="close-circle-outline" size={14} style={{ color: saving ? currentColors.textSecondary : currentColors.error }} />
                                 )}
                               </TouchableOpacity>
                             </View>
