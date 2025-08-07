@@ -73,6 +73,21 @@ export default function PeopleScreen() {
         setNewPersonName('');
         setShowAddPerson(false);
         console.log('PeopleScreen: Person added successfully');
+        
+        // Wait a moment for the data to be updated, then refresh and navigate
+        setTimeout(async () => {
+          console.log('PeopleScreen: Refreshing data after person addition...');
+          await refreshData(true); // Force refresh
+          
+          // Wait another moment for the refresh to complete
+          setTimeout(() => {
+            console.log('PeopleScreen: Navigating to edit newly added person:', person.id);
+            router.push({
+              pathname: '/edit-person',
+              params: { personId: person.id, origin: 'people' }
+            });
+          }, 200);
+        }, 100);
       } else {
         Alert.alert('Error', 'Failed to add person. Please try again.');
       }
@@ -80,7 +95,7 @@ export default function PeopleScreen() {
       console.error('PeopleScreen: Error adding person:', error);
       Alert.alert('Error', 'Failed to add person. Please try again.');
     }
-  }, [newPersonName, addPerson]);
+  }, [newPersonName, addPerson, refreshData]);
 
   const handleRemovePerson = useCallback((person: Person) => {
     console.log('PeopleScreen: Attempting to remove person:', person);
@@ -126,12 +141,22 @@ export default function PeopleScreen() {
   }, [deletingPersonId, saving, removePerson]);
 
   const handleEditPerson = useCallback((person: Person) => {
-    console.log('PeopleScreen: Navigating to edit person with origin:', person);
+    console.log('PeopleScreen: Navigating to edit person:', person);
+    
+    // Verify the person exists in current data before navigating
+    const personExists = data.people.find(p => p.id === person.id);
+    if (!personExists) {
+      console.error('PeopleScreen: Person not found in current data, refreshing...');
+      Alert.alert('Error', 'Person not found. Please try again.');
+      refreshData(true);
+      return;
+    }
+    
     router.push({
       pathname: '/edit-person',
       params: { personId: person.id, origin: 'people' }
     });
-  }, []);
+  }, [data.people, refreshData]);
 
   const handleAddIncome = useCallback(async () => {
     console.log('PeopleScreen: Add income button pressed');

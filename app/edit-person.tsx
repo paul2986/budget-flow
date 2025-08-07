@@ -9,7 +9,7 @@ import {
 } from '../utils/calculations';
 import { useBudgetData } from '../hooks/useBudgetData';
 import Button from '../components/Button';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useCurrency } from '../hooks/useCurrency';
 import Icon from '../components/Icon';
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
@@ -27,6 +27,7 @@ export default function EditPersonScreen() {
   });
   const [showAddIncome, setShowAddIncome] = useState(false);
   const [deletingIncomeId, setDeletingIncomeId] = useState<string | null>(null);
+  const [isLoadingPerson, setIsLoadingPerson] = useState(true);
   
   const { formatCurrency } = useCurrency();
   const { currentColors } = useTheme();
@@ -37,7 +38,7 @@ export default function EditPersonScreen() {
   
   const { data, updatePerson, addIncome, removeIncome, updateIncome, saving, refreshData } = useBudgetData();
 
-  // Update person state whenever data changes - FIXED: Removed 'person' from dependencies
+  // Update person state whenever data changes
   useEffect(() => {
     console.log('EditPersonScreen: useEffect triggered');
     console.log('EditPersonScreen: personId:', personId);
@@ -50,22 +51,33 @@ export default function EditPersonScreen() {
       if (foundPerson) {
         console.log('EditPersonScreen: Setting person state to:', foundPerson);
         setPerson(foundPerson);
+        setIsLoadingPerson(false);
       } else {
         console.log('EditPersonScreen: Person not found in data.people array');
         console.log('EditPersonScreen: Available person IDs:', data.people.map(p => p.id));
         setPerson(null);
+        setIsLoadingPerson(false);
       }
+    } else if (personId && data.people.length === 0) {
+      console.log('EditPersonScreen: No people in data yet, keeping loading state');
+      setIsLoadingPerson(true);
     } else {
-      console.log('EditPersonScreen: No personId or empty people array');
+      console.log('EditPersonScreen: No personId provided');
       setPerson(null);
+      setIsLoadingPerson(false);
     }
-  }, [personId, data.people]); // FIXED: Removed data.expenses and person from dependencies
+  }, [personId, data.people]);
 
-  // Force refresh data when component mounts
-  useEffect(() => {
-    console.log('EditPersonScreen: Component mounted, refreshing data...');
-    refreshData();
-  }, [refreshData]);
+  // Force refresh data when component mounts and when screen becomes focused
+  useFocusEffect(
+    useCallback(() => {
+      console.log('EditPersonScreen: Screen focused, refreshing data...');
+      setIsLoadingPerson(true);
+      refreshData(true).then(() => {
+        console.log('EditPersonScreen: Data refresh completed');
+      });
+    }, [refreshData])
+  );
 
   const navigateToOrigin = useCallback(() => {
     console.log('EditPersonScreen: Navigating back to origin:', origin);
@@ -223,6 +235,24 @@ export default function EditPersonScreen() {
     </View>
   );
 
+  // Show loading state while we're waiting for data
+  if (isLoadingPerson || (personId && !person && data.people.length === 0)) {
+    return (
+      <View style={themedStyles.container}>
+        <StandardHeader
+          title="Edit Person"
+          onLeftPress={handleGoBack}
+          showRightIcon={false}
+        />
+        <View style={[themedStyles.centerContent, { flex: 1 }]}>
+          <ActivityIndicator size="large" color={currentColors.primary} />
+          <Text style={[themedStyles.textSecondary, { marginTop: 16 }]}>Loading person...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Show error state if person not found after loading
   if (!person) {
     return (
       <View style={themedStyles.container}>
@@ -232,18 +262,27 @@ export default function EditPersonScreen() {
           showRightIcon={false}
         />
         <View style={[themedStyles.centerContent, { flex: 1 }]}>
-          <Text style={themedStyles.textSecondary}>Person not found</Text>
-          <Text style={[themedStyles.textSecondary, { marginTop: 8, textAlign: 'center' }]}>
-            The person you're trying to edit could not be found. They may have been deleted.
+          <Icon name="person-outline" size={48} style={{ color: currentColors.textSecondary, marginBottom: 16 }} />
+          <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>Person not found</Text>
+          <Text style={[themedStyles.textSecondary, { marginBottom: 24, textAlign: 'center' }]}>
+            The person you're trying to edit could not be found. They may have been deleted or there was an error loading the data.
           </Text>
-          <TouchableOpacity 
-            style={[themedButtonStyles.primary, { backgroundColor: currentColors.primary, marginTop: 16 }]}
-            onPress={navigateToOrigin}
-          >
-            <Text style={[themedStyles.text, { color: currentColors.backgroundAlt }]}>
-              Go Back
-            </Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <Button
+              text="Refresh Data"
+              onPress={() => {
+                setIsLoadingPerson(true);
+                refreshData(true);
+              }}
+              style={[themedButtonStyles.outline, { borderColor: currentColors.primary, marginTop: 0 }]}
+              textStyle={{ color: currentColors.primary }}
+            />
+            <Button
+              text="Go Back"
+              onPress={navigateToOrigin}
+              style={[themedButtonStyles.primary, { backgroundColor: currentColors.primary, marginTop: 0 }]}
+            />
+          </View>
         </View>
       </View>
     );
