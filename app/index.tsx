@@ -149,7 +149,11 @@ export default function HomeScreen() {
   }, []);
 
   const handleNavigateToEditPerson = useCallback((personId: string) => {
-    router.push(`/edit-person?personId=${personId}`);
+    console.log('HomeScreen: Navigating to edit person with origin:', personId);
+    router.push({
+      pathname: '/edit-person',
+      params: { personId: personId, origin: 'home' }
+    });
   }, []);
 
   // Show loading state if data is still loading

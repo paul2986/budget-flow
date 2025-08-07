@@ -31,8 +31,9 @@ export default function EditPersonScreen() {
   const { formatCurrency } = useCurrency();
   const { currentColors } = useTheme();
   const { themedStyles, themedButtonStyles } = useThemedStyles();
-  const params = useLocalSearchParams<{ personId: string }>();
+  const params = useLocalSearchParams<{ personId: string; origin?: string }>();
   const personId = params.personId;
+  const origin = params.origin || 'people'; // Default to people if no origin specified
   
   const { data, updatePerson, addIncome, removeIncome, updateIncome, saving, refreshData } = useBudgetData();
 
@@ -66,6 +67,19 @@ export default function EditPersonScreen() {
     refreshData();
   }, [refreshData]);
 
+  const navigateToOrigin = useCallback(() => {
+    console.log('EditPersonScreen: Navigating back to origin:', origin);
+    
+    // Small delay to ensure state is updated before navigation
+    setTimeout(() => {
+      if (origin === 'home') {
+        router.replace('/');
+      } else {
+        router.replace('/people');
+      }
+    }, 100);
+  }, [origin]);
+
   const handleSavePerson = useCallback(async () => {
     if (!person) return;
 
@@ -73,8 +87,8 @@ export default function EditPersonScreen() {
       console.log('EditPersonScreen: Saving person:', person);
       const result = await updatePerson(person);
       if (result.success) {
-        console.log('EditPersonScreen: Person saved successfully, navigating to people page');
-        router.replace('/people');
+        console.log('EditPersonScreen: Person saved successfully, navigating back to origin');
+        navigateToOrigin();
       } else {
         Alert.alert('Error', 'Failed to update person. Please try again.');
       }
@@ -82,7 +96,7 @@ export default function EditPersonScreen() {
       console.error('EditPersonScreen: Error updating person:', error);
       Alert.alert('Error', 'Failed to update person. Please try again.');
     }
-  }, [person, updatePerson]);
+  }, [person, updatePerson, navigateToOrigin]);
 
   const handleGoBack = useCallback(() => {
     router.back();
@@ -224,10 +238,10 @@ export default function EditPersonScreen() {
           </Text>
           <TouchableOpacity 
             style={[themedButtonStyles.primary, { backgroundColor: currentColors.primary, marginTop: 16 }]}
-            onPress={() => router.replace('/people')}
+            onPress={navigateToOrigin}
           >
             <Text style={[themedStyles.text, { color: currentColors.backgroundAlt }]}>
-              Go Back to People
+              Go Back
             </Text>
           </TouchableOpacity>
         </View>

@@ -126,10 +126,10 @@ export default function PeopleScreen() {
   }, [deletingPersonId, saving, removePerson]);
 
   const handleEditPerson = useCallback((person: Person) => {
-    console.log('PeopleScreen: Navigating to edit person:', person);
+    console.log('PeopleScreen: Navigating to edit person with origin:', person);
     router.push({
       pathname: '/edit-person',
-      params: { personId: person.id }
+      params: { personId: person.id, origin: 'people' }
     });
   }, []);
 
