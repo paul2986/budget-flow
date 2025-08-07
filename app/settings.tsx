@@ -323,7 +323,13 @@ export default function SettingsScreen() {
             <Button
               text="Clear All Data"
               onPress={handleClearAllData}
-              style={[themedButtonStyles.danger, { backgroundColor: currentColors.error }]}
+              style={[
+                themedButtonStyles.danger, 
+                { 
+                  backgroundColor: currentColors.error,
+                  borderColor: currentColors.error
+                }
+              ]}
             />
           </View>
         </View>
