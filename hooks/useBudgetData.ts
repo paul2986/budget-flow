@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { loadBudgetData, saveBudgetData, loadAppData, getActiveBudget, setActiveBudget as storageSetActiveBudget, addBudget as storageAddBudget, renameBudget as storageRenameBudget, deleteBudget as storageDeleteBudget } from '../utils/storage';
-import { BudgetData, Person, Expense, Income, HouseholdSettings, AppDataV2, Budget } from '../types/budget';
+import { loadAppData, getActiveBudget, setActiveBudget as storageSetActiveBudget, addBudget as storageAddBudget, renameBudget as storageRenameBudget, deleteBudget as storageDeleteBudget, updateBudget as storageUpdateBudget } from '../utils/storage';
+import { Person, Expense, Income, HouseholdSettings, AppDataV2, Budget } from '../types/budget';
 
 export const useBudgetData = () => {
   const [appData, setAppData] = useState<AppDataV2>({ version: 2, budgets: [], activeBudgetId: '' });
