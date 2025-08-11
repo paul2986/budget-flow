@@ -20,6 +20,7 @@ export default function AddExpenseScreen() {
   
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
+  const [notes, setNotes] = useState('');
   const [category, setCategory] = useState<'household' | 'personal'>('household');
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
   const [personId, setPersonId] = useState<string>('');
@@ -36,8 +37,9 @@ export default function AddExpenseScreen() {
       setDescription(expenseToEdit.description);
       setAmount(expenseToEdit.amount.toString());
       setCategory(expenseToEdit.category);
-      setFrequency(expenseToEdit.frequency);
+      setFrequency(expenseToEdit.frequency as 'daily' | 'weekly' | 'monthly' | 'yearly');
       setPersonId(expenseToEdit.personId || '');
+      setNotes(typeof expenseToEdit.notes === 'string' ? expenseToEdit.notes : '');
     } else if (!isEditMode) {
       // Reset form for new expense
       console.log('AddExpenseScreen: Resetting form for new expense');
@@ -46,6 +48,7 @@ export default function AddExpenseScreen() {
       setCategory('household');
       setFrequency('monthly');
       setPersonId('');
+      setNotes('');
     }
   }, [isEditMode, expenseToEdit, data.people, params.id]);
 
@@ -88,6 +91,7 @@ export default function AddExpenseScreen() {
         frequency,
         personId: category === 'personal' ? personId : undefined,
         date: isEditMode ? expenseToEdit!.date : new Date().toISOString(),
+        notes: notes.trim(),
       };
 
       console.log('AddExpenseScreen: Saving expense:', expenseData);
@@ -112,7 +116,7 @@ export default function AddExpenseScreen() {
       console.error('AddExpenseScreen: Error saving expense:', error);
       Alert.alert('Error', 'Failed to save expense. Please try again.');
     }
-  }, [description, amount, category, frequency, personId, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin]);
+  }, [description, amount, notes, category, frequency, personId, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin]);
 
   const handleDeleteExpense = useCallback(async () => {
     if (!isEditMode || !expenseToEdit) {
@@ -326,6 +330,23 @@ export default function AddExpenseScreen() {
             placeholderTextColor={currentColors.textSecondary}
             editable={!saving && !deleting}
           />
+        </View>
+
+        <View style={themedStyles.section}>
+          <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Notes (optional)</Text>
+          <TextInput
+            style={[themedStyles.input, { minHeight: 84, paddingTop: 12, textAlignVertical: 'top' }]}
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Add extra details about this expense..."
+            placeholderTextColor={currentColors.textSecondary}
+            editable={!saving && !deleting}
+            multiline
+            maxLength={500}
+          />
+          <Text style={[themedStyles.textSecondary, { textAlign: 'right', marginTop: 4, fontSize: 11 }]}>
+            {notes.length}/500
+          </Text>
         </View>
 
         <View style={themedStyles.section}>

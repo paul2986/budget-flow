@@ -47,17 +47,28 @@ const validateLegacyBudgetData = (data: any): LegacyBudgetData => {
     : [];
   const validFreq = ['daily', 'weekly', 'monthly', 'yearly', 'one-time'];
   const expenses = Array.isArray(safeData.expenses)
-    ? safeData.expenses.filter(
-        (e: any) =>
-          e &&
-          typeof e === 'object' &&
-          e.id &&
-          typeof e.amount === 'number' &&
-          typeof e.description === 'string' &&
-          ['household', 'personal'].includes(e.category) &&
-          validFreq.includes(e.frequency) &&
-          e.date
-      )
+    ? safeData.expenses
+        .filter(
+          (e: any) =>
+            e &&
+            typeof e === 'object' &&
+            e.id &&
+            typeof e.amount === 'number' &&
+            typeof e.description === 'string' &&
+            ['household', 'personal'].includes(e.category) &&
+            validFreq.includes(e.frequency) &&
+            e.date
+        )
+        .map((e: any) => ({
+          id: e.id,
+          amount: typeof e.amount === 'number' ? e.amount : 0,
+          description: typeof e.description === 'string' ? e.description : '',
+          category: (['household', 'personal'].includes(e.category) ? e.category : 'household') as 'household' | 'personal',
+          frequency: validFreq.includes(e.frequency) ? e.frequency : 'monthly',
+          personId: e.category === 'personal' && typeof e.personId === 'string' ? e.personId : undefined,
+          date: typeof e.date === 'string' ? e.date : new Date().toISOString(),
+          notes: typeof e.notes === 'string' ? e.notes : '',
+        }))
     : [];
   const distribution =
     safeData?.householdSettings &&
@@ -99,9 +110,8 @@ const validateAppData = (data: any): AppDataV2 => {
     };
   };
 
-  const budgets: Budget[] = Array.isArray(data.budgets) && data.budgets.length > 0
-    ? data.budgets.map((b: any) => makeSafeBudget(b))
-    : [createEmptyBudget('My Budget')];
+  const budgets: Budget[] =
+    Array.isArray(data.budgets) && data.budgets.length > 0 ? data.budgets.map((b: any) => makeSafeBudget(b)) : [createEmptyBudget('My Budget')];
 
   let activeBudgetId = typeof data.activeBudgetId === 'string' ? data.activeBudgetId : budgets[0].id;
   if (!budgets.find((b) => b.id === activeBudgetId)) activeBudgetId = budgets[0].id;

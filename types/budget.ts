@@ -21,6 +21,7 @@ export interface Expense {
   frequency: Frequency;
   personId?: string; // Only for personal expenses
   date: string;
+  notes?: string; // Optional notes for additional context
 }
 
 export type Frequency = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'one-time';
