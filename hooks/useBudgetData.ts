@@ -1,9 +1,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { loadBudgetData, saveBudgetData } from '../utils/storage';
-import { BudgetData, Person, Expense, Income, HouseholdSettings } from '../types/budget';
+import { loadBudgetData, saveBudgetData, loadAppData, getActiveBudget, setActiveBudget as storageSetActiveBudget, addBudget as storageAddBudget, renameBudget as storageRenameBudget, deleteBudget as storageDeleteBudget } from '../utils/storage';
+import { BudgetData, Person, Expense, Income, HouseholdSettings, AppDataV2, Budget } from '../types/budget';
 
 export const useBudgetData = () => {
+  const [appData, setAppData] = useState<AppDataV2>({ version: 2, budgets: [], activeBudgetId: '' });
   const [data, setData] = useState<BudgetData>({
     people: [],
     expenses: [],
@@ -17,6 +18,13 @@ export const useBudgetData = () => {
   const isQueueRunning = useRef(false);
   const isLoadingRef = useRef(false);
   const lastRefreshTimeRef = useRef<number>(0);
+
+  const refreshFromStorage = useCallback(async () => {
+    const loadedApp = await loadAppData();
+    setAppData(loadedApp);
+    const active = getActiveBudget(loadedApp);
+    setData({ people: active.people, expenses: active.expenses, householdSettings: active.householdSettings });
+  }, []);
 
   // Function to get the most current data - ALWAYS load from AsyncStorage for operations
   const getCurrentData = useCallback(async (): Promise<BudgetData> => {
@@ -64,16 +72,8 @@ export const useBudgetData = () => {
     try {
       isLoadingRef.current = true;
       setLoading(true);
-      console.log('useBudgetData: Loading data...');
-      const budgetData = await loadBudgetData();
-      console.log('useBudgetData: Loaded data:', {
-        peopleCount: budgetData.people?.length || 0,
-        expensesCount: budgetData.expenses?.length || 0,
-        expenseIds: budgetData.expenses?.map(e => e.id) || [],
-        distributionMethod: budgetData.householdSettings?.distributionMethod
-      });
-      
-      setData(budgetData);
+      console.log('useBudgetData: Loading app data...');
+      await refreshFromStorage();
       lastRefreshTimeRef.current = Date.now();
     } catch (error) {
       console.error('useBudgetData: Error loading budget data:', error);
@@ -81,7 +81,7 @@ export const useBudgetData = () => {
       setLoading(false);
       isLoadingRef.current = false;
     }
-  }, []); // No dependencies to prevent infinite loops
+  }, [refreshFromStorage]);
 
   // Load data only once on mount
   useEffect(() => {
@@ -158,6 +158,14 @@ export const useBudgetData = () => {
       
       if (result.success) {
         console.log('useBudgetData: Data saved successfully');
+        // Also update appData's active budget in memory to keep in sync
+        setAppData(prev => {
+          const active = prev.budgets.find(b => b.id === prev.activeBudgetId);
+          if (!active) return prev;
+          const updatedActive: Budget = { ...active, ...newData } as any;
+          const budgets = prev.budgets.map(b => b.id === active.id ? updatedActive : b);
+          return { ...prev, budgets };
+        });
         return { success: true };
       } else {
         console.error('useBudgetData: Save failed, reverting state:', result.error);
@@ -172,6 +180,33 @@ export const useBudgetData = () => {
       return { success: false, error: error as Error };
     }
   }, [loadData]);
+
+  // Budget management APIs
+  const addBudget = useCallback(async (name: string) => {
+    const res = await storageAddBudget(name);
+    if (res.success) {
+      await refreshFromStorage();
+    }
+    return res;
+  }, [refreshFromStorage]);
+
+  const renameBudget = useCallback(async (budgetId: string, newName: string) => {
+    const res = await storageRenameBudget(budgetId, newName);
+    if (res.success) await refreshFromStorage();
+    return res;
+  }, [refreshFromStorage]);
+
+  const deleteBudget = useCallback(async (budgetId: string) => {
+    const res = await storageDeleteBudget(budgetId);
+    if (res.success) await refreshFromStorage();
+    return res;
+  }, [refreshFromStorage]);
+
+  const setActiveBudget = useCallback(async (budgetId: string) => {
+    const res = await storageSetActiveBudget(budgetId);
+    if (res.success) await refreshFromStorage();
+    return res;
+  }, [refreshFromStorage]);
 
   const addPerson = useCallback(async (person: Person): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Adding person:', person);
@@ -482,23 +517,20 @@ export const useBudgetData = () => {
       timeSinceLastRefresh
     });
     
-    // Don't refresh if we're currently saving or have a save in progress (unless forced)
     if (isQueueRunning.current && !force) {
       console.log('useBudgetData: Skipping refresh - save operation in progress');
       return;
     }
     
-    // Throttle refreshes to prevent excessive calls (minimum 500ms between refreshes, unless forced)
     if (timeSinceLastRefresh < 500 && !force) {
       console.log('useBudgetData: Skipping refresh - too soon since last refresh');
       return;
     }
     
-    // If we're already loading, wait for it to complete
     if (isLoadingRef.current) {
       console.log('useBudgetData: Load already in progress, waiting...');
       let attempts = 0;
-      while (isLoadingRef.current && attempts < 20) { // Max 1 second wait
+      while (isLoadingRef.current && attempts < 20) {
         await new Promise(resolve => setTimeout(resolve, 50));
         attempts++;
       }
@@ -510,26 +542,33 @@ export const useBudgetData = () => {
     
     console.log('useBudgetData: Executing refresh...');
     await loadData();
-  }, [loadData]); // Only depend on loadData which is stable
+  }, [loadData]);
 
   const clearAllData = useCallback(async (): Promise<{ success: boolean; error?: Error }> => {
-    console.log('useBudgetData: Clearing all data...');
+    console.log('useBudgetData: Clearing all data for active budget...');
     return queueSave(async () => {
       const emptyData: BudgetData = {
         people: [],
         expenses: [],
         householdSettings: { distributionMethod: 'even' },
       };
-      
       console.log('useBudgetData: Saving empty data structure');
       return await saveData(emptyData);
     });
   }, [queueSave, saveData]);
 
   return {
+    appData,
+    activeBudget: getActiveBudget(appData),
     data,
     loading,
     saving,
+    // budget ops
+    addBudget,
+    renameBudget,
+    deleteBudget,
+    setActiveBudget,
+    // existing ops scoped to active budget
     addPerson,
     removePerson,
     updatePerson,

@@ -29,8 +29,22 @@ export interface HouseholdSettings {
   distributionMethod: 'even' | 'income-based';
 }
 
+// Legacy single-budget data shape (v1)
 export interface BudgetData {
   people: Person[];
   expenses: Expense[];
   householdSettings: HouseholdSettings;
+}
+
+// New multi-budget entities (v2)
+export interface Budget extends BudgetData {
+  id: string;
+  name: string;
+  createdAt: number; // epoch millis
+}
+
+export interface AppDataV2 {
+  version: 2;
+  budgets: Budget[];
+  activeBudgetId: string;
 }
