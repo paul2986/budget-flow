@@ -28,6 +28,7 @@ function CustomTabBar() {
     { route: '/', icon: 'home-outline', activeIcon: 'home' },
     { route: '/people', icon: 'people-outline', activeIcon: 'people' },
     { route: '/expenses', icon: 'receipt-outline', activeIcon: 'receipt' },
+    { route: '/tools', icon: 'calculator-outline', activeIcon: 'calculator' },
     { route: '/settings', icon: 'settings-outline', activeIcon: 'settings' },
   ], []);
 

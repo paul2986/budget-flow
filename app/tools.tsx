@@ -16,7 +16,7 @@ import { useToast } from '../hooks/useToast';
 export default function ToolsScreen() {
   const { themedStyles } = useThemedStyles();
   const { currentColors } = useTheme();
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, currency } = useCurrency();
   const toast = useToast();
 
   const [balanceInput, setBalanceInput] = useState<string>('');
@@ -181,7 +181,7 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
           validate();
         }}
         keyboardType={Platform.select({ ios: 'decimal-pad', android: 'decimal-pad', default: 'numeric' })}
-        placeholder="$0.00"
+        placeholder={`${currency.symbol}0.00`}
         placeholderTextColor={currentColors.textSecondary}
         style={[
           themedStyles.input,
@@ -240,7 +240,7 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
           validate();
         }}
         keyboardType={Platform.select({ ios: 'decimal-pad', android: 'decimal-pad', default: 'numeric' })}
-        placeholder="$0.00"
+        placeholder={`${currency.symbol}0.00`}
         placeholderTextColor={currentColors.textSecondary}
         style={[
           themedStyles.input,
@@ -378,8 +378,7 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
     <View style={themedStyles.container}>
       <StandardHeader
         title="Tools"
-        leftIcon="arrow-back"
-        onLeftPress={() => router.back()}
+        showLeftIcon={false}
         showRightIcon={false}
       />
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
