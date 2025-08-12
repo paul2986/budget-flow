@@ -288,7 +288,7 @@ const processAppSaveQueue = async (): Promise<void> => {
     throw e;
   } finally {
     appSaveInProgress = false;
-    if (appSaveQueue.length > 0) setImmediate(() => processAppSaveQueue());
+    if (appSaveQueue.length > 0) setTimeout(() => processAppSaveQueue(), 0);
   }
 };
 

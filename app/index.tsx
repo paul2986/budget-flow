@@ -21,6 +21,7 @@ import PersonBreakdownChart from '../components/PersonBreakdownChart';
 import StandardHeader from '../components/StandardHeader';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useToast } from '../hooks/useToast';
+import RecurringWidget from '../components/RecurringWidget';
 
 export default function HomeScreen() {
   const { data, loading, refreshData, activeBudget, updateExpense, removeExpense } = useBudgetData();
@@ -96,7 +97,7 @@ export default function HomeScreen() {
       .slice(0, 5);
   }, [data.expenses]);
 
-  // Expiring/Ended lists for dashboard widget
+  // Expiring/Ended lists for dashboard widget (kept for potential other usages)
   const recurringWithEnd = useMemo(() => data.expenses.filter((e) => e.frequency !== 'one-time' && (e as any).endDate), [data.expenses]);
   const endingSoonList = useMemo(() => getEndingSoon(recurringWithEnd, 30).filter((e) => {
     const end = (e as any).endDate as string;
@@ -357,6 +358,11 @@ export default function HomeScreen() {
                 }
               </Text>
             </View>
+          </View>
+
+          {/* Recurring ending/ended widget */}
+          <View style={themedStyles.section}>
+            <RecurringWidget />
           </View>
 
           {/* Individual Person Breakdowns */}
