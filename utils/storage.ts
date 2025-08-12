@@ -35,6 +35,22 @@ const sanitizeCategoryTag = (tag: any): ExpenseCategory => {
   return (DEFAULT_CATEGORIES.includes(norm) ? norm : norm) as ExpenseCategory;
 };
 
+const toYMD = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const sanitizeEndDate = (frequency: string, endDate: any): string | undefined => {
+  if (frequency === 'one-time') return undefined;
+  if (typeof endDate !== 'string') return undefined;
+  const v = endDate.slice(0, 10);
+  // basic YYYY-MM-DD check
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return undefined;
+  return v;
+};
+
 // v2 app data saving protection
 let appSaveInProgress = false;
 const appSaveQueue: AppDataV2[] = [];
@@ -152,6 +168,7 @@ const validateLegacyBudgetData = (data: any): LegacyBudgetData => {
           date: typeof e.date === 'string' ? e.date : new Date().toISOString(),
           notes: typeof e.notes === 'string' ? e.notes : '',
           categoryTag: sanitizeCategoryTag(e.categoryTag || 'Misc'),
+          endDate: sanitizeEndDate(e.frequency, e.endDate),
         }))
     : [];
   const distribution =
@@ -184,10 +201,11 @@ const validateAppData = (data: any): AppDataV2 => {
 
   const makeSafeBudget = (b: any): Budget => {
     const legacyShape = validateLegacyBudgetData(b);
-    // Ensure all expenses have valid categoryTag
+    // Ensure all expenses have valid categoryTag and properly sanitized endDate
     const sanitizedExpenses = (legacyShape.expenses || []).map((e: Expense) => ({
       ...e,
       categoryTag: sanitizeCategoryTag((e as any).categoryTag || 'Misc'),
+      endDate: sanitizeEndDate((e as any).frequency, (e as any).endDate),
     }));
 
     return {
@@ -343,12 +361,13 @@ export const updateBudget = async (budget: Budget): Promise<{ success: boolean; 
   const idx = appData.budgets.findIndex((b) => b.id === budget.id);
   if (idx === -1) return { success: false, error: new Error('Budget not found') };
   const budgets = [...appData.budgets];
-  // Ensure expenses have valid categoryTag before saving
+  // Ensure expenses have valid categoryTag and endDate before saving
   const sanitized = {
     ...budget,
     expenses: (budget.expenses || []).map((e: Expense) => ({
       ...e,
       categoryTag: sanitizeCategoryTag((e as any).categoryTag || 'Misc'),
+      endDate: sanitizeEndDate((e as any).frequency, (e as any).endDate),
     })),
   } as Budget;
   budgets[idx] = { ...sanitized };

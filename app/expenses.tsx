@@ -1,26 +1,31 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { useBudgetData } from '../hooks/useBudgetData';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Text, View, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
-import { calculateMonthlyAmount } from '../utils/calculations';
+import { calculateMonthlyAmount, getEndingSoon } from '../utils/calculations';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useCurrency } from '../hooks/useCurrency';
+import { useToast } from '../hooks/useToast';
 import Icon from '../components/Icon';
 import StandardHeader from '../components/StandardHeader';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 type SortOption = 'date' | 'highest' | 'lowest';
 
 export default function ExpensesScreen() {
-  const { data, removeExpense, saving, refreshData } = useBudgetData();
+  const { data, removeExpense, updateExpense, saving, refreshData } = useBudgetData();
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
   const { formatCurrency } = useCurrency();
+  const toast = useToast();
+  const params = useLocalSearchParams<{ showRecurring?: string }>();
   const [filter, setFilter] = useState<'all' | 'household' | 'personal'>('all');
   const [personFilter, setPersonFilter] = useState<string | null>(null);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('date');
+  const [extendTarget, setExtendTarget] = useState<{ id: string; endDate?: string } | null>(null);
   
   // Use ref to track if we've already refreshed on this focus
   const hasRefreshedOnFocus = useRef(false);
@@ -105,6 +110,17 @@ export default function ExpensesScreen() {
       ]
     );
   }, [handleRemoveExpense]);
+
+  const openExtend = useCallback((expenseId: string, currentEnd?: string) => {
+    setExtendTarget({ id: expenseId, endDate: currentEnd });
+  }, []);
+
+  const toYMD = (d: Date): string => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
 
   const handleEditExpense = useCallback((expense: any) => {
     console.log('ExpensesScreen: Navigating to edit expense:', expense);

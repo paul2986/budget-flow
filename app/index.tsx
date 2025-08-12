@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useBudgetData } from '../hooks/useBudgetData';
@@ -13,17 +13,21 @@ import {
   calculatePersonalExpenses,
   calculateMonthlyAmount,
   calculatePersonIncome,
-  calculateHouseholdShare
+  calculateHouseholdShare,
+  getEndingSoon,
 } from '../utils/calculations';
 import Icon from '../components/Icon';
 import PersonBreakdownChart from '../components/PersonBreakdownChart';
 import StandardHeader from '../components/StandardHeader';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useToast } from '../hooks/useToast';
 
 export default function HomeScreen() {
-  const { data, loading, refreshData, activeBudget } = useBudgetData();
+  const { data, loading, refreshData, activeBudget, updateExpense, removeExpense } = useBudgetData();
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
   const { formatCurrency, loading: currencyLoading } = useCurrency();
+  const toast = useToast();
 
   // Use ref to track if we've already refreshed on this focus
   const hasRefreshedOnFocus = useRef(false);
@@ -91,6 +95,25 @@ export default function HomeScreen() {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 5);
   }, [data.expenses]);
+
+  // Expiring/Ended lists for dashboard widget
+  const recurringWithEnd = useMemo(() => data.expenses.filter((e) => e.frequency !== 'one-time' && (e as any).endDate), [data.expenses]);
+  const endingSoonList = useMemo(() => getEndingSoon(recurringWithEnd, 30).filter((e) => {
+    const end = (e as any).endDate as string;
+    const ymd = end ? end.slice(0,10) : '';
+    const today = new Date();
+    const toY = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const todayY = toY(today);
+    return ymd >= todayY; // only future within 30 days
+  }), [recurringWithEnd]);
+  const endedList = useMemo(() => getEndingSoon(recurringWithEnd, 36500).filter((e) => {
+    const end = (e as any).endDate as string;
+    const ymd = end ? end.slice(0,10) : '';
+    const today = new Date();
+    const toY = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const todayY = toY(today);
+    return !!ymd && ymd < todayY;
+  }), [recurringWithEnd]);
 
   // Memoize person breakdowns
   const personBreakdowns = useMemo(() => {

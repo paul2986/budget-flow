@@ -11,6 +11,7 @@ import Icon from '../components/Icon';
 import { Expense, ExpenseCategory, DEFAULT_CATEGORIES } from '../types/budget';
 import StandardHeader from '../components/StandardHeader';
 import { getCustomExpenseCategories, saveCustomExpenseCategories, normalizeCategoryName } from '../utils/storage';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const EXPENSE_CATEGORIES: ExpenseCategory[] = DEFAULT_CATEGORIES;
 
@@ -29,6 +30,17 @@ export default function AddExpenseScreen() {
   const [personId, setPersonId] = useState<string>('');
   const [categoryTag, setCategoryTag] = useState<ExpenseCategory>('Misc');
   const [deleting, setDeleting] = useState(false);
+
+  // Dates
+  const toYMD = (d: Date): string => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const [startDateYMD, setStartDateYMD] = useState<string>(toYMD(new Date()));
+  const [endDateYMD, setEndDateYMD] = useState<string | ''>('');
+  const [showEndPicker, setShowEndPicker] = useState(false);
 
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [showCustomModal, setShowCustomModal] = useState(false);
@@ -60,6 +72,16 @@ export default function AddExpenseScreen() {
       const normalized = normalizeCategoryName((expenseToEdit.categoryTag as ExpenseCategory) || 'Misc');
       setCategoryTag(normalized || 'Misc');
 
+      // Dates
+      try {
+        const d = new Date(expenseToEdit.date);
+        if (!isNaN(d.getTime())) setStartDateYMD(toYMD(d));
+      } catch (e) {
+        console.log('Invalid start date in expense');
+      }
+      const eY = (expenseToEdit as any).endDate ? String((expenseToEdit as any).endDate).slice(0, 10) : '';
+      setEndDateYMD(eY as any);
+
       // Ensure custom category is in the list if not default
       if (normalized && !DEFAULT_CATEGORIES.includes(normalized) && !customCategories.includes(normalized)) {
         const next = [...customCategories, normalized];
@@ -76,6 +98,8 @@ export default function AddExpenseScreen() {
       setPersonId('');
       setNotes('');
       setCategoryTag('Misc');
+      setStartDateYMD(toYMD(new Date()));
+      setEndDateYMD('');
     }
   }, [isEditMode, expenseToEdit, data.people, params.id, customCategories]);
 
@@ -115,6 +139,17 @@ export default function AddExpenseScreen() {
       return;
     }
 
+    // Validate end date rules for recurring only
+    const isRecurring = ['daily', 'weekly', 'monthly', 'yearly'].includes(frequency);
+    const endVal = (endDateYMD || '').slice(0, 10);
+    if (isRecurring && endVal) {
+      const startVal = (startDateYMD || '').slice(0, 10);
+      if (endVal < startVal) {
+        Alert.alert('Invalid end date', 'End date cannot be earlier than the start date');
+        return;
+      }
+    }
+
     try {
       const expenseData: Expense = {
         id: isEditMode ? expenseToEdit!.id : `expense_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -123,15 +158,20 @@ export default function AddExpenseScreen() {
         category,
         frequency,
         personId: category === 'personal' ? personId : undefined,
-        date: isEditMode ? expenseToEdit!.date : new Date().toISOString(),
+        date: isEditMode ? expenseToEdit!.date : new Date(startDateYMD + 'T00:00:00Z').toISOString(),
         notes: notes.trim(),
         categoryTag: normalizedTag,
+        endDate: isRecurring && endVal ? endVal : undefined,
       };
 
       console.log('AddExpenseScreen: Saving expense:', expenseData);
 
       let result;
       if (isEditMode) {
+        // If switched to one-time, clear endDate
+        if (expenseData.frequency === 'one-time') {
+          delete (expenseData as any).endDate;
+        }
         result = await updateExpense(expenseData);
         console.log('AddExpenseScreen: Expense updated result:', result);
       } else {
@@ -150,7 +190,7 @@ export default function AddExpenseScreen() {
       console.error('AddExpenseScreen: Error saving expense:', error);
       Alert.alert('Error', 'Failed to save expense. Please try again.');
     }
-  }, [description, amount, notes, category, frequency, personId, categoryTag, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin]);
+  }, [description, amount, notes, category, frequency, personId, categoryTag, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin, startDateYMD, endDateYMD]);
 
   const handleDeleteExpense = useCallback(async () => {
     if (!isEditMode || !expenseToEdit) {
@@ -451,7 +491,11 @@ export default function AddExpenseScreen() {
         rightIcon={isEditMode ? 'checkmark' : 'add'}
         onRightPress={isEditMode ? handleSaveExpense : handleSaveExpense}
         showRightIcon={true}
-        loading={saving || deleting}
+        loading={(() => {
+          const isRecurring = ['daily', 'weekly', 'monthly', 'yearly'].includes(frequency);
+          const invalid = isRecurring && !!endDateYMD && endDateYMD < startDateYMD;
+          return saving || deleting || invalid;
+        })()}
       />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
@@ -500,6 +544,43 @@ export default function AddExpenseScreen() {
         <OwnershipPicker />
         <CategoryTagPicker />
         <FrequencyPicker />
+
+        {/* End date picker for recurring expenses */}
+        {(['daily', 'weekly', 'monthly', 'yearly'] as const).includes(frequency) && (
+          <View style={themedStyles.section}>
+            <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>End date (optional)</Text>
+            <View style={[themedStyles.rowStart]}>
+              <TouchableOpacity
+                onPress={() => setShowEndPicker(true)}
+                disabled={saving || deleting}
+                style={[
+                  themedStyles.badge,
+                  { backgroundColor: currentColors.border, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 }
+                ]}
+              >
+                <Text style={[themedStyles.badgeText, { color: currentColors.text }]}>
+                  {endDateYMD ? endDateYMD : 'Pick date'}
+                </Text>
+              </TouchableOpacity>
+              {endDateYMD ? (
+                <TouchableOpacity
+                  onPress={() => setEndDateYMD('')}
+                  disabled={saving || deleting}
+                  style={[
+                    themedStyles.badge,
+                    { backgroundColor: currentColors.error + '20', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, marginLeft: 8 }
+                  ]}
+                >
+                  <Text style={[themedStyles.badgeText, { color: currentColors.error }]}>Clear</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            {endDateYMD && endDateYMD < startDateYMD ? (
+              <Text style={[themedStyles.textSecondary, { color: currentColors.error, marginTop: 6 }]}>End date cannot be earlier than start date</Text>
+            ) : null}
+          </View>
+        )}
+
         <PersonPicker />
 
         {category === 'personal' && data.people.length === 0 && (
@@ -551,6 +632,22 @@ export default function AddExpenseScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* End date DateTimePicker (native) */}
+      {showEndPicker && (
+        <DateTimePicker
+          value={endDateYMD ? new Date(endDateYMD + 'T00:00:00') : new Date()}
+          mode="date"
+          display="default"
+          onChange={(event: any, selected?: Date) => {
+            setShowEndPicker(false);
+            if (selected) {
+              const ymd = toYMD(selected);
+              setEndDateYMD(ymd);
+            }
+          }}
+        />
+      )}
 
       {/* Custom Category Modal */}
       <Modal visible={showCustomModal} animationType="slide" transparent onRequestClose={() => setShowCustomModal(false)}>

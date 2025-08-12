@@ -25,6 +25,8 @@ export const DEFAULT_CATEGORIES: string[] = [
   'Misc',
 ];
 
+export type Frequency = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'one-time';
+
 export interface Expense {
   id: string;
   amount: number;
@@ -32,12 +34,11 @@ export interface Expense {
   category: 'household' | 'personal';
   frequency: Frequency;
   personId?: string; // Only for personal expenses
-  date: string;
+  date: string; // ISO string for the start/added date
   notes?: string; // Optional notes for additional context
   categoryTag?: ExpenseCategory; // Optional category tag for filtering/reporting (default 'Misc')
+  endDate?: string; // YYYY-MM-DD, optional end date for recurring expenses (frequency != 'one-time')
 }
-
-export type Frequency = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'one-time';
 
 export interface HouseholdSettings {
   distributionMethod: 'even' | 'income-based';
