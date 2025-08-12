@@ -2,25 +2,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useCurrency } from '../hooks/useCurrency';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
-import { Expense, ExpenseCategory } from '../types/budget';
+import { Expense, ExpenseCategory, DEFAULT_CATEGORIES } from '../types/budget';
 import StandardHeader from '../components/StandardHeader';
+import { getCustomExpenseCategories, saveCustomExpenseCategories, normalizeCategoryName } from '../utils/storage';
 
-const EXPENSE_CATEGORIES: ExpenseCategory[] = [
-  'Food',
-  'Housing',
-  'Transportation',
-  'Entertainment',
-  'Utilities',
-  'Healthcare',
-  'Clothing',
-  'Misc',
-];
+const EXPENSE_CATEGORIES: ExpenseCategory[] = DEFAULT_CATEGORIES;
 
 export default function AddExpenseScreen() {
   const { data, addExpense, updateExpense, removeExpense, saving } = useBudgetData();
@@ -38,9 +30,22 @@ export default function AddExpenseScreen() {
   const [categoryTag, setCategoryTag] = useState<ExpenseCategory>('Misc');
   const [deleting, setDeleting] = useState(false);
 
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [showCustomModal, setShowCustomModal] = useState(false);
+  const [newCustomName, setNewCustomName] = useState('');
+  const [customError, setCustomError] = useState<string | null>(null);
+
   const isEditMode = !!params.id;
   const origin = params.origin || 'expenses'; // Default to expenses if no origin specified
   const expenseToEdit = isEditMode ? data.expenses.find(e => e.id === params.id) : null;
+
+  // Load custom categories initially
+  useEffect(() => {
+    (async () => {
+      const list = await getCustomExpenseCategories();
+      setCustomCategories(list);
+    })();
+  }, []);
 
   // Load expense data for editing
   useEffect(() => {
@@ -52,7 +57,15 @@ export default function AddExpenseScreen() {
       setFrequency(expenseToEdit.frequency as 'daily' | 'weekly' | 'monthly' | 'yearly');
       setPersonId(expenseToEdit.personId || '');
       setNotes(typeof expenseToEdit.notes === 'string' ? expenseToEdit.notes : '');
-      setCategoryTag((expenseToEdit.categoryTag as ExpenseCategory) || 'Misc');
+      const normalized = normalizeCategoryName((expenseToEdit.categoryTag as ExpenseCategory) || 'Misc');
+      setCategoryTag(normalized || 'Misc');
+
+      // Ensure custom category is in the list if not default
+      if (normalized && !DEFAULT_CATEGORIES.includes(normalized) && !customCategories.includes(normalized)) {
+        const next = [...customCategories, normalized];
+        setCustomCategories(next);
+        saveCustomExpenseCategories(next).then(() => console.log('Saved missing custom category from edited expense'));
+      }
     } else if (!isEditMode) {
       // Reset form for new expense
       console.log('AddExpenseScreen: Resetting form for new expense');
@@ -64,7 +77,7 @@ export default function AddExpenseScreen() {
       setNotes('');
       setCategoryTag('Misc');
     }
-  }, [isEditMode, expenseToEdit, data.people, params.id]);
+  }, [isEditMode, expenseToEdit, data.people, params.id, customCategories]);
 
   const navigateToOrigin = useCallback(() => {
     console.log('AddExpenseScreen: Navigating back to origin:', origin);
@@ -96,6 +109,12 @@ export default function AddExpenseScreen() {
       return;
     }
 
+    const normalizedTag = normalizeCategoryName(categoryTag || 'Misc');
+    if (!normalizedTag) {
+      Alert.alert('Error', 'Please select a category');
+      return;
+    }
+
     try {
       const expenseData: Expense = {
         id: isEditMode ? expenseToEdit!.id : `expense_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -106,7 +125,7 @@ export default function AddExpenseScreen() {
         personId: category === 'personal' ? personId : undefined,
         date: isEditMode ? expenseToEdit!.date : new Date().toISOString(),
         notes: notes.trim(),
-        categoryTag,
+        categoryTag: normalizedTag,
       };
 
       console.log('AddExpenseScreen: Saving expense:', expenseData);
@@ -246,17 +265,51 @@ export default function AddExpenseScreen() {
     </View>
   ), [category, currentColors, saving, deleting, themedStyles]);
 
-  const CategoryTagPicker = useCallback(() => (
-    <View style={themedStyles.section}>
-      <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Category</Text>
-      <View style={[themedStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
-        {EXPENSE_CATEGORIES.map((tag) => (
+  const CategoryTagPicker = useCallback(() => {
+    const allCategories = [...EXPENSE_CATEGORIES, ...customCategories];
+
+    return (
+      <View style={themedStyles.section}>
+        <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Category</Text>
+        <View style={[themedStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
+          {allCategories.map((tag) => (
+            <TouchableOpacity
+              key={tag}
+              style={[
+                themedStyles.badge,
+                { 
+                  backgroundColor: categoryTag === tag ? currentColors.secondary : currentColors.border,
+                  marginRight: 8,
+                  marginBottom: 8,
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 20,
+                }
+              ]}
+              onPress={() => setCategoryTag(tag)}
+              disabled={saving || deleting}
+              accessibilityHint="Applies a category to this expense"
+              accessibilityLabel={`Select category ${tag}${categoryTag === tag ? ', selected' : ''}`}
+            >
+              <Text style={[
+                themedStyles.badgeText,
+                { 
+                  color: categoryTag === tag ? '#FFFFFF' : currentColors.text,
+                  fontWeight: '600',
+                }
+              ]}>
+                {tag}
+              </Text>
+            </TouchableOpacity>
+          ))}
+
+          {/* Add custom chip */}
           <TouchableOpacity
-            key={tag}
+            key="add_custom"
             style={[
               themedStyles.badge,
               { 
-                backgroundColor: categoryTag === tag ? currentColors.secondary : currentColors.border,
+                backgroundColor: currentColors.primary,
                 marginRight: 8,
                 marginBottom: 8,
                 paddingHorizontal: 16,
@@ -264,23 +317,29 @@ export default function AddExpenseScreen() {
                 borderRadius: 20,
               }
             ]}
-            onPress={() => setCategoryTag(tag)}
+            onPress={() => {
+              setCustomError(null);
+              setNewCustomName('');
+              setShowCustomModal(true);
+            }}
             disabled={saving || deleting}
+            accessibilityLabel="Add custom category"
+            accessibilityHint="Opens entry to add a custom category"
           >
             <Text style={[
               themedStyles.badgeText,
               { 
-                color: categoryTag === tag ? '#FFFFFF' : currentColors.text,
-                fontWeight: '600',
+                color: '#FFFFFF',
+                fontWeight: '700',
               }
             ]}>
-              {tag}
+              + Add custom
             </Text>
           </TouchableOpacity>
-        ))}
+        </View>
       </View>
-    </View>
-  ), [categoryTag, currentColors, saving, deleting, themedStyles]);
+    );
+  }, [categoryTag, currentColors, saving, deleting, themedStyles, customCategories]);
 
   const FrequencyPicker = useCallback(() => (
     <View style={themedStyles.section}>
@@ -358,6 +417,31 @@ export default function AddExpenseScreen() {
       </View>
     );
   }, [category, data.people, personId, currentColors, saving, deleting, themedStyles]);
+
+  const handleCreateCustomCategory = useCallback(async () => {
+    const normalized = normalizeCategoryName(newCustomName);
+    if (!normalized) {
+      setCustomError('Please enter a valid name (letters, numbers and spaces)');
+      return;
+    }
+    // Check duplicates (case-insensitive)
+    const existsInDefaults = DEFAULT_CATEGORIES.some((c) => c.toLowerCase() === normalized.toLowerCase());
+    const existsInCustom = customCategories.some((c) => c.toLowerCase() === normalized.toLowerCase());
+    if (existsInDefaults || existsInCustom) {
+      setCustomError('That category already exists');
+      return;
+    }
+    try {
+      const next = [...customCategories, normalized];
+      await saveCustomExpenseCategories(next);
+      setCustomCategories(next);
+      setCategoryTag(normalized);
+      setShowCustomModal(false);
+    } catch (e) {
+      console.log('Error saving custom category', e);
+      setCustomError('Failed to save category. Try again.');
+    }
+  }, [newCustomName, customCategories]);
 
   return (
     <View style={themedStyles.container}>
@@ -467,6 +551,49 @@ export default function AddExpenseScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Custom Category Modal */}
+      <Modal visible={showCustomModal} animationType="slide" transparent onRequestClose={() => setShowCustomModal(false)}>
+        <View style={{
+          flex: 1,
+          backgroundColor: '#00000055',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+        }}>
+          <View style={[themedStyles.card, { width: '100%', maxWidth: 480 }]}>
+            <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>New Category</Text>
+            <TextInput
+              style={themedStyles.input}
+              value={newCustomName}
+              onChangeText={(t) => {
+                setCustomError(null);
+                setNewCustomName(t);
+              }}
+              placeholder="e.g. Subscriptions"
+              placeholderTextColor={currentColors.textSecondary}
+              maxLength={20}
+            />
+            {customError ? (
+              <Text style={[themedStyles.textSecondary, { color: currentColors.error, marginBottom: 12 }]}>{customError}</Text>
+            ) : null}
+            <View style={[themedStyles.row]}>
+              <TouchableOpacity
+                onPress={() => setShowCustomModal(false)}
+                style={[themedStyles.badge, { backgroundColor: currentColors.border, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 }]}
+              >
+                <Text style={[themedStyles.badgeText, { color: currentColors.text }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleCreateCustomCategory}
+                style={[themedStyles.badge, { backgroundColor: currentColors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 }]}
+              >
+                <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontWeight: '700' }]}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

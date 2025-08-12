@@ -1,6 +1,6 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppDataV2, Budget, Expense, ExpenseCategory } from '../types/budget';
+import { AppDataV2, Budget, Expense, ExpenseCategory, DEFAULT_CATEGORIES } from '../types/budget';
 
 // Storage keys for versions
 const STORAGE_KEYS = {
@@ -8,27 +8,94 @@ const STORAGE_KEYS = {
   BUDGET_DATA: 'budget_data',
   // New multi-budget app data key (v2)
   APP_DATA_V2: 'app_data_v2',
+  // Filters and custom categories
+  EXPENSES_FILTERS: 'expenses_filters_v1',
+  CUSTOM_EXPENSE_CATEGORIES: 'custom_expense_categories_v1',
 };
 
-// Allowed expense categories (for validation)
-const ALLOWED_CATEGORIES: ExpenseCategory[] = [
-  'Food',
-  'Housing',
-  'Transportation',
-  'Entertainment',
-  'Utilities',
-  'Healthcare',
-  'Clothing',
-  'Misc',
-];
+// Normalize and validate category names
+export const normalizeCategoryName = (name: any): string => {
+  if (typeof name !== 'string') return 'Misc';
+  // Allow only letters, numbers and spaces
+  let cleaned = name.replace(/[^A-Za-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!cleaned) return 'Misc';
+  // Title Case
+  cleaned = cleaned
+    .split(' ')
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : ''))
+    .join(' ');
+  // Enforce max length 20
+  if (cleaned.length > 20) cleaned = cleaned.slice(0, 20).trim();
+  return cleaned;
+};
 
 const sanitizeCategoryTag = (tag: any): ExpenseCategory => {
-  return (ALLOWED_CATEGORIES.includes(tag as ExpenseCategory) ? tag : 'Misc') as ExpenseCategory;
+  const norm = normalizeCategoryName(tag);
+  // If it's one of our defaults, keep as-is; otherwise persist custom as-is (normalized)
+  return (DEFAULT_CATEGORIES.includes(norm) ? norm : norm) as ExpenseCategory;
 };
 
 // v2 app data saving protection
 let appSaveInProgress = false;
 const appSaveQueue: AppDataV2[] = [];
+
+export const getCustomExpenseCategories = async (): Promise<string[]> => {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.CUSTOM_EXPENSE_CATEGORIES);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    // Normalize and dedupe
+    const set = new Set<string>();
+    arr.forEach((n) => set.add(normalizeCategoryName(n)));
+    return Array.from(set).filter((c) => !DEFAULT_CATEGORIES.includes(c));
+  } catch (e) {
+    console.error('storage: getCustomExpenseCategories error', e);
+    return [];
+  }
+};
+
+export const saveCustomExpenseCategories = async (categories: string[]): Promise<void> => {
+  try {
+    const cleaned = Array.from(
+      new Set(categories.map((c) => normalizeCategoryName(c)).filter((c) => c && !DEFAULT_CATEGORIES.includes(c)))
+    );
+    await AsyncStorage.setItem(STORAGE_KEYS.CUSTOM_EXPENSE_CATEGORIES, JSON.stringify(cleaned));
+  } catch (e) {
+    console.error('storage: saveCustomExpenseCategories error', e);
+  }
+};
+
+export type ExpensesFilters = {
+  category: string | null; // null means All
+  search: string;
+};
+
+export const getExpensesFilters = async (): Promise<ExpensesFilters> => {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.EXPENSES_FILTERS);
+    if (!raw) return { category: null, search: '' };
+    const parsed = JSON.parse(raw);
+    const category = parsed && typeof parsed.category === 'string' ? normalizeCategoryName(parsed.category) : null;
+    const search = parsed && typeof parsed.search === 'string' ? parsed.search : '';
+    return { category, search };
+  } catch (e) {
+    console.error('storage: getExpensesFilters error', e);
+    return { category: null, search: '' };
+  }
+};
+
+export const saveExpensesFilters = async (filters: ExpensesFilters): Promise<void> => {
+  try {
+    const toSave: ExpensesFilters = {
+      category: filters.category ? normalizeCategoryName(filters.category) : null,
+      search: filters.search || '',
+    };
+    await AsyncStorage.setItem(STORAGE_KEYS.EXPENSES_FILTERS, JSON.stringify(toSave));
+  } catch (e) {
+    console.error('storage: saveExpensesFilters error', e);
+  }
+};
 
 // Create an empty budget entity
 const createEmptyBudget = (name: string): Budget => ({
@@ -84,7 +151,7 @@ const validateLegacyBudgetData = (data: any): LegacyBudgetData => {
           personId: e.category === 'personal' && typeof e.personId === 'string' ? e.personId : undefined,
           date: typeof e.date === 'string' ? e.date : new Date().toISOString(),
           notes: typeof e.notes === 'string' ? e.notes : '',
-          categoryTag: sanitizeCategoryTag(e.categoryTag),
+          categoryTag: sanitizeCategoryTag(e.categoryTag || 'Misc'),
         }))
     : [];
   const distribution =
@@ -120,7 +187,7 @@ const validateAppData = (data: any): AppDataV2 => {
     // Ensure all expenses have valid categoryTag
     const sanitizedExpenses = (legacyShape.expenses || []).map((e: Expense) => ({
       ...e,
-      categoryTag: sanitizeCategoryTag((e as any).categoryTag),
+      categoryTag: sanitizeCategoryTag((e as any).categoryTag || 'Misc'),
     }));
 
     return {
@@ -281,7 +348,7 @@ export const updateBudget = async (budget: Budget): Promise<{ success: boolean; 
     ...budget,
     expenses: (budget.expenses || []).map((e: Expense) => ({
       ...e,
-      categoryTag: sanitizeCategoryTag((e as any).categoryTag),
+      categoryTag: sanitizeCategoryTag((e as any).categoryTag || 'Misc'),
     })),
   } as Budget;
   budgets[idx] = { ...sanitized };
@@ -311,12 +378,20 @@ export const getStorageInfo = async (): Promise<{ hasData: boolean; dataSize: nu
   }
 };
 
-// Backup/restore that supports v2 and wraps v1
+// Backup/restore that supports v2 and wraps v1 + includes custom categories and filters
 export const backupData = async (): Promise<string | null> => {
   try {
     const appData = await loadAppData();
-    const json = JSON.stringify(appData);
-    console.log('storage: AppDataV2 backup created');
+    const customCategories = await getCustomExpenseCategories();
+    const expensesFilters = await getExpensesFilters();
+    const payload = {
+      backupVersion: '2',
+      appData,
+      customCategories,
+      expensesFilters,
+    };
+    const json = JSON.stringify(payload);
+    console.log('storage: AppDataV2 backup created with custom categories and filters');
     return json;
   } catch (error) {
     console.error('storage: Error creating backup:', error);
@@ -327,10 +402,28 @@ export const backupData = async (): Promise<string | null> => {
 export const restoreData = async (backup: string): Promise<{ success: boolean; error?: Error }> => {
   try {
     const parsed = JSON.parse(backup);
+
+    // New backup format with extras
+    if (parsed && parsed.backupVersion === '2' && parsed.appData) {
+      const validated = validateAppData(parsed.appData);
+      const res = await saveAppData(validated);
+      if (res.success) {
+        if (Array.isArray(parsed.customCategories)) {
+          await saveCustomExpenseCategories(parsed.customCategories);
+        }
+        if (parsed.expensesFilters && typeof parsed.expensesFilters === 'object') {
+          await AsyncStorage.setItem(STORAGE_KEYS.EXPENSES_FILTERS, JSON.stringify(parsed.expensesFilters));
+        }
+      }
+      return res;
+    }
+
+    // AppData-only backup
     if (parsed && parsed.version === 2 && Array.isArray(parsed.budgets)) {
       const validated = validateAppData(parsed);
       return await saveAppData(validated);
     }
+
     // Assume legacy shape and wrap into v2
     const legacy = validateLegacyBudgetData(parsed);
     const migratedBudget: Budget = {

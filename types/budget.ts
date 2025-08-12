@@ -13,15 +13,17 @@ export interface Income {
   personId: string;
 }
 
-export type ExpenseCategory =
-  | 'Food'
-  | 'Housing'
-  | 'Transportation'
-  | 'Entertainment'
-  | 'Utilities'
-  | 'Healthcare'
-  | 'Clothing'
-  | 'Misc';
+export type ExpenseCategory = string;
+
+export const DEFAULT_CATEGORIES: string[] = [
+  'Groceries',
+  'Rent',
+  'Utilities',
+  'Transport',
+  'Entertainment',
+  'Healthcare',
+  'Misc',
+];
 
 export interface Expense {
   id: string;
@@ -32,7 +34,7 @@ export interface Expense {
   personId?: string; // Only for personal expenses
   date: string;
   notes?: string; // Optional notes for additional context
-  categoryTag?: ExpenseCategory; // Optional category tag for filtering/reporting
+  categoryTag?: ExpenseCategory; // Optional category tag for filtering/reporting (default 'Misc')
 }
 
 export type Frequency = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'one-time';
