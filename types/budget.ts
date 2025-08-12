@@ -13,6 +13,16 @@ export interface Income {
   personId: string;
 }
 
+export type ExpenseCategory =
+  | 'Food'
+  | 'Housing'
+  | 'Transportation'
+  | 'Entertainment'
+  | 'Utilities'
+  | 'Healthcare'
+  | 'Clothing'
+  | 'Misc';
+
 export interface Expense {
   id: string;
   amount: number;
@@ -22,6 +32,7 @@ export interface Expense {
   personId?: string; // Only for personal expenses
   date: string;
   notes?: string; // Optional notes for additional context
+  categoryTag?: ExpenseCategory; // Optional category tag for filtering/reporting
 }
 
 export type Frequency = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'one-time';

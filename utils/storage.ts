@@ -1,6 +1,6 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppDataV2, Budget } from '../types/budget';
+import { AppDataV2, Budget, Expense, ExpenseCategory } from '../types/budget';
 
 // Storage keys for versions
 const STORAGE_KEYS = {
@@ -8,6 +8,22 @@ const STORAGE_KEYS = {
   BUDGET_DATA: 'budget_data',
   // New multi-budget app data key (v2)
   APP_DATA_V2: 'app_data_v2',
+};
+
+// Allowed expense categories (for validation)
+const ALLOWED_CATEGORIES: ExpenseCategory[] = [
+  'Food',
+  'Housing',
+  'Transportation',
+  'Entertainment',
+  'Utilities',
+  'Healthcare',
+  'Clothing',
+  'Misc',
+];
+
+const sanitizeCategoryTag = (tag: any): ExpenseCategory => {
+  return (ALLOWED_CATEGORIES.includes(tag as ExpenseCategory) ? tag : 'Misc') as ExpenseCategory;
 };
 
 // v2 app data saving protection
@@ -68,6 +84,7 @@ const validateLegacyBudgetData = (data: any): LegacyBudgetData => {
           personId: e.category === 'personal' && typeof e.personId === 'string' ? e.personId : undefined,
           date: typeof e.date === 'string' ? e.date : new Date().toISOString(),
           notes: typeof e.notes === 'string' ? e.notes : '',
+          categoryTag: sanitizeCategoryTag(e.categoryTag),
         }))
     : [];
   const distribution =
@@ -100,11 +117,17 @@ const validateAppData = (data: any): AppDataV2 => {
 
   const makeSafeBudget = (b: any): Budget => {
     const legacyShape = validateLegacyBudgetData(b);
+    // Ensure all expenses have valid categoryTag
+    const sanitizedExpenses = (legacyShape.expenses || []).map((e: Expense) => ({
+      ...e,
+      categoryTag: sanitizeCategoryTag((e as any).categoryTag),
+    }));
+
     return {
       id: typeof b?.id === 'string' ? b.id : `budget_${Math.random().toString(36).slice(2)}`,
       name: typeof b?.name === 'string' ? b.name : 'My Budget',
       people: legacyShape.people,
-      expenses: legacyShape.expenses,
+      expenses: sanitizedExpenses,
       householdSettings: legacyShape.householdSettings,
       createdAt: typeof b?.createdAt === 'number' ? b.createdAt : Date.now(),
     };
@@ -253,7 +276,15 @@ export const updateBudget = async (budget: Budget): Promise<{ success: boolean; 
   const idx = appData.budgets.findIndex((b) => b.id === budget.id);
   if (idx === -1) return { success: false, error: new Error('Budget not found') };
   const budgets = [...appData.budgets];
-  budgets[idx] = { ...budget };
+  // Ensure expenses have valid categoryTag before saving
+  const sanitized = {
+    ...budget,
+    expenses: (budget.expenses || []).map((e: Expense) => ({
+      ...e,
+      categoryTag: sanitizeCategoryTag((e as any).categoryTag),
+    })),
+  } as Budget;
+  budgets[idx] = { ...sanitized };
   return await saveAppData({ ...appData, budgets });
 };
 

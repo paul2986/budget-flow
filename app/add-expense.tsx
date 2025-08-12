@@ -8,8 +8,19 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useCurrency } from '../hooks/useCurrency';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
-import { Expense } from '../types/budget';
+import { Expense, ExpenseCategory } from '../types/budget';
 import StandardHeader from '../components/StandardHeader';
+
+const EXPENSE_CATEGORIES: ExpenseCategory[] = [
+  'Food',
+  'Housing',
+  'Transportation',
+  'Entertainment',
+  'Utilities',
+  'Healthcare',
+  'Clothing',
+  'Misc',
+];
 
 export default function AddExpenseScreen() {
   const { data, addExpense, updateExpense, removeExpense, saving } = useBudgetData();
@@ -24,6 +35,7 @@ export default function AddExpenseScreen() {
   const [category, setCategory] = useState<'household' | 'personal'>('household');
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
   const [personId, setPersonId] = useState<string>('');
+  const [categoryTag, setCategoryTag] = useState<ExpenseCategory>('Misc');
   const [deleting, setDeleting] = useState(false);
 
   const isEditMode = !!params.id;
@@ -40,6 +52,7 @@ export default function AddExpenseScreen() {
       setFrequency(expenseToEdit.frequency as 'daily' | 'weekly' | 'monthly' | 'yearly');
       setPersonId(expenseToEdit.personId || '');
       setNotes(typeof expenseToEdit.notes === 'string' ? expenseToEdit.notes : '');
+      setCategoryTag((expenseToEdit.categoryTag as ExpenseCategory) || 'Misc');
     } else if (!isEditMode) {
       // Reset form for new expense
       console.log('AddExpenseScreen: Resetting form for new expense');
@@ -49,6 +62,7 @@ export default function AddExpenseScreen() {
       setFrequency('monthly');
       setPersonId('');
       setNotes('');
+      setCategoryTag('Misc');
     }
   }, [isEditMode, expenseToEdit, data.people, params.id]);
 
@@ -92,6 +106,7 @@ export default function AddExpenseScreen() {
         personId: category === 'personal' ? personId : undefined,
         date: isEditMode ? expenseToEdit!.date : new Date().toISOString(),
         notes: notes.trim(),
+        categoryTag,
       };
 
       console.log('AddExpenseScreen: Saving expense:', expenseData);
@@ -116,7 +131,7 @@ export default function AddExpenseScreen() {
       console.error('AddExpenseScreen: Error saving expense:', error);
       Alert.alert('Error', 'Failed to save expense. Please try again.');
     }
-  }, [description, amount, notes, category, frequency, personId, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin]);
+  }, [description, amount, notes, category, frequency, personId, categoryTag, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin]);
 
   const handleDeleteExpense = useCallback(async () => {
     if (!isEditMode || !expenseToEdit) {
@@ -168,9 +183,9 @@ export default function AddExpenseScreen() {
     router.back();
   }, []);
 
-  const CategoryPicker = useCallback(() => (
+  const OwnershipPicker = useCallback(() => (
     <View style={[themedStyles.section, { paddingTop: 0 }]}>
-      <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Category</Text>
+      <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Type</Text>
       <View style={[themedStyles.row, { marginTop: 8 }]}>
         <TouchableOpacity
           style={[
@@ -230,6 +245,42 @@ export default function AddExpenseScreen() {
       </View>
     </View>
   ), [category, currentColors, saving, deleting, themedStyles]);
+
+  const CategoryTagPicker = useCallback(() => (
+    <View style={themedStyles.section}>
+      <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Category</Text>
+      <View style={[themedStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
+        {EXPENSE_CATEGORIES.map((tag) => (
+          <TouchableOpacity
+            key={tag}
+            style={[
+              themedStyles.badge,
+              { 
+                backgroundColor: categoryTag === tag ? currentColors.secondary : currentColors.border,
+                marginRight: 8,
+                marginBottom: 8,
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                borderRadius: 20,
+              }
+            ]}
+            onPress={() => setCategoryTag(tag)}
+            disabled={saving || deleting}
+          >
+            <Text style={[
+              themedStyles.badgeText,
+              { 
+                color: categoryTag === tag ? '#FFFFFF' : currentColors.text,
+                fontWeight: '600',
+              }
+            ]}>
+              {tag}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  ), [categoryTag, currentColors, saving, deleting, themedStyles]);
 
   const FrequencyPicker = useCallback(() => (
     <View style={themedStyles.section}>
@@ -362,7 +413,8 @@ export default function AddExpenseScreen() {
           />
         </View>
 
-        <CategoryPicker />
+        <OwnershipPicker />
+        <CategoryTagPicker />
         <FrequencyPicker />
         <PersonPicker />
 
