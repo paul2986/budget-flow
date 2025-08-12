@@ -1,5 +1,5 @@
 
-import { Person, Expense, Frequency } from '../types/budget';
+import { Person, Expense, Frequency, CreditCardPayoffResult, CreditCardPaymentRow } from '../types/budget';
 
 const toYMD = (d: Date): string => {
   const y = d.getFullYear();
@@ -132,4 +132,100 @@ export const calculateHouseholdShare = (
     const personIncome = calculatePersonIncome(person);
     return (personIncome / totalIncome) * householdExpenses;
   }
+};
+
+/**
+ * Compute credit card payoff metrics.
+ * i = APR / 12 / 100
+ * If P <= i * B -> never repaid
+ * months n = ceil( ln(P / (P - i*B)) / ln(1+i) )
+ * total interest = (n * P) - B
+ * For i=0, n = ceil(B / P), interest=0
+ */
+export const computeCreditCardPayoff = (balance: number, aprPercent: number, monthlyPayment: number): CreditCardPayoffResult => {
+  const B = Math.max(0, balance);
+  const P = Math.max(0, monthlyPayment);
+  const i = Math.max(0, aprPercent) / 12 / 100;
+
+  if (B === 0 || P === 0) {
+    return {
+      neverRepaid: true,
+      months: 0,
+      totalInterest: 0,
+      schedule: [],
+      inputs: { balance: B, apr: Math.max(0, aprPercent), monthlyPayment: P },
+      monthlyRate: i,
+    };
+  }
+
+  if (i === 0) {
+    const n = Math.ceil(B / P);
+    const totalInterest = Math.max(0, n * P - B);
+    const schedule: CreditCardPaymentRow[] = [];
+    let bal = B;
+    for (let m = 1; m <= 3 && bal > 0; m++) {
+      const interest = 0;
+      const principal = Math.min(P, bal);
+      bal = Math.max(0, bal - principal);
+      schedule.push({
+        month: m,
+        payment: principal + interest,
+        interest,
+        principal,
+        remaining: bal,
+      });
+    }
+    return {
+      neverRepaid: false,
+      months: n,
+      totalInterest,
+      schedule,
+      inputs: { balance: B, apr: Math.max(0, aprPercent), monthlyPayment: P },
+      monthlyRate: i,
+    };
+  }
+
+  // Never repaid if payment doesn't exceed monthly interest
+  if (P <= i * B) {
+    return {
+      neverRepaid: true,
+      months: 0,
+      totalInterest: 0,
+      schedule: [],
+      inputs: { balance: B, apr: Math.max(0, aprPercent), monthlyPayment: P },
+      monthlyRate: i,
+    };
+  }
+
+  // n = ceil( ln(P / (P - i*B)) / ln(1+i) )
+  const numerator = Math.log(P / (P - i * B));
+  const denominator = Math.log(1 + i);
+  const nRaw = numerator / denominator;
+  const n = Math.max(1, Math.ceil(nRaw));
+  const totalInterest = Math.max(0, n * P - B);
+
+  // First 3 months schedule
+  const schedule: CreditCardPaymentRow[] = [];
+  let bal = B;
+  for (let m = 1; m <= 3 && bal > 0; m++) {
+    const interest = bal * i;
+    const principal = Math.max(0, P - interest);
+    bal = Math.max(0, bal - principal);
+    schedule.push({
+      month: m,
+      payment: Math.min(P, principal + interest),
+      interest,
+      principal: Math.min(principal, principal + interest), // guard
+      remaining: bal,
+    });
+  }
+
+  return {
+    neverRepaid: false,
+    months: n,
+    totalInterest,
+    schedule,
+    inputs: { balance: B, apr: Math.max(0, aprPercent), monthlyPayment: P },
+    monthlyRate: i,
+  };
 };

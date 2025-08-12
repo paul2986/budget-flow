@@ -70,6 +70,33 @@ export default function SettingsScreen() {
       <StandardHeader title="Settings" showLeftIcon={false} showRightIcon={false} />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
+        {/* Tools entry */}
+        <View style={themedStyles.section}>
+          <Text style={themedStyles.subtitle}>Tools</Text>
+          <TouchableOpacity
+            style={[
+              themedStyles.card,
+              {
+                backgroundColor: currentColors.primary + '15',
+                borderColor: currentColors.primary + '30',
+                borderWidth: 2,
+                marginBottom: 0,
+                padding: 12,
+              },
+            ]}
+            onPress={() => router.push('/tools')}
+          >
+            <View style={[themedStyles.row, { alignItems: 'center' }]}>
+              <Icon name="calculator" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+              <View style={themedStyles.flex1}>
+                <Text style={[themedStyles.text, { fontWeight: '700' }]}>Tools</Text>
+                <Text style={themedStyles.textSecondary}>Credit Card Payoff Calculator</Text>
+              </View>
+              <Icon name="chevron-forward" size={20} style={{ color: currentColors.primary }} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
         {/* Theme Settings */}
         <View style={themedStyles.section}>
           <Text style={themedStyles.subtitle}>Appearance</Text>

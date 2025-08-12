@@ -59,3 +59,23 @@ export interface AppDataV2 {
   budgets: Budget[];
   activeBudgetId: string;
 }
+
+/**
+ * Types for Tools: Credit Card Payoff Calculator
+ */
+export interface CreditCardPaymentRow {
+  month: number;
+  payment: number;
+  interest: number;
+  principal: number;
+  remaining: number;
+}
+
+export interface CreditCardPayoffResult {
+  neverRepaid: boolean;
+  months: number;
+  totalInterest: number;
+  schedule: CreditCardPaymentRow[];
+  inputs: { balance: number; apr: number; monthlyPayment: number };
+  monthlyRate: number;
+}

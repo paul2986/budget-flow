@@ -120,6 +120,7 @@ function RootLayoutContent() {
           <Tabs.Screen name="edit-person" options={{ href: null }} />
           <Tabs.Screen name="edit-income" options={{ href: null }} />
           <Tabs.Screen name="budgets" options={{ href: null }} />
+          <Tabs.Screen name="tools" options={{ href: null }} />
         </Tabs>
 
         <ToastContainer toasts={toasts} onHideToast={hideToast} />
