@@ -598,7 +598,7 @@ export default function HomeScreen() {
                       <Text style={[themedStyles.text, { fontWeight: '700', color: currentColors.personal }]}>
                         {formatCurrency(calculateMonthlyAmount(calculations.personalExpenses, 'yearly'))}
                       </Text>
-                    </View }
+                    </View>
                   </View>
                 </View>
               )}
