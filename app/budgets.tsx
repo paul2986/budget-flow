@@ -205,13 +205,14 @@ export default function BudgetsScreen() {
           position: 'absolute',
           right: 8,
           top: 48,
-          backgroundColor: currentColors.card,
+          backgroundColor: currentColors.backgroundAlt, // ensure not transparent
           borderRadius: 12,
           overflow: 'hidden',
           borderWidth: 1,
           borderColor: currentColors.border,
           boxShadow: '0px 8px 20px rgba(0,0,0,0.25)',
-          zIndex: 50,
+          zIndex: 100,
+          elevation: 20,
         }}
       >
         {!isActive && (
@@ -338,7 +339,17 @@ export default function BudgetsScreen() {
             return (
               <Pressable
                 key={b.id}
-                style={[themedStyles.card, { padding: 16, marginBottom: 12, position: 'relative' }]}
+                style={[
+                  themedStyles.card,
+                  {
+                    padding: 16,
+                    marginBottom: 12,
+                    position: 'relative',
+                    overflow: 'visible', // allow dropdown to overflow card bounds
+                    zIndex: isDropdownOpen ? 100 : 1, // bring the active card above others
+                    elevation: isDropdownOpen ? 20 : 4, // ensure Android draws it above
+                  }
+                ]}
                 onPress={() => {
                   if (isDropdownOpen) {
                     setDropdownForId(null);
