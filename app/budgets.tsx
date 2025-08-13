@@ -1,6 +1,6 @@
 
-import { useCallback, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Pressable } from 'react-native';
+import { useCallback, useMemo, useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Pressable, Modal, Share } from 'react-native';
 import { router } from 'expo-router';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
@@ -10,6 +10,9 @@ import Icon from '../components/Icon';
 import { useToast } from '../hooks/useToast';
 import { Budget } from '../types/budget';
 import { loadAppData, saveAppData } from '../utils/storage';
+import * as Clipboard from 'expo-clipboard';
+import QRCode from 'react-native-qrcode-svg';
+import { buildOfflinePayload, createShareLink } from '../utils/shareLink';
 
 export default function BudgetsScreen() {
   const { appData, setActiveBudget, addBudget, renameBudget, deleteBudget, refreshData } = useBudgetData();
@@ -26,6 +29,14 @@ export default function BudgetsScreen() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pendingCreate, setPendingCreate] = useState(false);
   const [dropdownForId, setDropdownForId] = useState<string | null>(null);
+
+  // Share modal state
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareBudget, setShareBudget] = useState<Budget | null>(null);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareExpiresAt, setShareExpiresAt] = useState<string | null>(null);
+  const [shareFallbackPayload, setShareFallbackPayload] = useState<string | null>(null);
 
   // Memoize budgets to satisfy exhaustive-deps and avoid changing reference on every render
   const budgets = useMemo(() => (appData && Array.isArray(appData.budgets) ? appData.budgets : []), [appData]);
@@ -195,6 +206,122 @@ export default function BudgetsScreen() {
     }
   }, [duplicateValue, duplicateBudgetLocal, refreshData, showToast]);
 
+  // Share logic
+  const openShareModal = useCallback(async (b: Budget) => {
+    setDropdownForId(null);
+    setShareBudget(b);
+    setShareUrl(null);
+    setShareExpiresAt(null);
+    setShareFallbackPayload(null);
+    setShareOpen(true);
+
+    setShareLoading(true);
+    try {
+      const result = await createShareLink(b);
+      console.log('Share link created', result);
+      setShareUrl(result.url);
+      setShareExpiresAt(result.expiresAt || null);
+    } catch (e) {
+      console.log('Share link failed, using fallback QR-only');
+      const offline = buildOfflinePayload(b);
+      setShareFallbackPayload(offline);
+    } finally {
+      setShareLoading(false);
+    }
+  }, []);
+
+  const copyToClipboard = useCallback(async (text: string) => {
+    try {
+      await Clipboard.setStringAsync(text);
+      showToast('Copied to clipboard', 'success');
+    } catch (e) {
+      showToast('Failed to copy', 'error');
+    }
+  }, [showToast]);
+
+  const nativeShare = useCallback(async (text: string) => {
+    try {
+      await Share.share({ message: text });
+    } catch (e) {
+      showToast('Sharing failed', 'error');
+    }
+  }, [showToast]);
+
+  const renderShareModalContent = () => {
+    const linkText = shareUrl || shareFallbackPayload || '';
+    const hasLink = !!shareUrl;
+    const expiry = shareExpiresAt ? new Date(shareExpiresAt) : null;
+
+    return (
+      <View style={[themedStyles.card, { padding: 20 }]}>
+        <Text style={[themedStyles.subtitle, { marginBottom: 8 }]}>Share via Link / QR</Text>
+        <Text style={[themedStyles.textSecondary, { marginBottom: 12 }]}>
+          {hasLink
+            ? 'Send this single-use link or scan the QR to import your budget.'
+            : 'Link not available, showing offline QR-only fallback. For small budgets only.'}
+        </Text>
+
+        {shareLoading ? (
+          <View style={[themedStyles.centerContent, { padding: 24 }]}>
+            <ActivityIndicator color={currentColors.primary} />
+            <Text style={[themedStyles.textSecondary, { marginTop: 8 }]}>Preparing share...</Text>
+          </View>
+        ) : (
+          <>
+            <View style={{ borderWidth: 1, borderColor: currentColors.border, borderRadius: 12, padding: 10, marginBottom: 12 }}>
+              {linkText ? (
+                <Text style={[themedStyles.text, { fontSize: 12 }]} numberOfLines={3}>
+                  {linkText}
+                </Text>
+              ) : (
+                <Text style={themedStyles.textSecondary}>No link available.</Text>
+              )}
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+              <TouchableOpacity
+                onPress={() => linkText && copyToClipboard(linkText)}
+                style={[themedStyles.card, { flex: 1, padding: 12, backgroundColor: currentColors.primary }]}
+              >
+                <Text style={[themedStyles.text, { color: '#FFFFFF', textAlign: 'center', fontWeight: '700' }]}>Copy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => linkText && nativeShare(linkText)}
+                style={[themedStyles.card, { flex: 1, padding: 12, backgroundColor: currentColors.secondary }]}
+              >
+                <Text style={[themedStyles.text, { color: '#FFFFFF', textAlign: 'center', fontWeight: '700' }]}>Share...</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={[themedStyles.card, { alignItems: 'center' }]}>
+              {linkText ? (
+                <QRCode value={linkText} size={220} />
+              ) : (
+                <Text style={themedStyles.textSecondary}>No content to show</Text>
+              )}
+              <Text style={[themedStyles.textSecondary, { marginTop: 8, fontSize: 12 }]}>
+                {hasLink
+                  ? expiry
+                    ? `Link expires ${expiry.toLocaleString()}`
+                    : 'Single-use link'
+                  : 'Offline QR-only. The receiver must scan this QR in the app.'}
+              </Text>
+            </View>
+          </>
+        )}
+
+        <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+          <TouchableOpacity
+            onPress={() => setShareOpen(false)}
+            style={[themedStyles.card, { flex: 1, padding: 12, borderWidth: 2, borderColor: currentColors.border, backgroundColor: 'transparent' }]}
+          >
+            <Text style={[themedStyles.text, { textAlign: 'center', fontWeight: '700' }]}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   const DropdownMenu = ({ budget }: { budget: Budget }) => {
     const isOnly = budgets.length <= 1;
     const isActive = budget.id === activeId;
@@ -218,7 +345,7 @@ export default function BudgetsScreen() {
         {!isActive && (
           <TouchableOpacity
             onPress={() => { setDropdownForId(null); handleRowPress(budget.id); }}
-            style={{ paddingVertical: 12, paddingHorizontal: 16, minWidth: 160, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+            style={{ paddingVertical: 12, paddingHorizontal: 16, minWidth: 200, flexDirection: 'row', alignItems: 'center', gap: 8 }}
           >
             <Icon name="checkmark-circle-outline" size={18} style={{ color: currentColors.text }} />
             <Text style={[themedStyles.text, { fontWeight: '700' }]}>Set Active</Text>
@@ -227,7 +354,7 @@ export default function BudgetsScreen() {
 
         <TouchableOpacity
           onPress={() => startInlineRename(budget)}
-          style={{ paddingVertical: 12, paddingHorizontal: 16, minWidth: 160, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+          style={{ paddingVertical: 12, paddingHorizontal: 16, minWidth: 200, flexDirection: 'row', alignItems: 'center', gap: 8 }}
         >
           <Icon name="pencil" size={18} style={{ color: currentColors.text }} />
           <Text style={[themedStyles.text, { fontWeight: '700' }]}>Rename</Text>
@@ -235,17 +362,25 @@ export default function BudgetsScreen() {
 
         <TouchableOpacity
           onPress={() => startDuplicate(budget)}
-          style={{ paddingVertical: 12, paddingHorizontal: 16, minWidth: 160, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+          style={{ paddingVertical: 12, paddingHorizontal: 16, minWidth: 200, flexDirection: 'row', alignItems: 'center', gap: 8 }}
         >
           <Icon name="copy-outline" size={18} style={{ color: currentColors.text }} />
           <Text style={[themedStyles.text, { fontWeight: '700' }]}>Duplicate</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
+          onPress={() => openShareModal(budget)}
+          style={{ paddingVertical: 12, paddingHorizontal: 16, minWidth: 200, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+        >
+          <Icon name="share-social-outline" size={18} style={{ color: currentColors.text }} />
+          <Text style={[themedStyles.text, { fontWeight: '700' }]}>Share via Link/QR</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           onPress={() => handleDelete(budget)}
           disabled={isOnly}
           style={{
-            paddingVertical: 12, paddingHorizontal: 16, minWidth: 160, flexDirection: 'row', alignItems: 'center', gap: 8,
+            paddingVertical: 12, paddingHorizontal: 16, minWidth: 200, flexDirection: 'row', alignItems: 'center', gap: 8,
             backgroundColor: isOnly ? currentColors.textSecondary + '10' : 'transparent'
           }}
         >
@@ -256,14 +391,30 @@ export default function BudgetsScreen() {
     );
   };
 
+  // Header buttons: create + import
+  const headerRightButtons = [
+    {
+      icon: 'qr-code',
+      onPress: () => router.push('/import-link'),
+      backgroundColor: currentColors.secondary,
+      iconColor: '#FFFFFF',
+    },
+    {
+      icon: 'add',
+      onPress: handleCreatePress,
+      backgroundColor: currentColors.primary,
+      iconColor: '#FFFFFF',
+    },
+  ];
+
   return (
     <View style={themedStyles.container}>
       <StandardHeader
         title="Budgets"
         leftIcon="arrow-back"
         onLeftPress={() => router.back()}
-        rightIcon="add"
-        onRightPress={handleCreatePress}
+        showRightIcon={false}
+        rightButtons={headerRightButtons}
       />
 
       {/* Overlay to close any open dropdown when tapping outside */}
@@ -515,6 +666,21 @@ export default function BudgetsScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Share modal */}
+      <Modal visible={shareOpen} transparent animationType="fade" onRequestClose={() => setShareOpen(false)}>
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 20
+        }}>
+          <View style={[themedStyles.card, { width: '100%' }]}>
+            {renderShareModalContent()}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

@@ -3,14 +3,14 @@ import { useEffect, useCallback, useMemo } from 'react';
 import { useTheme, ThemeProvider } from '../hooks/useTheme';
 import { useToast, ToastProvider } from '../hooks/useToast';
 import { StatusBar } from 'expo-status-bar';
-import { Tabs } from 'expo-router';
+import { Tabs, router, usePathname } from 'expo-router';
 import { setupErrorLogging } from '../utils/errorLogger';
-import { router, usePathname } from 'expo-router';
-import { View, TouchableOpacity, Text } from 'react-native';
+import { View, TouchableOpacity, Text, Platform } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import Icon from '../components/Icon';
 import ToastContainer from '../components/ToastContainer';
+import * as Linking from 'expo-linking';
 
 const STORAGE_KEY = 'app_theme_mode';
 
@@ -72,7 +72,7 @@ function CustomTabBar() {
               onPress={() => navigateToTab(tab.route)}
               activeOpacity={0.7}
             >
-              <Icon name={isActive ? tab.activeIcon : tab.icon} size={26} style={{ color: iconColor }} />
+              <Icon name={isActive ? (tab.activeIcon as any) : (tab.icon as any)} size={26} style={{ color: iconColor }} />
             </TouchableOpacity>
           );
         })}
@@ -94,6 +94,34 @@ function RootLayoutContent() {
   useEffect(() => {
     console.log('RootLayoutContent: Theme updated', { isDarkMode, themeMode, currentColors });
   }, [isDarkMode, themeMode, currentColors]);
+
+  // Deep link handler: route to /import-link and prefill "q" with the incoming URL
+  useEffect(() => {
+    const handleUrl = (url: string | null) => {
+      if (!url) return;
+      try {
+        console.log('Deep link received:', url);
+        // Push to import-link with query param
+        router.push({ pathname: '/import-link', params: { q: url } });
+      } catch (e) {
+        console.log('Deep link handling error', e);
+      }
+    };
+
+    // Initial URL
+    Linking.getInitialURL().then(handleUrl).catch((e) => console.log('getInitialURL error', e));
+
+    // Subscribe to future URLs
+    const sub = Linking.addEventListener('url', (event) => handleUrl(event.url));
+    return () => {
+      try {
+        // RN SDK > 49 uses remove() on the subscription
+        (sub as any)?.remove?.();
+      } catch (e) {
+        console.log('remove listener error', e);
+      }
+    };
+  }, []);
 
   return (
     // Outer wrapper paints the top safe area the same color as headers
@@ -122,6 +150,7 @@ function RootLayoutContent() {
           <Tabs.Screen name="edit-income" options={{ href: null }} />
           <Tabs.Screen name="budgets" options={{ href: null }} />
           <Tabs.Screen name="tools" options={{ href: null }} />
+          <Tabs.Screen name="import-link" options={{ href: null }} />
         </Tabs>
 
         <ToastContainer toasts={toasts} onHideToast={hideToast} />

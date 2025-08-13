@@ -5,6 +5,13 @@ import { useTheme } from '../hooks/useTheme';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import Icon from './Icon';
 
+interface HeaderButton {
+  icon: string;
+  onPress: () => void;
+  backgroundColor?: string;
+  iconColor?: string;
+}
+
 interface StandardHeaderProps {
   title: string;
   subtitle?: string;
@@ -17,6 +24,7 @@ interface StandardHeaderProps {
   leftIconColor?: string;
   showRightIcon?: boolean;
   showLeftIcon?: boolean;
+  rightButtons?: HeaderButton[]; // Optional multiple right buttons
 }
 
 export default function StandardHeader({
@@ -31,6 +39,7 @@ export default function StandardHeader({
   leftIconColor,
   showRightIcon = true,
   showLeftIcon = true,
+  rightButtons,
 }: StandardHeaderProps) {
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
@@ -55,7 +64,7 @@ export default function StandardHeader({
               alignItems: 'center',
             }}
           >
-            <Icon name={leftIcon} size={24} style={{ color: defaultLeftIconColor }} />
+            <Icon name={leftIcon as any} size={24} style={{ color: defaultLeftIconColor }} />
           </TouchableOpacity>
         ) : (
           <View style={{ width: 44 }} />
@@ -74,9 +83,33 @@ export default function StandardHeader({
         ) : null}
       </View>
 
-      {/* Right side */}
-      <View style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'flex-end' }}>
-        {showRightIcon && onRightPress ? (
+      {/* Right side - supports multiple header buttons */}
+      <View style={{ minWidth: 44, height: 44, justifyContent: 'center', alignItems: 'flex-end', flexDirection: 'row' }}>
+        {rightButtons && rightButtons.length > 0 ? (
+          rightButtons.map((btn, idx) => (
+            <TouchableOpacity
+              key={`hb_${idx}`}
+              onPress={btn.onPress}
+              disabled={loading}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: btn.backgroundColor || currentColors.primary,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginLeft: idx > 0 ? 8 : 0,
+                boxShadow: '0px 2px 4px rgba(0,0,0,0.20)',
+              }}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color={btn.iconColor || '#FFFFFF'} />
+              ) : (
+                <Icon name={btn.icon as any} size={22} style={{ color: btn.iconColor || '#FFFFFF' }} />
+              )}
+            </TouchableOpacity>
+          ))
+        ) : showRightIcon && onRightPress ? (
           <TouchableOpacity
             onPress={onRightPress}
             disabled={loading}
@@ -93,10 +126,10 @@ export default function StandardHeader({
             {loading ? (
               <ActivityIndicator size="small" color={rightIcon === 'checkmark' ? '#FFFFFF' : defaultRightIconColor} />
             ) : (
-              <Icon 
-                name={rightIcon} 
-                size={24} 
-                style={{ color: rightIcon === 'checkmark' ? '#FFFFFF' : defaultRightIconColor }} 
+              <Icon
+                name={rightIcon as any}
+                size={24}
+                style={{ color: rightIcon === 'checkmark' ? '#FFFFFF' : defaultRightIconColor }}
               />
             )}
           </TouchableOpacity>
