@@ -37,7 +37,7 @@ export default function StandardHeader({
   const defaultLeftIconColor = leftIconColor || currentColors.text;
 
   return (
-    <View style={[themedStyles.header, { height: 64 }]}>
+    <View style={[themedStyles.header, { height: 64, boxShadow: '0px 1px 2px rgba(0,0,0,0.10)' }]}>
       {/* Left side */}
       <View style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'flex-start' }}>
         {showLeftIcon && onLeftPress ? (
@@ -80,11 +80,7 @@ export default function StandardHeader({
               backgroundColor: rightIcon === 'checkmark' ? '#22C55E' : currentColors.primary,
               justifyContent: 'center',
               alignItems: 'center',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.2,
-              shadowRadius: 4,
-              elevation: 4,
+              boxShadow: '0px 2px 4px rgba(0,0,0,0.20)',
             }}
           >
             {loading ? (

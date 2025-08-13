@@ -1,5 +1,5 @@
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { useBudgetData } from '../hooks/useBudgetData';
@@ -14,7 +14,7 @@ import { loadAppData, saveAppData } from '../utils/storage';
 export default function BudgetsScreen() {
   const { appData, setActiveBudget, addBudget, renameBudget, deleteBudget, refreshData } = useBudgetData();
   const { currentColors } = useTheme();
-  const { themedStyles, themedButtonStyles } = useThemedStyles();
+  const { themedStyles } = useThemedStyles();
   const { showToast } = useToast();
 
   const [creating, setCreating] = useState(false);
@@ -27,7 +27,8 @@ export default function BudgetsScreen() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pendingCreate, setPendingCreate] = useState(false);
 
-  const budgets = useMemo(() => appData?.budgets ?? [], [appData?.budgets]);
+  // Use the budgets array directly (avoid logical expression in useMemo deps)
+  const budgets = appData?.budgets || [];
   const activeId = appData?.activeBudgetId;
 
   const sortedBudgets = useMemo(() => {

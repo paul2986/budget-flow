@@ -18,7 +18,6 @@ import {
 import Icon from '../components/Icon';
 import PersonBreakdownChart from '../components/PersonBreakdownChart';
 import StandardHeader from '../components/StandardHeader';
-import { useToast } from '../hooks/useToast';
 import RecurringWidget from '../components/RecurringWidget';
 
 export default function HomeScreen() {
@@ -26,7 +25,6 @@ export default function HomeScreen() {
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
   const { formatCurrency, loading: currencyLoading } = useCurrency();
-  const toast = useToast();
 
   // Use ref to track if we've already refreshed on this focus
   const hasRefreshedOnFocus = useRef(false);
@@ -600,7 +598,7 @@ export default function HomeScreen() {
                       <Text style={[themedStyles.text, { fontWeight: '700', color: currentColors.personal }]}>
                         {formatCurrency(calculateMonthlyAmount(calculations.personalExpenses, 'yearly'))}
                       </Text>
-                    </View>
+                    </View }
                   </View>
                 </View>
               )}
