@@ -27,12 +27,16 @@ export default function BudgetsScreen() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pendingCreate, setPendingCreate] = useState(false);
 
-  // Use the budgets array directly (avoid logical expression in useMemo deps)
-  const budgets = appData?.budgets || [];
+  // Memoize budgets to satisfy exhaustive-deps and avoid changing reference on every render
+  const budgets = useMemo(() => (appData && Array.isArray(appData.budgets) ? appData.budgets : []), [appData]);
   const activeId = appData?.activeBudgetId;
 
   const sortedBudgets = useMemo(() => {
-    return [...budgets].sort((a, b) => b.createdAt - a.createdAt);
+    return [...budgets].sort((a, b) => {
+      const aTime = typeof a.createdAt === 'number' ? a.createdAt : Number(a.createdAt);
+      const bTime = typeof b.createdAt === 'number' ? b.createdAt : Number(b.createdAt);
+      return bTime - aTime;
+    });
   }, [budgets]);
 
   const handleRowPress = useCallback(async (id: string) => {
