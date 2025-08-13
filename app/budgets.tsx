@@ -19,13 +19,13 @@ export default function BudgetsScreen() {
 
   const [creating, setCreating] = useState(false);
   const [newBudgetName, setNewBudgetName] = useState('');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
-  const [cloningId, setCloningId] = useState<string | null>(null);
-  const [cloneValue, setCloneValue] = useState('');
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [duplicateValue, setDuplicateValue] = useState('');
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pendingCreate, setPendingCreate] = useState(false);
+  const [dropdownForId, setDropdownForId] = useState<string | null>(null);
 
   // Memoize budgets to satisfy exhaustive-deps and avoid changing reference on every render
   const budgets = useMemo(() => (appData && Array.isArray(appData.budgets) ? appData.budgets : []), [appData]);
@@ -45,7 +45,6 @@ export default function BudgetsScreen() {
       setPendingId(id);
       const res = await setActiveBudget(id);
       if (res.success) {
-        // Do not show success toast when switching budgets (as requested)
         router.back();
       } else {
         showToast('Failed to set active budget', 'error');
@@ -88,10 +87,10 @@ export default function BudgetsScreen() {
     }
   }, [newBudgetName, addBudget, refreshData, showToast]);
 
-  const handleRenameStart = useCallback((b: Budget) => {
-    setExpandedId(b.id);
+  const startInlineRename = useCallback((b: Budget) => {
+    setDropdownForId(null);
     setRenamingId(b.id);
-    setCloneValue('');
+    setDuplicateValue('');
     setRenameValue(b.name);
   }, []);
 
@@ -121,6 +120,7 @@ export default function BudgetsScreen() {
   const handleDelete = useCallback((b: Budget) => {
     const isOnly = budgets.length <= 1;
     if (isOnly) return;
+    setDropdownForId(null);
     Alert.alert(
       'Delete Budget',
       `Delete "${b.name}"? This cannot be undone.`,
@@ -151,8 +151,8 @@ export default function BudgetsScreen() {
     );
   }, [budgets.length, deleteBudget, refreshData, showToast]);
 
-  // Local clone implementation to avoid changing hooks/storage public API footprint in this diff
-  const cloneBudgetLocal = useCallback(async (sourceId: string, newName: string) => {
+  // Duplicate (formerly Clone)
+  const duplicateBudgetLocal = useCallback(async (sourceId: string, newName: string) => {
     const app = await loadAppData();
     const src = app.budgets.find(b => b.id === sourceId);
     if (!src) throw new Error('Source budget not found');
@@ -164,189 +164,92 @@ export default function BudgetsScreen() {
     };
     const newApp = { ...app, budgets: [...app.budgets, clone] };
     const res = await saveAppData(newApp);
-    if (!res.success) throw res.error || new Error('Failed to save cloned budget');
+    if (!res.success) throw res.error || new Error('Failed to save duplicated budget');
     return clone;
   }, []);
 
-  const handleCloneStart = useCallback((b: Budget) => {
-    setExpandedId(b.id);
-    setCloningId(b.id);
+  const startDuplicate = useCallback((b: Budget) => {
+    setDropdownForId(null);
+    setDuplicatingId(b.id);
     setRenameValue('');
     const defaultName = `${b.name} (Copy)`;
-    setCloneValue(defaultName);
+    setDuplicateValue(defaultName);
   }, []);
 
-  const handleCloneConfirm = useCallback(async (b: Budget) => {
-    if (!cloneValue.trim()) {
-      Alert.alert('Name required', 'Please enter a name for the copy.');
+  const handleDuplicateConfirm = useCallback(async (b: Budget) => {
+    if (!duplicateValue.trim()) {
+      Alert.alert('Name required', 'Please enter a name for the duplicate.');
       return;
     }
     try {
       setPendingId(b.id);
-      const clone = await cloneBudgetLocal(b.id, cloneValue.trim());
+      const clone = await duplicateBudgetLocal(b.id, duplicateValue.trim());
       await refreshData(true);
-      showToast(`Cloned to "${clone.name}"`, 'success');
-      setCloningId(null);
+      showToast(`Duplicated to "${clone.name}"`, 'success');
+      setDuplicatingId(null);
     } catch (e) {
-      console.log('Budgets: error cloning budget', e);
-      showToast('Failed to clone budget', 'error');
+      console.log('Budgets: error duplicating budget', e);
+      showToast('Failed to duplicate budget', 'error');
     } finally {
       setPendingId(null);
     }
-  }, [cloneValue, cloneBudgetLocal, refreshData, showToast]);
+  }, [duplicateValue, duplicateBudgetLocal, refreshData, showToast]);
 
-  const RowActions = ({ budget }: { budget: Budget }) => {
+  const DropdownMenu = ({ budget }: { budget: Budget }) => {
     const isOnly = budgets.length <= 1;
     const isActive = budget.id === activeId;
-    const isPending = pendingId === budget.id;
-
-    if (renamingId === budget.id) {
-      return (
-        <View style={[themedStyles.card, { marginTop: 8, padding: 12 }]}>
-          <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Rename Budget</Text>
-          <TextInput
-            style={themedStyles.input}
-            placeholder="New budget name"
-            placeholderTextColor={currentColors.textSecondary}
-            value={renameValue}
-            onChangeText={setRenameValue}
-            editable={!isPending}
-          />
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <TouchableOpacity
-                style={[
-                  themedStyles.card,
-                  { padding: 12, minHeight: 44, borderColor: currentColors.primary, borderWidth: 2, backgroundColor: 'transparent' }
-                ]}
-                onPress={() => { setRenamingId(null); setExpandedId(null); }}
-                disabled={isPending}
-              >
-                <Text style={[themedStyles.text, { textAlign: 'center', color: currentColors.primary, fontWeight: '700' }]}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={{ flex: 1 }}>
-              <TouchableOpacity
-                style={[
-                  themedStyles.card,
-                  { padding: 12, minHeight: 44, backgroundColor: currentColors.primary, borderColor: currentColors.primary, borderWidth: 2 }
-                ]}
-                onPress={() => handleRenameConfirm(budget)}
-                disabled={isPending}
-              >
-                {isPending ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={[themedStyles.text, { textAlign: 'center', color: '#FFFFFF', fontWeight: '700' }]}>Save</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      );
-    }
-
-    if (cloningId === budget.id) {
-      return (
-        <View style={[themedStyles.card, { marginTop: 8, padding: 12 }]}>
-          <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Clone Budget</Text>
-          <TextInput
-            style={themedStyles.input}
-            placeholder="Copy name"
-            placeholderTextColor={currentColors.textSecondary}
-            value={cloneValue}
-            onChangeText={setCloneValue}
-            editable={!isPending}
-          />
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <TouchableOpacity
-                style={[
-                  themedStyles.card,
-                  { padding: 12, minHeight: 44, borderColor: currentColors.secondary, borderWidth: 2, backgroundColor: 'transparent' }
-                ]}
-                onPress={() => { setCloningId(null); setExpandedId(null); }}
-                disabled={isPending}
-              >
-                <Text style={[themedStyles.text, { textAlign: 'center', color: currentColors.secondary, fontWeight: '700' }]}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={{ flex: 1 }}>
-              <TouchableOpacity
-                style={[
-                  themedStyles.card,
-                  { padding: 12, minHeight: 44, backgroundColor: currentColors.secondary, borderColor: currentColors.secondary, borderWidth: 2 }
-                ]}
-                onPress={() => handleCloneConfirm(budget)}
-                disabled={isPending}
-              >
-                {isPending ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={[themedStyles.text, { textAlign: 'center', color: '#FFFFFF', fontWeight: '700' }]}>Create Copy</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      );
-    }
 
     return (
-      <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+      <View
+        style={{
+          position: 'absolute',
+          right: 8,
+          top: 48,
+          backgroundColor: currentColors.card,
+          borderRadius: 12,
+          overflow: 'hidden',
+          borderWidth: 1,
+          borderColor: currentColors.border,
+          boxShadow: '0px 8px 20px rgba(0,0,0,0.25)',
+          zIndex: 50,
+        }}
+      >
         {!isActive && (
           <TouchableOpacity
-            onPress={() => handleRowPress(budget.id)}
-            disabled={isPending}
-            style={[
-              themedStyles.card,
-              { paddingVertical: 12, paddingHorizontal: 14, minHeight: 44, backgroundColor: currentColors.primary + '15', borderColor: currentColors.primary, borderWidth: 2 }
-            ]}
+            onPress={() => { setDropdownForId(null); handleRowPress(budget.id); }}
+            style={{ paddingVertical: 12, paddingHorizontal: 16, minWidth: 160, flexDirection: 'row', alignItems: 'center', gap: 8 }}
           >
-            <Text style={[themedStyles.text, { color: currentColors.primary, fontWeight: '700' }]}>
-              Set Active
-            </Text>
+            <Icon name="checkmark-circle-outline" size={18} style={{ color: currentColors.text }} />
+            <Text style={[themedStyles.text, { fontWeight: '700' }]}>Set Active</Text>
           </TouchableOpacity>
         )}
 
         <TouchableOpacity
-          onPress={() => handleRenameStart(budget)}
-          disabled={isPending}
-          style={[
-            themedStyles.card,
-            { paddingVertical: 12, paddingHorizontal: 14, minHeight: 44 }
-          ]}
+          onPress={() => startInlineRename(budget)}
+          style={{ paddingVertical: 12, paddingHorizontal: 16, minWidth: 160, flexDirection: 'row', alignItems: 'center', gap: 8 }}
         >
+          <Icon name="pencil" size={18} style={{ color: currentColors.text }} />
           <Text style={[themedStyles.text, { fontWeight: '700' }]}>Rename</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => handleCloneStart(budget)}
-          disabled={isPending}
-          style={[
-            themedStyles.card,
-            { paddingVertical: 12, paddingHorizontal: 14, minHeight: 44 }
-          ]}
+          onPress={() => startDuplicate(budget)}
+          style={{ paddingVertical: 12, paddingHorizontal: 16, minWidth: 160, flexDirection: 'row', alignItems: 'center', gap: 8 }}
         >
-          <Text style={[themedStyles.text, { fontWeight: '700' }]}>Clone</Text>
+          <Icon name="copy-outline" size={18} style={{ color: currentColors.text }} />
+          <Text style={[themedStyles.text, { fontWeight: '700' }]}>Duplicate</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => handleDelete(budget)}
-          disabled={isOnly || isPending}
-          style={[
-            themedStyles.card,
-            { 
-              paddingVertical: 12, paddingHorizontal: 14, minHeight: 44,
-              backgroundColor: isOnly ? currentColors.textSecondary + '10' : currentColors.error + '15',
-              borderWidth: 2,
-              borderColor: isOnly ? currentColors.textSecondary + '60' : currentColors.error
-            }
-          ]}
+          disabled={isOnly}
+          style={{
+            paddingVertical: 12, paddingHorizontal: 16, minWidth: 160, flexDirection: 'row', alignItems: 'center', gap: 8,
+            backgroundColor: isOnly ? currentColors.textSecondary + '10' : 'transparent'
+          }}
         >
-          <Text style={[themedStyles.text, { fontWeight: '700', color: isOnly ? currentColors.textSecondary : currentColors.error }]}>
-            Delete
-          </Text>
+          <Icon name="trash-outline" size={18} style={{ color: isOnly ? currentColors.textSecondary : currentColors.error }} />
+          <Text style={[themedStyles.text, { fontWeight: '700', color: isOnly ? currentColors.textSecondary : currentColors.error }]}>Delete</Text>
         </TouchableOpacity>
       </View>
     );
@@ -361,6 +264,20 @@ export default function BudgetsScreen() {
         rightIcon="add"
         onRightPress={handleCreatePress}
       />
+
+      {/* Overlay to close any open dropdown when tapping outside */}
+      {dropdownForId && (
+        <Pressable
+          style={{
+            position: 'absolute',
+            left: 0, right: 0, top: 0, bottom: 0,
+            zIndex: 40,
+            backgroundColor: 'transparent',
+            display: 'contents'
+          }}
+          onPress={() => setDropdownForId(null)}
+        />
+      )}
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
         {/* Create new budget form */}
@@ -413,31 +330,83 @@ export default function BudgetsScreen() {
           <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Your Budgets</Text>
           {sortedBudgets.map((b) => {
             const isActive = b.id === activeId;
-            const isExpanded = expandedId === b.id;
             const isPending = pendingId === b.id;
+            const isRenaming = renamingId === b.id;
+            const isDuplicating = duplicatingId === b.id;
+            const isDropdownOpen = dropdownForId === b.id;
 
             return (
               <Pressable
                 key={b.id}
-                style={[themedStyles.card, { padding: 16, marginBottom: 12 }]}
-                onPress={() => handleRowPress(b.id)}
+                style={[themedStyles.card, { padding: 16, marginBottom: 12, position: 'relative' }]}
+                onPress={() => {
+                  if (isDropdownOpen) {
+                    setDropdownForId(null);
+                    return;
+                  }
+                  if (!isRenaming && !isDuplicating) {
+                    handleRowPress(b.id);
+                  }
+                }}
+                onLongPress={() => startInlineRename(b)}
                 disabled={isPending}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <View style={{ flex: 1, paddingRight: 12 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                      <Text style={[themedStyles.text, { fontWeight: '800', fontSize: 18 }]}>
-                        {b.name}
-                      </Text>
-                      {isActive && (
-                        <View style={[
-                          themedStyles.badge,
-                          { marginLeft: 8, backgroundColor: currentColors.primary, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12 }
-                        ]}>
-                          <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontSize: 11, fontWeight: '800' }]}>
-                            ACTIVE
-                          </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      {isRenaming ? (
+                        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <TextInput
+                            style={[themedStyles.input, { flex: 1 }]}
+                            placeholder="New budget name"
+                            placeholderTextColor={currentColors.textSecondary}
+                            value={renameValue}
+                            onChangeText={setRenameValue}
+                            editable={!isPending}
+                            autoFocus
+                            onSubmitEditing={() => handleRenameConfirm(b)}
+                          />
+                          <TouchableOpacity
+                            onPress={() => handleRenameConfirm(b)}
+                            disabled={isPending}
+                            style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: currentColors.primary }}
+                          >
+                            {isPending ? (
+                              <ActivityIndicator color="#FFFFFF" />
+                            ) : (
+                              <Icon name="checkmark" size={22} style={{ color: '#FFFFFF' }} />
+                            )}
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => { setRenamingId(null); setRenameValue(''); }}
+                            disabled={isPending}
+                            style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: currentColors.border }}
+                          >
+                            <Icon name="close" size={22} style={{ color: currentColors.text }} />
+                          </TouchableOpacity>
                         </View>
+                      ) : (
+                        <>
+                          <Pressable
+                            onPress={() => startInlineRename(b)}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                          >
+                            <Text style={[themedStyles.text, { fontWeight: '800', fontSize: 18 }]}>
+                              {b.name}
+                            </Text>
+                            <Icon name="pencil" size={16} style={{ color: currentColors.textSecondary }} />
+                          </Pressable>
+                          {isActive && (
+                            <View style={[
+                              themedStyles.badge,
+                              { marginLeft: 8, backgroundColor: currentColors.primary, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12 }
+                            ]}>
+                              <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontSize: 11, fontWeight: '800' }]}>
+                                ACTIVE
+                              </Text>
+                            </View>
+                          )}
+                        </>
                       )}
                     </View>
                     <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
@@ -450,19 +419,65 @@ export default function BudgetsScreen() {
                       <ActivityIndicator color={currentColors.textSecondary} />
                     ) : (
                       <TouchableOpacity
-                        onPress={() => setExpandedId(isExpanded ? null : b.id)}
+                        onPress={() => setDropdownForId(isDropdownOpen ? null : b.id)}
                         style={{
                           minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center',
                           borderRadius: 22, backgroundColor: currentColors.border + '40'
                         }}
                       >
-                        <Icon name={isExpanded ? 'chevron-up' : 'ellipsis-horizontal'} size={22} style={{ color: currentColors.text }} />
+                        <Icon name="ellipsis-horizontal" size={22} style={{ color: currentColors.text }} />
                       </TouchableOpacity>
                     )}
                   </View>
                 </View>
 
-                {isExpanded && <RowActions budget={b} />}
+                {isDropdownOpen && <DropdownMenu budget={b} />}
+
+                {isDuplicating && (
+                  <View style={[themedStyles.card, { marginTop: 12, padding: 12 }]}>
+                    <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Duplicate Budget</Text>
+                    <TextInput
+                      style={themedStyles.input}
+                      placeholder="Duplicate name"
+                      placeholderTextColor={currentColors.textSecondary}
+                      value={duplicateValue}
+                      onChangeText={setDuplicateValue}
+                      editable={!isPending}
+                      autoFocus
+                      onSubmitEditing={() => handleDuplicateConfirm(b)}
+                    />
+                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+                      <View style={{ flex: 1 }}>
+                        <TouchableOpacity
+                          style={[
+                            themedStyles.card,
+                            { padding: 12, minHeight: 44, borderColor: currentColors.secondary, borderWidth: 2, backgroundColor: 'transparent' }
+                          ]}
+                          onPress={() => { setDuplicatingId(null); setDuplicateValue(''); }}
+                          disabled={isPending}
+                        >
+                          <Text style={[themedStyles.text, { textAlign: 'center', color: currentColors.secondary, fontWeight: '700' }]}>Cancel</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <TouchableOpacity
+                          style={[
+                            themedStyles.card,
+                            { padding: 12, minHeight: 44, backgroundColor: currentColors.secondary, borderColor: currentColors.secondary, borderWidth: 2 }
+                          ]}
+                          onPress={() => handleDuplicateConfirm(b)}
+                          disabled={isPending}
+                        >
+                          {isPending ? (
+                            <ActivityIndicator color="#FFFFFF" />
+                          ) : (
+                            <Text style={[themedStyles.text, { textAlign: 'center', color: '#FFFFFF', fontWeight: '700' }]}>Create Duplicate</Text>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                )}
               </Pressable>
             );
           })}
