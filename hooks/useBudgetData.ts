@@ -109,34 +109,6 @@ export const useBudgetData = () => {
     loadData();
   }, [loadData]);
 
-  // Queue save operations to prevent race conditions
-  const queueSave = useCallback(
-    (saveFn: () => Promise<{ success: boolean; error?: Error }>): Promise<{ success: boolean; error?: Error }> => {
-      console.log('useBudgetData: Queueing save operation');
-
-      return new Promise((resolve) => {
-        const wrappedSaveFn = async () => {
-          try {
-            const result = await saveFn();
-            resolve(result);
-            return result;
-          } catch (error) {
-            const errorResult = { success: false, error: error as Error };
-            resolve(errorResult);
-            return errorResult;
-          }
-        };
-
-        saveQueue.current.push(wrappedSaveFn);
-
-        if (!isQueueRunning.current) {
-          runQueue();
-        }
-      });
-    },
-    []
-  );
-
   const runQueue = useCallback(async () => {
     if (isQueueRunning.current) {
       console.log('useBudgetData: Queue already running, skipping');
@@ -164,6 +136,34 @@ export const useBudgetData = () => {
     isQueueRunning.current = false;
     console.log('useBudgetData: Queue processing completed');
   }, []);
+
+  // Queue save operations to prevent race conditions
+  const queueSave = useCallback(
+    (saveFn: () => Promise<{ success: boolean; error?: Error }>): Promise<{ success: boolean; error?: Error }> => {
+      console.log('useBudgetData: Queueing save operation');
+
+      return new Promise((resolve) => {
+        const wrappedSaveFn = async () => {
+          try {
+            const result = await saveFn();
+            resolve(result);
+            return result;
+          } catch (error) {
+            const errorResult = { success: false, error: error as Error };
+            resolve(errorResult);
+            return errorResult;
+          }
+        };
+
+        saveQueue.current.push(wrappedSaveFn);
+
+        if (!isQueueRunning.current) {
+          runQueue();
+        }
+      });
+    },
+    [runQueue]
+  );
 
   // Atomic save operation with immediate state update
   const saveData = useCallback(

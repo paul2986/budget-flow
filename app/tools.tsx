@@ -16,7 +16,7 @@ export default function ToolsScreen() {
   const { themedStyles } = useThemedStyles();
   const { currentColors } = useTheme();
   const { formatCurrency, currency } = useCurrency();
-  const toast = useToast();
+  const { showToast } = useToast();
 
   const [balanceInput, setBalanceInput] = useState<string>('');
   const [aprInput, setAprInput] = useState<string>('');
@@ -209,13 +209,10 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
     if (!result) return;
     try {
       await Clipboard.setStringAsync(copyResultsText);
-      // Keeping existing API used elsewhere in the app
-      // @ts-ignore
-      toast.show?.('Results copied to clipboard', { type: 'success' });
+      showToast('Results copied to clipboard', 'success');
     } catch (e) {
       console.log('Copy error', e);
-      // @ts-ignore
-      toast.show?.('Failed to copy', { type: 'error' });
+      showToast('Failed to copy', 'error');
     }
   };
 
