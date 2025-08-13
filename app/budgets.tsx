@@ -1,6 +1,6 @@
 
 import { useCallback, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
@@ -417,55 +417,53 @@ export default function BudgetsScreen() {
             const isPending = pendingId === b.id;
 
             return (
-              <View key={b.id} style={[themedStyles.card, { padding: 16, marginBottom: 12 }]}>
-                <TouchableOpacity
-                  onPress={() => handleRowPress(b.id)}
-                  activeOpacity={0.7}
-                  disabled={isPending}
-                  style={{ display: 'contents' as any }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <View style={{ flex: 1, paddingRight: 12 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                        <Text style={[themedStyles.text, { fontWeight: '800', fontSize: 18 }]}>
-                          {b.name} {isActive ? '(Active)' : ''}
-                        </Text>
-                        {isActive && (
-                          <View style={[
-                            themedStyles.badge,
-                            { marginLeft: 8, backgroundColor: currentColors.primary, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12 }
-                          ]}>
-                            <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontSize: 11, fontWeight: '800' }]}>
-                              ACTIVE
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
-                        Created {new Date(b.createdAt).toLocaleDateString()}
+              <Pressable
+                key={b.id}
+                style={[themedStyles.card, { padding: 16, marginBottom: 12 }]}
+                onPress={() => handleRowPress(b.id)}
+                disabled={isPending}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flex: 1, paddingRight: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <Text style={[themedStyles.text, { fontWeight: '800', fontSize: 18 }]}>
+                        {b.name}
                       </Text>
-                    </View>
-
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      {isPending ? (
-                        <ActivityIndicator color={currentColors.textSecondary} />
-                      ) : (
-                        <TouchableOpacity
-                          onPress={() => setExpandedId(isExpanded ? null : b.id)}
-                          style={{
-                            minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center',
-                            borderRadius: 22, backgroundColor: currentColors.border + '40'
-                          }}
-                        >
-                          <Icon name={isExpanded ? 'chevron-up' : 'ellipsis-horizontal'} size={22} style={{ color: currentColors.text }} />
-                        </TouchableOpacity>
+                      {isActive && (
+                        <View style={[
+                          themedStyles.badge,
+                          { marginLeft: 8, backgroundColor: currentColors.primary, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12 }
+                        ]}>
+                          <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontSize: 11, fontWeight: '800' }]}>
+                            ACTIVE
+                          </Text>
+                        </View>
                       )}
                     </View>
+                    <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
+                      Created {new Date(b.createdAt).toLocaleDateString()}
+                    </Text>
                   </View>
-                </TouchableOpacity>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {isPending ? (
+                      <ActivityIndicator color={currentColors.textSecondary} />
+                    ) : (
+                      <TouchableOpacity
+                        onPress={() => setExpandedId(isExpanded ? null : b.id)}
+                        style={{
+                          minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center',
+                          borderRadius: 22, backgroundColor: currentColors.border + '40'
+                        }}
+                      >
+                        <Icon name={isExpanded ? 'chevron-up' : 'ellipsis-horizontal'} size={22} style={{ color: currentColors.text }} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
 
                 {isExpanded && <RowActions budget={b} />}
-              </View>
+              </Pressable>
             );
           })}
 

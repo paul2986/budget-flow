@@ -162,7 +162,6 @@ export default function HomeScreen() {
   }, []);
 
   const headerTitle = activeBudget?.name || 'No Active Budget';
-  const headerSubtitle = 'Dashboard';
 
   // Show loading state if data is still loading
   if (loading || currencyLoading) {
@@ -170,7 +169,6 @@ export default function HomeScreen() {
       <View style={themedStyles.container}>
         <StandardHeader
           title={headerTitle}
-          subtitle={headerSubtitle}
           showLeftIcon={false}
           rightIcon="swap-horizontal"
           onRightPress={handleNavigateToBudgets}
@@ -188,7 +186,6 @@ export default function HomeScreen() {
     <View style={themedStyles.container}>
       <StandardHeader
         title={headerTitle}
-        subtitle={headerSubtitle}
         showLeftIcon={false}
         rightIcon="swap-horizontal"
         onRightPress={handleNavigateToBudgets}
