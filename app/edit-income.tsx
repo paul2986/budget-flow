@@ -44,7 +44,7 @@ export default function EditIncomeScreen() {
       return () => {
         hasRefreshedOnFocus.current = false;
       };
-    }, []) // Remove data dependencies to prevent infinite loops
+    }, [data.expenses, data.people.length])
   );
 
   // Find the income and person when data changes
@@ -102,7 +102,7 @@ export default function EditIncomeScreen() {
       console.log('EditIncomeScreen: No people in data and not loading, marking as loaded');
       setIsDataLoaded(true);
     }
-  }, [personId, incomeId, data.people, data.expenses, loading]);
+  }, [personId, incomeId, data.people, data.expenses, loading, isDataLoaded]);
 
   const handleSaveIncome = useCallback(async () => {
     if (!income || !personId) return;

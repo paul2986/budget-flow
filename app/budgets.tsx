@@ -27,7 +27,7 @@ export default function BudgetsScreen() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pendingCreate, setPendingCreate] = useState(false);
 
-  const budgets = appData?.budgets || [];
+  const budgets = useMemo(() => appData?.budgets ?? [], [appData?.budgets]);
   const activeId = appData?.activeBudgetId;
 
   const sortedBudgets = useMemo(() => {
@@ -396,7 +396,7 @@ export default function BudgetsScreen() {
                   {pendingCreate ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text style={[themedStyles.text, { textAlign: 'center', color: '#FFFFFF', fontWeight: '700' }]}>Create & Set Active</Text>
+                    <Text style={[themedStyles.text, { textAlign: 'center', color: '#FFFFFF', fontWeight: '700' }]}>Create &amp; Set Active</Text>
                   )}
                 </TouchableOpacity>
               </View>
