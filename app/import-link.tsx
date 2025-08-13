@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Platform } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { useThemedStyles } from '../hooks/useThemedStyles';
@@ -12,7 +12,10 @@ import { fetchSharedBudget } from '../utils/shareLink';
 import * as Clipboard from 'expo-clipboard';
 import { Budget } from '../types/budget';
 import { loadAppData, saveAppData } from '../utils/storage';
-import { BarCodeScanner } from 'expo-barcode-scanner';
+
+type ScannerModule = {
+  BarCodeScanner: any;
+};
 
 export default function ImportLinkScreen() {
   const { currentColors } = useTheme();
@@ -25,18 +28,56 @@ export default function ImportLinkScreen() {
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<{ name: string; peopleCount: number; expensesCount: number; budget: Omit<Budget, 'id' | 'createdAt'> } | null>(null);
 
-  // Scanner state
+  // Scanner state (lazy-loaded)
   const [scanMode, setScanMode] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanBusy, setScanBusy] = useState(false);
+  const [scannerComponent, setScannerComponent] = useState<any>(null);
+  const scannerLoadErrorRef = useRef<string | null>(null);
 
+  // Lazy load the scanner only when needed and not on web
   useEffect(() => {
-    if (scanMode) {
-      (async () => {
-        const { status } = await BarCodeScanner.requestPermissionsAsync();
-        setHasPermission(status === 'granted');
-      })();
+    let cancelled = false;
+    async function prepareScanner() {
+      if (!scanMode) return;
+      if (Platform.OS === 'web') return;
+      try {
+        // Dynamically import the module to avoid initialization errors on unsupported platforms
+        const mod: ScannerModule = await import('expo-barcode-scanner');
+        if (cancelled) return;
+
+        // Request permissions via the module we just loaded
+        if (mod?.BarCodeScanner?.requestPermissionsAsync) {
+          const { status } = await mod.BarCodeScanner.requestPermissionsAsync();
+          if (cancelled) return;
+          setHasPermission(status === 'granted');
+        } else {
+          // In some edge cases the module may not expose the method (misinstalled)
+          setHasPermission(false);
+          scannerLoadErrorRef.current = 'Scanner permission API not available';
+          console.log('ImportLink: Scanner permission API not available');
+        }
+
+        // Store the component for rendering
+        if (mod?.BarCodeScanner) {
+          setScannerComponent(() => mod.BarCodeScanner);
+        } else {
+          setScannerComponent(null);
+          scannerLoadErrorRef.current = 'Scanner component not available';
+          console.log('ImportLink: Scanner component not available');
+        }
+      } catch (e: any) {
+        console.log('ImportLink: Failed to load scanner module', e?.message || e);
+        scannerLoadErrorRef.current = e?.message || 'Failed to load scanner module';
+        setHasPermission(false);
+        setScannerComponent(null);
+      }
     }
+
+    prepareScanner();
+    return () => {
+      cancelled = true;
+    };
   }, [scanMode]);
 
   const handlePaste = useCallback(async () => {
@@ -121,6 +162,7 @@ export default function ImportLinkScreen() {
   }, [scanBusy, showToast]);
 
   const renderScanner = () => {
+    // Web is not supported in Natively for camera usage
     if (Platform.OS === 'web') {
       return (
         <View style={[themedStyles.card, { padding: 20 }]}>
@@ -130,6 +172,23 @@ export default function ImportLinkScreen() {
         </View>
       );
     }
+
+    // If the module failed to load, show a helpful message
+    if (!scannerComponent) {
+      return (
+        <View style={[themedStyles.card, { padding: 20 }]}>
+          <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
+            Scanner is unavailable on this build. Paste the link/code above to continue.
+          </Text>
+          {scannerLoadErrorRef.current ? (
+            <Text style={[themedStyles.textSecondary, { marginTop: 8, fontSize: 12, textAlign: 'center' }]}>
+              {scannerLoadErrorRef.current}
+            </Text>
+          ) : null}
+        </View>
+      );
+    }
+
     if (hasPermission === null) {
       return (
         <View style={[themedStyles.centerContent, { padding: 20 }]}>
@@ -147,9 +206,11 @@ export default function ImportLinkScreen() {
         </View>
       );
     }
+
+    const Scanner = scannerComponent;
     return (
       <View style={[themedStyles.card, { overflow: 'hidden', padding: 0, height: 260 }]}>
-        <BarCodeScanner
+        <Scanner
           onBarCodeScanned={onBarCodeScanned as any}
           style={{ width: '100%', height: '100%' }}
         />
