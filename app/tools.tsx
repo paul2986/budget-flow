@@ -1,15 +1,14 @@
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Platform, Modal } from 'react-native';
 import StandardHeader from '../components/StandardHeader';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useTheme } from '../hooks/useTheme';
 import { useCurrency } from '../hooks/useCurrency';
-import { router } from 'expo-router';
 import Icon from '../components/Icon';
 import Button from '../components/Button';
 import * as Clipboard from 'expo-clipboard';
-import { computeCreditCardPayoff } from '../utils/calculations';
+import { computeCreditCardPayoff, computeInterestOnlyMinimum } from '../utils/calculations';
 import { CreditCardPayoffResult } from '../types/budget';
 import { useToast } from '../hooks/useToast';
 
@@ -28,6 +27,13 @@ export default function ToolsScreen() {
   const [showResults, setShowResults] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
+  // Minimum payment suggestion state
+  const [suggestedMin, setSuggestedMin] = useState<number | null>(null);
+  const [isPaymentAuto, setIsPaymentAuto] = useState<boolean>(false);
+  const [hasPaymentOverride, setHasPaymentOverride] = useState<boolean>(false);
+  const [isPaymentFocused, setIsPaymentFocused] = useState<boolean>(false);
+  const [infoOpen, setInfoOpen] = useState<boolean>(false);
+
   const balanceRef = useRef<TextInput>(null);
   const aprRef = useRef<TextInput>(null);
   const paymentRef = useRef<TextInput>(null);
@@ -40,6 +46,39 @@ export default function ToolsScreen() {
     if (Number.isNaN(num)) return null;
     return num;
   };
+
+  const currencyFractionDigits = useMemo(() => {
+    try {
+      const nf = new Intl.NumberFormat('en-US', { style: 'currency', currency: currency.code });
+      const opts = nf.resolvedOptions();
+      return Math.max(0, opts.maximumFractionDigits || 2);
+    } catch (e) {
+      console.log('currencyFractionDigits error, defaulting to 2', e);
+      return 2;
+    }
+  }, [currency.code]);
+
+  // Recalculate minimum suggestion when balance or APR changes, unless user overrode payment.
+  useEffect(() => {
+    const b = parseNumber(balanceInput);
+    const a = aprInput.trim() === '' ? null : parseNumber(aprInput);
+
+    if (b !== null && b > 0 && a !== null && a >= 0) {
+      const min = computeInterestOnlyMinimum(b, a, currencyFractionDigits);
+      setSuggestedMin(min);
+
+      if (!hasPaymentOverride) {
+        const valueForInput = isPaymentFocused ? String(min) : formatCurrency(min);
+        setPaymentInput(valueForInput);
+        setIsPaymentAuto(true);
+      }
+    } else {
+      setSuggestedMin(null);
+      if (!hasPaymentOverride) {
+        setIsPaymentAuto(false);
+      }
+    }
+  }, [balanceInput, aprInput, hasPaymentOverride, isPaymentFocused, formatCurrency, currencyFractionDigits]);
 
   const validate = useCallback(() => {
     const newErrors: { balance?: string; apr?: string; payment?: string } = {};
@@ -109,7 +148,24 @@ export default function ToolsScreen() {
     const a = parseNumber(aprInput) || 0;
     const p = parseNumber(paymentInput) || 0;
 
-    const r = computeCreditCardPayoff(b, a, p);
+    let r = computeCreditCardPayoff(b, a, p);
+
+    // If user used the exact suggested minimum (rounded to currency precision),
+    // force the "never repaid" state for clarity per acceptance criteria.
+    if (suggestedMin !== null) {
+      const usedMin =
+        Number(p.toFixed(currencyFractionDigits)) === Number(suggestedMin.toFixed(currencyFractionDigits));
+      if (usedMin) {
+        r = {
+          ...r,
+          neverRepaid: true,
+          months: 0,
+          totalInterest: 0,
+          schedule: [],
+        };
+      }
+    }
+
     setResult(r);
     setShowResults(true);
     setCollapsed(false);
@@ -123,6 +179,9 @@ export default function ToolsScreen() {
     setResult(null);
     setShowResults(false);
     setCollapsed(false);
+    setHasPaymentOverride(false);
+    setIsPaymentAuto(false);
+    setSuggestedMin(null);
   };
 
   const copyResultsText = useMemo(() => {
@@ -150,11 +209,49 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
     if (!result) return;
     try {
       await Clipboard.setStringAsync(copyResultsText);
-      toast.show('Results copied to clipboard', { type: 'success' });
+      // Keeping existing API used elsewhere in the app
+      // @ts-ignore
+      toast.show?.('Results copied to clipboard', { type: 'success' });
     } catch (e) {
       console.log('Copy error', e);
-      toast.show('Failed to copy', { type: 'error' });
+      // @ts-ignore
+      toast.show?.('Failed to copy', { type: 'error' });
     }
+  };
+
+  const HelperRow = () => {
+    if (suggestedMin === null) return null;
+    const paymentNum = parseNumber(paymentInput);
+    const isUsingMin =
+      paymentNum !== null &&
+      suggestedMin !== null &&
+      Number(paymentNum.toFixed(currencyFractionDigits)) === Number(suggestedMin.toFixed(currencyFractionDigits));
+
+    if (isPaymentAuto && isUsingMin) {
+      return (
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -8, marginBottom: 8 }}>
+          <Icon name="alert-circle" size={16} style={{ color: currentColors.warning, marginRight: 6 }} />
+          <Text style={[themedStyles.textSecondary, { color: currentColors.warning, flex: 1 }]}>
+            Minimum payment (interest only) calculated as {formatCurrency(suggestedMin)} — this will never reduce your balance.
+          </Text>
+          <TouchableOpacity onPress={() => setInfoOpen(true)} accessibilityLabel="What is interest-only minimum?">
+            <Icon name="information-circle-outline" size={18} style={{ color: currentColors.warning }} />
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -8, marginBottom: 8 }}>
+        <Icon name="create" size={16} style={{ color: currentColors.textSecondary, marginRight: 6 }} />
+        <Text style={[themedStyles.textSecondary, { color: currentColors.textSecondary, flex: 1 }]}>
+          Custom payment entered.
+        </Text>
+        <TouchableOpacity onPress={() => setInfoOpen(true)} accessibilityLabel="What is interest-only minimum?">
+          <Icon name="information-circle-outline" size={18} style={{ color: currentColors.textSecondary }} />
+        </TouchableOpacity>
+      </View>
+    );
   };
 
   const renderCalculatorCard = () => (
@@ -189,7 +286,11 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
         ]}
         accessibilityLabel="Balance amount"
       />
-      {!!errors.balance && <Text style={[themedStyles.textSecondary, { color: currentColors.error, marginTop: -10, marginBottom: 8 }]}>{errors.balance}</Text>}
+      {!!errors.balance && (
+        <Text style={[themedStyles.textSecondary, { color: currentColors.error, marginTop: -10, marginBottom: 8 }]}>
+          {errors.balance}
+        </Text>
+      )}
 
       <View style={[styles.labelRow, { marginBottom: 8 }]}>
         <Text style={[themedStyles.text, styles.labelText]}>APR %</Text>
@@ -218,7 +319,11 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
         ]}
         accessibilityLabel="APR percent"
       />
-      {!!errors.apr && <Text style={[themedStyles.textSecondary, { color: currentColors.error, marginTop: -10, marginBottom: 8 }]}>{errors.apr}</Text>}
+      {!!errors.apr && (
+        <Text style={[themedStyles.textSecondary, { color: currentColors.error, marginTop: -10, marginBottom: 8 }]}>
+          {errors.apr}
+        </Text>
+      )}
 
       <View style={[styles.labelRow, { marginBottom: 8 }]}>
         <Text style={[themedStyles.text, styles.labelText]}>Monthly Payment</Text>
@@ -233,9 +338,17 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
       <TextInput
         ref={paymentRef}
         value={paymentInput}
-        onChangeText={(t) => setPaymentInput(t)}
-        onFocus={() => onFocusCurrency('payment')}
+        onChangeText={(t) => {
+          setPaymentInput(t);
+          setHasPaymentOverride(true);
+          setIsPaymentAuto(false);
+        }}
+        onFocus={() => {
+          setIsPaymentFocused(true);
+          onFocusCurrency('payment');
+        }}
         onBlur={() => {
+          setIsPaymentFocused(false);
           onBlurCurrency('payment');
           validate();
         }}
@@ -248,9 +361,30 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
         ]}
         accessibilityLabel="Monthly payment amount"
       />
-      {!!errors.payment && <Text style={[themedStyles.textSecondary, { color: currentColors.error, marginTop: -10, marginBottom: 8 }]}>{errors.payment}</Text>}
+      {!!errors.payment && (
+        <Text style={[themedStyles.textSecondary, { color: currentColors.error, marginTop: -10, marginBottom: 8 }]}>
+          {errors.payment}
+        </Text>
+      )}
+
+      <HelperRow />
 
       <Button text="Calculate" onPress={handleCalculate} disabled={!canCalculate} />
+
+      <Modal visible={infoOpen} transparent animationType="fade" onRequestClose={() => setInfoOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' }}>
+          <View style={[themedStyles.card, { width: '88%', maxWidth: 420 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <Icon name="information-circle" size={22} style={{ color: currentColors.warning, marginRight: 8 }} />
+              <Text style={[themedStyles.text, { fontWeight: '800' }]}>Interest-only payments</Text>
+            </View>
+            <Text style={[themedStyles.textSecondary, { marginBottom: 12 }]}>
+              The minimum shown is the interest charged this month. Paying only this amount will not reduce your balance. Increase your monthly payment to start reducing the principal and pay off the debt sooner.
+            </Text>
+            <Button text="Got it" onPress={() => setInfoOpen(false)} />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 
@@ -364,7 +498,9 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
                   ]}
                   accessibilityLabel="Copy results"
                 >
-                  <Text style={[themedStyles.text, { textAlign: 'center', fontWeight: '700', color: '#FFFFFF' }]}>Copy Results</Text>
+                  <Text style={[themedStyles.text, { textAlign: 'center', fontWeight: '700', color: '#FFFFFF' }]}>
+                    Copy Results
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -376,11 +512,7 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
 
   return (
     <View style={themedStyles.container}>
-      <StandardHeader
-        title="Tools"
-        showLeftIcon={false}
-        showRightIcon={false}
-      />
+      <StandardHeader title="Tools" showLeftIcon={false} showRightIcon={false} />
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
         <View style={themedStyles.section}>
           <View

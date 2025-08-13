@@ -134,6 +134,26 @@ export const calculateHouseholdShare = (
   }
 };
 
+export const roundTo = (val: number, digits: number): number => {
+  const factor = Math.pow(10, digits);
+  return Math.round(val * factor) / factor;
+};
+
+/**
+ * Compute the interest-only minimum payment suggestion.
+ * Monthly rate i = APR / 12 / 100
+ * Minimum = round(balance * i, fractionDigits)
+ */
+export const computeInterestOnlyMinimum = (
+  balance: number,
+  aprPercent: number,
+  fractionDigits: number = 2
+): number => {
+  const B = Math.max(0, balance);
+  const i = Math.max(0, aprPercent) / 12 / 100;
+  return roundTo(B * i, fractionDigits);
+};
+
 /**
  * Compute credit card payoff metrics.
  * i = APR / 12 / 100
