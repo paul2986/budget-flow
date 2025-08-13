@@ -7,6 +7,7 @@ import Icon from './Icon';
 
 interface StandardHeaderProps {
   title: string;
+  subtitle?: string;
   leftIcon?: string;
   rightIcon?: string;
   onLeftPress?: () => void;
@@ -20,6 +21,7 @@ interface StandardHeaderProps {
 
 export default function StandardHeader({
   title,
+  subtitle,
   leftIcon = 'arrow-back',
   rightIcon = 'add',
   onLeftPress,
@@ -37,7 +39,7 @@ export default function StandardHeader({
   const defaultLeftIconColor = leftIconColor || currentColors.text;
 
   return (
-    <View style={[themedStyles.header, { height: 64, boxShadow: '0px 1px 2px rgba(0,0,0,0.10)' }]}>
+    <View style={[themedStyles.header, { height: subtitle ? 76 : 64, boxShadow: '0px 1px 2px rgba(0,0,0,0.10)' }]}>
       {/* Left side */}
       <View style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'flex-start' }}>
         {showLeftIcon && onLeftPress ? (
@@ -60,11 +62,16 @@ export default function StandardHeader({
         )}
       </View>
 
-      {/* Center title */}
+      {/* Center title + optional subtitle */}
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={[themedStyles.headerTitle, { textAlign: 'center' }]}>
+        <Text style={[themedStyles.headerTitle, { textAlign: 'center', lineHeight: 22 }]}>
           {title}
         </Text>
+        {subtitle ? (
+          <Text style={[themedStyles.textSecondary, { marginTop: 2, fontSize: 12 }]}>
+            {subtitle}
+          </Text>
+        ) : null}
       </View>
 
       {/* Right side */}

@@ -45,7 +45,7 @@ export default function BudgetsScreen() {
       setPendingId(id);
       const res = await setActiveBudget(id);
       if (res.success) {
-        showToast('Active budget set', 'success');
+        // Do not show success toast when switching budgets (as requested)
         router.back();
       } else {
         showToast('Failed to set active budget', 'error');

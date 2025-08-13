@@ -161,14 +161,19 @@ export default function HomeScreen() {
     });
   }, []);
 
+  const headerTitle = activeBudget?.name || 'No Active Budget';
+  const headerSubtitle = 'Dashboard';
+
   // Show loading state if data is still loading
   if (loading || currencyLoading) {
     return (
       <View style={themedStyles.container}>
         <StandardHeader
-          title="Budget Overview"
+          title={headerTitle}
+          subtitle={headerSubtitle}
           showLeftIcon={false}
-          showRightIcon={false}
+          rightIcon="swap-horizontal"
+          onRightPress={handleNavigateToBudgets}
         />
         <View style={[themedStyles.centerContent, { flex: 1 }]}>
           <Text style={themedStyles.textSecondary}>Loading...</Text>
@@ -182,37 +187,12 @@ export default function HomeScreen() {
   return (
     <View style={themedStyles.container}>
       <StandardHeader
-        title={`Overview • ${activeBudget?.name || 'No Active Budget'}`}
+        title={headerTitle}
+        subtitle={headerSubtitle}
         showLeftIcon={false}
         rightIcon="swap-horizontal"
         onRightPress={handleNavigateToBudgets}
       />
-
-      {/* Quick switch pill */}
-      <View style={[themedStyles.section, { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 0 }]}>
-        <TouchableOpacity
-          onPress={handleNavigateToBudgets}
-          style={[
-            themedStyles.card,
-            { 
-              marginBottom: 0,
-              padding: 12,
-              backgroundColor: currentColors.border + '20',
-              borderColor: currentColors.border,
-              borderWidth: 2,
-              minHeight: 44
-            }
-          ]}
-        >
-          <View style={[themedStyles.rowStart]}>
-            <Icon name="albums-outline" size={18} style={{ color: currentColors.textSecondary, marginRight: 8 }} />
-            <Text style={[themedStyles.textSecondary]}>
-              Active Budget: 
-              <Text style={{ color: currentColors.text, fontWeight: '700' }}> {activeBudget?.name || 'None'}</Text>
-            </Text>
-          </View>
-        </TouchableOpacity>
-      </View>
 
       {/* If no active budget (edge case), show CTA */}
       {!activeBudget && (
