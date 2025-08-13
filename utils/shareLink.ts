@@ -36,9 +36,24 @@ function parseOfflinePayload(text: string): { ok: true; data: any } | { ok: fals
   }
 }
 
+function getExtra() {
+  return (Constants as any)?.expoConfig?.extra || (Constants as any)?.manifest?.extra || {};
+}
+
 function getShareApiUrl(): string | null {
-  const extra = (Constants as any)?.expoConfig?.extra || (Constants as any)?.manifest?.extra || {};
+  const extra = getExtra();
   return extra?.shareApiUrl || null;
+}
+
+function getAnonKey(): string | null {
+  const extra = getExtra();
+  return extra?.supabaseAnonKey || null;
+}
+
+function getShareTtlSec(): number {
+  const extra = getExtra();
+  const ttl = Number(extra?.shareTtlSec || 86400);
+  return Number.isFinite(ttl) && ttl > 0 ? ttl : 86400;
 }
 
 /**
@@ -47,7 +62,8 @@ function getShareApiUrl(): string | null {
 */
 export async function createShareLink(budget: Budget): Promise<{ url: string; code?: string; expiresAt?: string }> {
   const SHARE_API_URL = getShareApiUrl();
-  if (!SHARE_API_URL) {
+  const ANON_KEY = getAnonKey();
+  if (!SHARE_API_URL || !ANON_KEY) {
     throw new Error('Share API not configured');
   }
 
@@ -63,12 +79,14 @@ export async function createShareLink(budget: Budget): Promise<{ url: string; co
       },
     };
 
-    // Normally we'd compress + encrypt on the client and only send ciphertext.
-    // For now, we post plaintext payload for UI wiring; replace with encryption when backend is ready.
     const res = await fetch(`${SHARE_API_URL}/create-share`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ payload: JSON.stringify(payload) }),
+      headers: {
+        'Content-Type': 'application/json',
+        // Supabase Edge Functions require a valid JWT; using anon key when not signed in
+        Authorization: `Bearer ${ANON_KEY}`,
+      },
+      body: JSON.stringify({ payload: JSON.stringify(payload), ttlSeconds: getShareTtlSec() }),
     });
     if (!res.ok) {
       const txt = await res.text();
@@ -108,7 +126,8 @@ export async function fetchSharedBudget(input: string): Promise<{ budget: Omit<B
 
   // Otherwise, try link backend
   const SHARE_API_URL = getShareApiUrl();
-  if (!SHARE_API_URL) {
+  const ANON_KEY = getAnonKey();
+  if (!SHARE_API_URL || !ANON_KEY) {
     throw new Error('Share API not configured. You can still import QR-only (offline) payloads.');
   }
 
@@ -128,7 +147,12 @@ export async function fetchSharedBudget(input: string): Promise<{ budget: Omit<B
     console.log('fetchSharedBudget: URL parse error, treating as code.');
   }
 
-  const res = await fetch(`${SHARE_API_URL}/get-share?code=${encodeURIComponent(code)}`, { method: 'GET' });
+  const res = await fetch(`${SHARE_API_URL}/get-share?code=${encodeURIComponent(code)}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${ANON_KEY}`,
+    },
+  });
   if (!res.ok) {
     const txt = await res.text();
     throw new Error(txt || 'Share not found or expired.');

@@ -1,3 +1,4 @@
+
 {
   "expo": {
     "name": "Natively",
@@ -39,7 +40,10 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "shareApiUrl": "https://xstkicbptwjnkyyyhaci.supabase.co/functions/v1",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzdGtpY2JwdHdqbmtheXl5aGFjaSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNjAwMDAwMDAwLCJleHAiOjE5MTU1NjYwMDB9.Ro-nU43hYQe3R7YH3Nq5U1-PLACEHOLDER-REPLACE-WITH-ACTUAL", 
+      "shareTtlSec": 86400
     }
   }
 }
