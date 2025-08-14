@@ -307,7 +307,7 @@ export function useBiometricLock() {
   }, [capabilities]);
 
   // Authenticate with biometrics
-  const authenticate = useCallback(async (): Promise<{ success: boolean; message: string }> => {
+  const authenticate = useCallback(async (): Promise<{ success: boolean; message: string; userCancelled?: boolean }> => {
     try {
       console.log('useBiometricLock: Starting biometric authentication');
       
@@ -324,7 +324,7 @@ export function useBiometricLock() {
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: 'Unlock Budget Flow',
         cancelLabel: 'Cancel',
-        fallbackLabel: 'Use device passcode',
+        fallbackLabel: 'Use Passcode',
         disableDeviceFallback: false,
       });
 
@@ -336,11 +336,14 @@ export function useBiometricLock() {
       } else {
         // Handle specific error cases
         if (result.error === 'user_cancel') {
-          return { success: false, message: 'Authentication was cancelled' };
+          return { success: false, message: 'Authentication was cancelled', userCancelled: true };
         } else if (result.error === 'system_cancel') {
-          return { success: false, message: 'Authentication was cancelled by the system' };
+          return { success: false, message: 'Authentication was cancelled by the system', userCancelled: true };
         } else if (result.error === 'user_fallback') {
-          return { success: false, message: 'User chose to use device passcode' };
+          // User chose to use device passcode - this should be treated as a successful authentication
+          console.log('useBiometricLock: User chose device passcode fallback');
+          await markUnlocked();
+          return { success: true, message: 'Authentication successful with device passcode' };
         } else if (result.error === 'biometric_unknown_error') {
           return { success: false, message: 'An unknown biometric error occurred' };
         } else if (result.error === 'invalid_context') {

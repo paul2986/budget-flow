@@ -18,6 +18,7 @@ export default function LockScreen() {
   const [authAttempts, setAuthAttempts] = useState(0);
   const [lastAuthAttempt, setLastAuthAttempt] = useState<number>(0);
   const [showManualUnlock, setShowManualUnlock] = useState(false);
+  const [hasTriggeredInitialAuth, setHasTriggeredInitialAuth] = useState(false);
   const authTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Clear timeout on unmount
@@ -29,43 +30,51 @@ export default function LockScreen() {
     };
   }, []);
 
-  // Auto-trigger authentication when screen loads, but with safeguards
+  // Auto-trigger authentication when screen loads, but only once
   useEffect(() => {
-    const triggerAuth = async () => {
-      const now = Date.now();
-      
-      // Prevent rapid-fire authentication attempts
-      if (now - lastAuthAttempt < 2000) {
-        console.log('LockScreen: Skipping auth - too soon since last attempt');
-        return;
-      }
-
-      // Don't auto-trigger if we've had too many failures
-      if (authAttempts >= 3) {
-        console.log('LockScreen: Skipping auth - too many failed attempts');
-        setShowManualUnlock(true);
+    const triggerInitialAuth = async () => {
+      // Only trigger once per screen load
+      if (hasTriggeredInitialAuth) {
+        console.log('LockScreen: Initial auth already triggered, skipping');
         return;
       }
 
       // Don't auto-trigger if biometrics aren't properly configured
       if (!isBiometricConfigured()) {
-        console.log('LockScreen: Skipping auth - biometrics not configured');
+        console.log('LockScreen: Biometrics not configured, showing manual unlock');
         setShowManualUnlock(true);
+        setHasTriggeredInitialAuth(true);
         return;
       }
 
-      if (!isAuthenticating) {
-        await handleAuthenticate();
-      }
+      console.log('LockScreen: Triggering initial authentication');
+      setHasTriggeredInitialAuth(true);
+      
+      // Small delay to ensure UI is ready
+      authTimeoutRef.current = setTimeout(() => {
+        handleAuthenticate();
+      }, 1000);
     };
 
-    // Trigger immediately with a small delay
-    authTimeoutRef.current = setTimeout(triggerAuth, 500);
+    triggerInitialAuth();
+  }, [hasTriggeredInitialAuth, isBiometricConfigured]);
 
-    // Also trigger when app becomes active, but with the same safeguards
+  // Handle app state changes - only trigger auth when coming back from background
+  useEffect(() => {
     const handleAppStateChange = (nextAppState: string) => {
-      if (nextAppState === 'active') {
-        authTimeoutRef.current = setTimeout(triggerAuth, 500);
+      console.log('LockScreen: App state changed to:', nextAppState);
+      
+      // When app becomes active from background, trigger auth if configured
+      if (nextAppState === 'active' && hasTriggeredInitialAuth && isBiometricConfigured()) {
+        const now = Date.now();
+        
+        // Only trigger if enough time has passed since last attempt
+        if (now - lastAuthAttempt > 5000 && !isAuthenticating && authAttempts < 3) {
+          console.log('LockScreen: App became active, triggering authentication');
+          authTimeoutRef.current = setTimeout(() => {
+            handleAuthenticate();
+          }, 500);
+        }
       }
     };
 
@@ -76,7 +85,7 @@ export default function LockScreen() {
         clearTimeout(authTimeoutRef.current);
       }
     };
-  }, [authAttempts, isAuthenticating, lastAuthAttempt, isBiometricConfigured]);
+  }, [hasTriggeredInitialAuth, lastAuthAttempt, isAuthenticating, authAttempts, isBiometricConfigured]);
 
   const handleAuthenticate = useCallback(async () => {
     if (isAuthenticating) {
@@ -86,15 +95,22 @@ export default function LockScreen() {
 
     const now = Date.now();
     
-    // Prevent rapid-fire attempts
-    if (now - lastAuthAttempt < 2000) {
+    // Prevent rapid-fire attempts with longer cooldown
+    if (now - lastAuthAttempt < 3000) {
       console.log('LockScreen: Skipping auth - too soon since last attempt');
+      return;
+    }
+
+    // Don't auto-trigger if we've had too many failures
+    if (authAttempts >= 3) {
+      console.log('LockScreen: Too many failed attempts, showing manual unlock');
+      setShowManualUnlock(true);
       return;
     }
 
     setIsAuthenticating(true);
     setLastAuthAttempt(now);
-    console.log('LockScreen: Starting authentication');
+    console.log('LockScreen: Starting authentication attempt', authAttempts + 1);
 
     try {
       const result = await authenticate();
@@ -108,7 +124,11 @@ export default function LockScreen() {
         router.replace('/');
       } else {
         console.log('LockScreen: Authentication failed:', result.message);
-        setAuthAttempts(prev => prev + 1);
+        
+        // Don't count user cancellations as failed attempts
+        if (!result.userCancelled) {
+          setAuthAttempts(prev => prev + 1);
+        }
         
         // Show manual unlock option after 3 failed attempts
         if (authAttempts >= 2) {
@@ -119,7 +139,8 @@ export default function LockScreen() {
         if (result.message && 
             !result.message.includes('cancelled') && 
             !result.message.includes('system_cancel') &&
-            !result.message.includes('user_cancel')) {
+            !result.message.includes('user_cancel') &&
+            !result.userCancelled) {
           Alert.alert('Authentication Failed', result.message);
         }
       }
