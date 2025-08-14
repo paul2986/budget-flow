@@ -10,8 +10,6 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import Icon from '../components/Icon';
 import ToastContainer from '../components/ToastContainer';
-import AuthProvider from '../components/AuthProvider';
-import LockGate from '../components/LockGate';
 import * as Linking from 'expo-linking';
 
 const STORAGE_KEY = 'app_theme_mode';
@@ -37,14 +35,6 @@ function CustomTabBar() {
   useEffect(() => {
     console.log('CustomTabBar: Theme updated', { isDarkMode, themeMode, currentColors });
   }, [isDarkMode, themeMode, currentColors]);
-
-  // Hide tab bar on auth screens
-  const shouldHideTabBar = pathname.startsWith('/auth');
-  
-  if (shouldHideTabBar) {
-    console.log('CustomTabBar: Hiding tab bar for auth screen:', pathname);
-    return null;
-  }
 
   return (
     <View
@@ -144,27 +134,26 @@ function RootLayoutContent() {
 
       {/* Content area uses the page background color; no bottom safe area padding */}
       <View style={{ flex: 1, backgroundColor: currentColors.background }}>
-        <LockGate>
-          <Tabs
-            screenOptions={{
-              headerShown: false,
-              tabBarStyle: { display: 'none' },
-            }}
-            tabBar={() => <CustomTabBar />}
-          >
-            <Tabs.Screen name="index" />
-            <Tabs.Screen name="people" />
-            <Tabs.Screen name="expenses" />
-            <Tabs.Screen name="settings" />
-            <Tabs.Screen name="add-expense" options={{ href: null }} />
-            <Tabs.Screen name="edit-person" options={{ href: null }} />
-            <Tabs.Screen name="edit-income" options={{ href: null }} />
-            <Tabs.Screen name="budgets" options={{ href: null }} />
-            <Tabs.Screen name="tools" options={{ href: null }} />
-            <Tabs.Screen name="import-link" options={{ href: null }} />
-            <Tabs.Screen name="auth" options={{ href: null }} />
-          </Tabs>
-        </LockGate>
+        <Tabs
+          screenOptions={{
+            headerShown: false,
+            tabBarStyle: { display: 'none' },
+          }}
+          tabBar={() => <CustomTabBar />}
+        >
+          <Tabs.Screen name="index" />
+          <Tabs.Screen name="people" />
+          <Tabs.Screen name="expenses" />
+          <Tabs.Screen name="settings" />
+          <Tabs.Screen name="add-expense" options={{ href: null }} />
+          <Tabs.Screen name="edit-person" options={{ href: null }} />
+          <Tabs.Screen name="edit-income" options={{ href: null }} />
+          <Tabs.Screen name="budgets" options={{ href: null }} />
+          <Tabs.Screen name="tools" options={{ href: null }} />
+          <Tabs.Screen name="import-link" options={{ href: null }} />
+          <Tabs.Screen name="budget-lock" options={{ href: null }} />
+          <Tabs.Screen name="manage-categories" options={{ href: null }} />
+        </Tabs>
 
         <ToastContainer toasts={toasts} onHideToast={hideToast} />
       </View>
@@ -176,9 +165,7 @@ function AppContent() {
   return (
     <ThemeProvider>
       <ToastProvider>
-        <AuthProvider>
-          <RootLayoutContent />
-        </AuthProvider>
+        <RootLayoutContent />
       </ToastProvider>
     </ThemeProvider>
   );

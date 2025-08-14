@@ -44,6 +44,13 @@ export interface HouseholdSettings {
   distributionMethod: 'even' | 'income-based';
 }
 
+// Budget lock settings
+export interface BudgetLockSettings {
+  locked: boolean;
+  autoLockMinutes: number;
+  lastUnlockAt?: string;
+}
+
 // New multi-budget entities (v2)
 export interface Budget {
   id: string;
@@ -52,6 +59,7 @@ export interface Budget {
   expenses: Expense[];
   householdSettings: HouseholdSettings;
   createdAt: number; // epoch millis
+  lock?: BudgetLockSettings; // Default: { locked: false, autoLockMinutes: 0 }
 }
 
 export interface AppDataV2 {

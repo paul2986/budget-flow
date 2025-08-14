@@ -1,321 +1,168 @@
 
-import { useCallback, useMemo, useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Pressable, Modal, Share } from 'react-native';
-import { router } from 'expo-router';
-import { useBudgetData } from '../hooks/useBudgetData';
-import { useTheme } from '../hooks/useTheme';
-import { useThemedStyles } from '../hooks/useThemedStyles';
-import StandardHeader from '../components/StandardHeader';
-import Icon from '../components/Icon';
-import { useToast } from '../hooks/useToast';
-import { Budget } from '../types/budget';
-import { loadAppData, saveAppData } from '../utils/storage';
 import * as Clipboard from 'expo-clipboard';
-import QRCode from 'react-native-qrcode-svg';
+import { useTheme } from '../hooks/useTheme';
+import { router } from 'expo-router';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Pressable, Modal, Share } from 'react-native';
+import Icon from '../components/Icon';
+import { loadAppData, saveAppData } from '../utils/storage';
+import { useBudgetData } from '../hooks/useBudgetData';
+import { useThemedStyles } from '../hooks/useThemedStyles';
 import { buildOfflinePayload, createShareLink } from '../utils/shareLink';
+import { useToast } from '../hooks/useToast';
+import StandardHeader from '../components/StandardHeader';
+import QRCode from 'react-native-qrcode-svg';
+import { Budget } from '../types/budget';
+import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useBudgetLock } from '../hooks/useBudgetLock';
 
 export default function BudgetsScreen() {
-  const { appData, setActiveBudget, addBudget, renameBudget, deleteBudget, refreshData } = useBudgetData();
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
   const { showToast } = useToast();
-
-  const [creating, setCreating] = useState(false);
+  const { data, loading, setActiveBudget, addBudget, renameBudget, deleteBudget } = useBudgetData();
+  const { isLocked, authenticateForBudget, toggleBudgetLock } = useBudgetLock();
+  
   const [newBudgetName, setNewBudgetName] = useState('');
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
-  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
-  const [duplicateValue, setDuplicateValue] = useState('');
-  const [pendingId, setPendingId] = useState<string | null>(null);
-  const [pendingCreate, setPendingCreate] = useState(false);
-  const [dropdownForId, setDropdownForId] = useState<string | null>(null);
-
-  // Share modal state
-  const [shareOpen, setShareOpen] = useState(false);
-  const [shareBudget, setShareBudget] = useState<Budget | null>(null);
-  const [shareLoading, setShareLoading] = useState(false);
-  const [shareUrl, setShareUrl] = useState<string | null>(null);
-  const [shareExpiresAt, setShareExpiresAt] = useState<string | null>(null);
-  const [shareFallbackPayload, setShareFallbackPayload] = useState<string | null>(null);
-
-  // Memoize budgets to satisfy exhaustive-deps and avoid changing reference on every render
-  const budgets = useMemo(() => (appData && Array.isArray(appData.budgets) ? appData.budgets : []), [appData]);
-  const activeId = appData?.activeBudgetId;
+  const [isCreating, setIsCreating] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
+  const [authenticating, setAuthenticating] = useState<string | null>(null);
 
   const sortedBudgets = useMemo(() => {
-    return [...budgets].sort((a, b) => {
-      const aTime = typeof a.createdAt === 'number' ? a.createdAt : Number(a.createdAt);
-      const bTime = typeof b.createdAt === 'number' ? b.createdAt : Number(b.createdAt);
-      return bTime - aTime;
+    return [...data.budgets].sort((a, b) => {
+      // Active budget first
+      if (a.id === data.activeBudgetId) return -1;
+      if (b.id === data.activeBudgetId) return 1;
+      // Then by creation date (newest first)
+      return b.createdAt - a.createdAt;
     });
-  }, [budgets]);
+  }, [data.budgets, data.activeBudgetId]);
 
-  const handleRowPress = useCallback(async (id: string) => {
-    if (pendingId) return;
-    try {
-      setPendingId(id);
-      const res = await setActiveBudget(id);
-      if (res.success) {
-        router.back();
-      } else {
-        showToast('Failed to set active budget', 'error');
-      }
-    } catch (e) {
-      console.log('Budgets: error setting active', e);
-      showToast('Failed to set active budget', 'error');
-    } finally {
-      setPendingId(null);
-    }
-  }, [pendingId, setActiveBudget, showToast]);
-
-  const handleCreatePress = useCallback(() => {
-    setCreating((v) => !v);
-    setNewBudgetName('');
-  }, []);
-
-  const handleCreateSubmit = useCallback(async () => {
+  const handleCreateBudget = useCallback(async () => {
     if (!newBudgetName.trim()) {
-      Alert.alert('Name required', 'Please enter a budget name.');
+      showToast('Please enter a budget name', 'error');
       return;
     }
+
+    setIsCreating(true);
     try {
-      setPendingCreate(true);
-      const res = await addBudget(newBudgetName.trim());
-      if (res.success && res.budget) {
-        await refreshData(true);
-        showToast(`Created "${res.budget.name}"`, 'success');
-        router.back();
+      const result = await addBudget(newBudgetName.trim());
+      if (result.success) {
+        setNewBudgetName('');
+        showToast('Budget created successfully', 'success');
       } else {
-        showToast('Failed to create budget', 'error');
+        showToast(result.error?.message || 'Failed to create budget', 'error');
       }
-    } catch (e) {
-      console.log('Budgets: error creating budget', e);
+    } catch (error) {
+      console.error('Budgets: Create error:', error);
       showToast('Failed to create budget', 'error');
     } finally {
-      setPendingCreate(false);
-      setCreating(false);
-      setNewBudgetName('');
+      setIsCreating(false);
     }
-  }, [newBudgetName, addBudget, refreshData, showToast]);
+  }, [newBudgetName, addBudget, showToast]);
 
-  const startInlineRename = useCallback((b: Budget) => {
-    setDropdownForId(null);
-    setRenamingId(b.id);
-    setDuplicateValue('');
-    setRenameValue(b.name);
-  }, []);
-
-  const handleRenameConfirm = useCallback(async (b: Budget) => {
-    if (!renameValue.trim()) {
-      Alert.alert('Name required', 'Please enter a new name.');
-      return;
-    }
-    try {
-      setPendingId(b.id);
-      const res = await renameBudget(b.id, renameValue.trim());
-      if (res.success) {
-        await refreshData(true);
-        showToast('Budget renamed', 'success');
-        setRenamingId(null);
-      } else {
-        showToast('Failed to rename budget', 'error');
+  const handleSelectBudget = useCallback(async (budget: Budget) => {
+    if (isLocked(budget)) {
+      console.log('Budgets: Budget is locked, authenticating:', budget.name);
+      setAuthenticating(budget.id);
+      try {
+        const success = await authenticateForBudget(budget.id);
+        if (success) {
+          console.log('Budgets: Authentication successful, setting active budget');
+          await setActiveBudget(budget.id);
+          router.push('/');
+        } else {
+          console.log('Budgets: Authentication failed');
+          showToast('Authentication failed', 'error');
+        }
+      } catch (error) {
+        console.error('Budgets: Authentication error:', error);
+        showToast('Authentication error', 'error');
+      } finally {
+        setAuthenticating(null);
       }
-    } catch (e) {
-      console.log('Budgets: error renaming budget', e);
-      showToast('Failed to rename budget', 'error');
-    } finally {
-      setPendingId(null);
+    } else {
+      console.log('Budgets: Budget is unlocked, setting active budget:', budget.name);
+      await setActiveBudget(budget.id);
+      router.push('/');
     }
-  }, [renameBudget, renameValue, refreshData, showToast]);
+  }, [isLocked, authenticateForBudget, setActiveBudget, showToast]);
 
-  const handleDelete = useCallback((b: Budget) => {
-    const isOnly = budgets.length <= 1;
-    if (isOnly) return;
-    setDropdownForId(null);
-    Alert.alert(
-      'Delete Budget',
-      `Delete "${b.name}"? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setPendingId(b.id);
-              const res = await deleteBudget(b.id);
-              if (res.success) {
-                await refreshData(true);
-                showToast('Budget deleted', 'success');
-              } else {
-                showToast('Failed to delete budget', 'error');
-              }
-            } catch (e) {
-              console.log('Budgets: error deleting budget', e);
-              showToast('Failed to delete budget', 'error');
-            } finally {
-              setPendingId(null);
-            }
-          },
-        },
-      ]
-    );
-  }, [budgets.length, deleteBudget, refreshData, showToast]);
-
-  // Duplicate (formerly Clone)
-  const duplicateBudgetLocal = useCallback(async (sourceId: string, newName: string) => {
-    const app = await loadAppData();
-    const src = app.budgets.find(b => b.id === sourceId);
-    if (!src) throw new Error('Source budget not found');
-    const clone: Budget = {
-      ...src,
-      id: `budget_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      name: newName,
-      createdAt: Date.now(),
-    };
-    const newApp = { ...app, budgets: [...app.budgets, clone] };
-    const res = await saveAppData(newApp);
-    if (!res.success) throw res.error || new Error('Failed to save duplicated budget');
-    return clone;
-  }, []);
-
-  const startDuplicate = useCallback((b: Budget) => {
-    setDropdownForId(null);
-    setDuplicatingId(b.id);
-    setRenameValue('');
-    const defaultName = `${b.name} (Copy)`;
-    setDuplicateValue(defaultName);
-  }, []);
-
-  const handleDuplicateConfirm = useCallback(async (b: Budget) => {
-    if (!duplicateValue.trim()) {
-      Alert.alert('Name required', 'Please enter a name for the duplicate.');
-      return;
-    }
+  const handleToggleLock = useCallback(async (budget: Budget) => {
+    const newLockState = !budget.lock?.locked;
     try {
-      setPendingId(b.id);
-      const clone = await duplicateBudgetLocal(b.id, duplicateValue.trim());
-      await refreshData(true);
-      showToast(`Duplicated to "${clone.name}"`, 'success');
-      setDuplicatingId(null);
-    } catch (e) {
-      console.log('Budgets: error duplicating budget', e);
-      showToast('Failed to duplicate budget', 'error');
-    } finally {
-      setPendingId(null);
+      const result = await toggleBudgetLock(budget.id, newLockState);
+      if (result.success) {
+        showToast(newLockState ? 'Budget locked' : 'Budget unlocked', 'success');
+      } else {
+        showToast(result.error?.message || 'Failed to update lock', 'error');
+      }
+    } catch (error) {
+      console.error('Budgets: Toggle lock error:', error);
+      showToast('Failed to update lock', 'error');
     }
-  }, [duplicateValue, duplicateBudgetLocal, refreshData, showToast]);
-
-  // Share logic
-  const openShareModal = useCallback(async (b: Budget) => {
-    setDropdownForId(null);
-    setShareBudget(b);
-    setShareUrl(null);
-    setShareExpiresAt(null);
-    setShareFallbackPayload(null);
-    setShareOpen(true);
-
-    setShareLoading(true);
-    try {
-      const result = await createShareLink(b);
-      console.log('Share link created', result);
-      setShareUrl(result.url);
-      setShareExpiresAt(result.expiresAt || null);
-    } catch (e) {
-      console.log('Share link failed, using fallback QR-only');
-      const offline = buildOfflinePayload(b);
-      setShareFallbackPayload(offline);
-    } finally {
-      setShareLoading(false);
-    }
-  }, []);
-
-  const copyToClipboard = useCallback(async (text: string) => {
-    try {
-      await Clipboard.setStringAsync(text);
-      showToast('Copied to clipboard', 'success');
-    } catch (e) {
-      showToast('Failed to copy', 'error');
-    }
-  }, [showToast]);
-
-  const nativeShare = useCallback(async (text: string) => {
-    try {
-      await Share.share({ message: text });
-    } catch (e) {
-      showToast('Sharing failed', 'error');
-    }
-  }, [showToast]);
+  }, [toggleBudgetLock, showToast]);
 
   const renderShareModalContent = () => {
-    const linkText = shareUrl || shareFallbackPayload || '';
-    const hasLink = !!shareUrl;
-    const expiry = shareExpiresAt ? new Date(shareExpiresAt) : null;
+    if (!selectedBudget) return null;
+
+    const shareUrl = createShareLink(selectedBudget);
+    const offlinePayload = buildOfflinePayload(selectedBudget);
 
     return (
-      <View style={[themedStyles.card, { padding: 20 }]}>
-        <Text style={[themedStyles.subtitle, { marginBottom: 8 }]}>Share via Link / QR</Text>
-        <Text style={[themedStyles.textSecondary, { marginBottom: 12 }]}>
-          {hasLink
-            ? 'Send this single-use link or scan the QR to import your budget.'
-            : 'Link not available, showing offline QR-only fallback. For small budgets only.'}
-        </Text>
+      <View style={{ padding: 24 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <Text style={[themedStyles.subtitle, { flex: 1 }]}>Share Budget</Text>
+          <TouchableOpacity onPress={() => setShareModalVisible(false)}>
+            <Icon name="close" size={24} style={{ color: currentColors.text }} />
+          </TouchableOpacity>
+        </View>
 
-        {shareLoading ? (
-          <View style={[themedStyles.centerContent, { padding: 24 }]}>
-            <ActivityIndicator color={currentColors.primary} />
-            <Text style={[themedStyles.textSecondary, { marginTop: 8 }]}>Preparing share...</Text>
-          </View>
-        ) : (
-          <>
-            <View style={{ borderWidth: 1, borderColor: currentColors.border, borderRadius: 12, padding: 10, marginBottom: 12 }}>
-              {linkText ? (
-                <Text style={[themedStyles.text, { fontSize: 12 }]} numberOfLines={3}>
-                  {linkText}
-                </Text>
-              ) : (
-                <Text style={themedStyles.textSecondary}>No link available.</Text>
-              )}
-            </View>
+        <View style={{ alignItems: 'center', marginBottom: 24 }}>
+          <QRCode value={shareUrl} size={200} backgroundColor="white" color="black" />
+        </View>
 
-            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-              <TouchableOpacity
-                onPress={() => linkText && copyToClipboard(linkText)}
-                style={[themedStyles.card, { flex: 1, padding: 12, backgroundColor: currentColors.primary }]}
-              >
-                <Text style={[themedStyles.text, { color: '#FFFFFF', textAlign: 'center', fontWeight: '700' }]}>Copy</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => linkText && nativeShare(linkText)}
-                style={[themedStyles.card, { flex: 1, padding: 12, backgroundColor: currentColors.secondary }]}
-              >
-                <Text style={[themedStyles.text, { color: '#FFFFFF', textAlign: 'center', fontWeight: '700' }]}>Share...</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={[themedStyles.card, { alignItems: 'center' }]}>
-              {linkText ? (
-                <QRCode value={linkText} size={220} />
-              ) : (
-                <Text style={themedStyles.textSecondary}>No content to show</Text>
-              )}
-              <Text style={[themedStyles.textSecondary, { marginTop: 8, fontSize: 12 }]}>
-                {hasLink
-                  ? expiry
-                    ? `Link expires ${expiry.toLocaleString()}`
-                    : 'Single-use link'
-                  : 'Offline QR-only. The receiver must scan this QR in the app.'}
-              </Text>
-            </View>
-          </>
-        )}
-
-        <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+        <View style={{ gap: 12 }}>
           <TouchableOpacity
-            onPress={() => setShareOpen(false)}
-            style={[themedStyles.card, { flex: 1, padding: 12, borderWidth: 2, borderColor: currentColors.border, backgroundColor: 'transparent' }]}
+            style={[themedStyles.card, { backgroundColor: currentColors.primary, borderColor: currentColors.primary, borderWidth: 1 }]}
+            onPress={async () => {
+              try {
+                await Share.share({ message: shareUrl });
+              } catch (error) {
+                console.error('Share error:', error);
+              }
+            }}
           >
-            <Text style={[themedStyles.text, { textAlign: 'center', fontWeight: '700' }]}>Close</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 44 }}>
+              <Icon name="share-outline" size={20} style={{ color: '#fff', marginRight: 8 }} />
+              <Text style={[themedStyles.text, { color: '#fff', fontWeight: '600' }]}>Share Link</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[themedStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border, borderWidth: 1 }]}
+            onPress={async () => {
+              await Clipboard.setStringAsync(shareUrl);
+              showToast('Link copied to clipboard', 'success');
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 44 }}>
+              <Icon name="copy-outline" size={20} style={{ color: currentColors.text, marginRight: 8 }} />
+              <Text style={[themedStyles.text, { fontWeight: '600' }]}>Copy Link</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[themedStyles.card, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border, borderWidth: 1 }]}
+            onPress={async () => {
+              await Clipboard.setStringAsync(offlinePayload);
+              showToast('Offline data copied to clipboard', 'success');
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 44 }}>
+              <Icon name="download-outline" size={20} style={{ color: currentColors.text, marginRight: 8 }} />
+              <Text style={[themedStyles.text, { fontWeight: '600' }]}>Copy Offline Data</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -323,361 +170,359 @@ export default function BudgetsScreen() {
   };
 
   const DropdownMenu = ({ budget }: { budget: Budget }) => {
-    const isOnly = budgets.length <= 1;
-    const isActive = budget.id === activeId;
+    const [visible, setVisible] = useState(false);
 
     return (
-      <View
-        style={{
-          position: 'absolute',
-          right: 8,
-          top: 48,
-          backgroundColor: currentColors.backgroundAlt, // ensure not transparent
-          borderRadius: 12,
-          overflow: 'hidden',
-          borderWidth: 1,
-          borderColor: currentColors.border,
-          boxShadow: '0px 8px 20px rgba(0,0,0,0.25)',
-          zIndex: 100,
-          elevation: 20,
-        }}
-      >
-        {!isActive && (
-          <TouchableOpacity
-            onPress={() => { setDropdownForId(null); handleRowPress(budget.id); }}
-            style={{ paddingVertical: 12, paddingHorizontal: 16, minWidth: 200, flexDirection: 'row', alignItems: 'center', gap: 8 }}
-          >
-            <Icon name="checkmark-circle-outline" size={18} style={{ color: currentColors.text }} />
-            <Text style={[themedStyles.text, { fontWeight: '700' }]}>Set Active</Text>
-          </TouchableOpacity>
-        )}
-
+      <View style={{ position: 'relative' }}>
         <TouchableOpacity
-          onPress={() => startInlineRename(budget)}
-          style={{ paddingVertical: 12, paddingHorizontal: 16, minWidth: 200, flexDirection: 'row', alignItems: 'center', gap: 8 }}
-        >
-          <Icon name="pencil" size={18} style={{ color: currentColors.text }} />
-          <Text style={[themedStyles.text, { fontWeight: '700' }]}>Rename</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => startDuplicate(budget)}
-          style={{ paddingVertical: 12, paddingHorizontal: 16, minWidth: 200, flexDirection: 'row', alignItems: 'center', gap: 8 }}
-        >
-          <Icon name="copy-outline" size={18} style={{ color: currentColors.text }} />
-          <Text style={[themedStyles.text, { fontWeight: '700' }]}>Duplicate</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => openShareModal(budget)}
-          style={{ paddingVertical: 12, paddingHorizontal: 16, minWidth: 200, flexDirection: 'row', alignItems: 'center', gap: 8 }}
-        >
-          <Icon name="share-social-outline" size={18} style={{ color: currentColors.text }} />
-          <Text style={[themedStyles.text, { fontWeight: '700' }]}>Share via Link/QR</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => handleDelete(budget)}
-          disabled={isOnly}
+          onPress={() => setVisible(!visible)}
           style={{
-            paddingVertical: 12, paddingHorizontal: 16, minWidth: 200, flexDirection: 'row', alignItems: 'center', gap: 8,
-            backgroundColor: isOnly ? currentColors.textSecondary + '10' : 'transparent'
+            padding: 8,
+            borderRadius: 8,
+            backgroundColor: visible ? currentColors.backgroundAlt : 'transparent',
           }}
         >
-          <Icon name="trash-outline" size={18} style={{ color: isOnly ? currentColors.textSecondary : currentColors.error }} />
-          <Text style={[themedStyles.text, { fontWeight: '700', color: isOnly ? currentColors.textSecondary : currentColors.error }]}>Delete</Text>
+          <Icon name="ellipsis-vertical" size={20} style={{ color: currentColors.text }} />
         </TouchableOpacity>
+
+        {visible && (
+          <>
+            <Pressable
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 1,
+              }}
+              onPress={() => setVisible(false)}
+            />
+            <View
+              style={{
+                position: 'absolute',
+                top: 40,
+                right: 0,
+                backgroundColor: currentColors.backgroundAlt,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: currentColors.border,
+                minWidth: 160,
+                zIndex: 2,
+                elevation: 5,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.25,
+                shadowRadius: 4,
+              }}
+            >
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  padding: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: currentColors.border,
+                }}
+                onPress={() => {
+                  setVisible(false);
+                  router.push({ pathname: '/budget-lock', params: { budgetId: budget.id } });
+                }}
+              >
+                <Icon name="settings-outline" size={16} style={{ color: currentColors.text, marginRight: 8 }} />
+                <Text style={themedStyles.text}>Lock settings</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  padding: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: currentColors.border,
+                }}
+                onPress={() => {
+                  setVisible(false);
+                  handleToggleLock(budget);
+                }}
+              >
+                <Icon 
+                  name={budget.lock?.locked ? "lock-open-outline" : "lock-closed-outline"} 
+                  size={16} 
+                  style={{ color: currentColors.text, marginRight: 8 }} 
+                />
+                <Text style={themedStyles.text}>
+                  {budget.lock?.locked ? 'Unlock' : 'Lock'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  padding: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: currentColors.border,
+                }}
+                onPress={() => {
+                  setVisible(false);
+                  setSelectedBudget(budget);
+                  setShareModalVisible(true);
+                }}
+              >
+                <Icon name="share-outline" size={16} style={{ color: currentColors.text, marginRight: 8 }} />
+                <Text style={themedStyles.text}>Share</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  padding: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: currentColors.border,
+                }}
+                onPress={() => {
+                  setVisible(false);
+                  Alert.prompt(
+                    'Rename Budget',
+                    'Enter a new name for this budget:',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Rename',
+                        onPress: async (newName) => {
+                          if (newName && newName.trim()) {
+                            const result = await renameBudget(budget.id, newName.trim());
+                            if (result.success) {
+                              showToast('Budget renamed successfully', 'success');
+                            } else {
+                              showToast(result.error?.message || 'Failed to rename budget', 'error');
+                            }
+                          }
+                        },
+                      },
+                    ],
+                    'plain-text',
+                    budget.name
+                  );
+                }}
+              >
+                <Icon name="pencil-outline" size={16} style={{ color: currentColors.text, marginRight: 8 }} />
+                <Text style={themedStyles.text}>Rename</Text>
+              </TouchableOpacity>
+
+              {data.budgets.length > 1 && (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: 12,
+                  }}
+                  onPress={() => {
+                    setVisible(false);
+                    Alert.alert(
+                      'Delete Budget',
+                      `Are you sure you want to delete "${budget.name}"? This action cannot be undone.`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Delete',
+                          style: 'destructive',
+                          onPress: async () => {
+                            const result = await deleteBudget(budget.id);
+                            if (result.success) {
+                              showToast('Budget deleted successfully', 'success');
+                            } else {
+                              showToast(result.error?.message || 'Failed to delete budget', 'error');
+                            }
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                >
+                  <Icon name="trash-outline" size={16} style={{ color: currentColors.error, marginRight: 8 }} />
+                  <Text style={[themedStyles.text, { color: currentColors.error }]}>Delete</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </>
+        )}
       </View>
     );
   };
 
-  // Header buttons: create + import
-  const headerRightButtons = [
-    {
-      icon: 'qr-code',
-      onPress: () => router.push('/import-link'),
-      backgroundColor: currentColors.secondary,
-      iconColor: '#FFFFFF',
-    },
-    {
-      icon: 'add',
-      onPress: handleCreatePress,
-      backgroundColor: currentColors.primary,
-      iconColor: '#FFFFFF',
-    },
-  ];
+  if (loading) {
+    return (
+      <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
+        <StandardHeader title="Budgets" />
+        <View style={[themedStyles.content, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color={currentColors.primary} />
+          <Text style={[themedStyles.textSecondary, { marginTop: 16 }]}>Loading budgets...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
-    <View style={themedStyles.container}>
-      <StandardHeader
-        title="Budgets"
-        leftIcon="arrow-back"
-        onLeftPress={() => router.back()}
-        showRightIcon={false}
-        rightButtons={headerRightButtons}
-      />
+    <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
+      <StandardHeader title="Budgets" />
 
-      {/* Overlay to close any open dropdown when tapping outside */}
-      {dropdownForId && (
-        <Pressable
-          style={{
-            position: 'absolute',
-            left: 0, right: 0, top: 0, bottom: 0,
-            zIndex: 40,
-            backgroundColor: 'transparent',
-            display: 'contents'
-          }}
-          onPress={() => setDropdownForId(null)}
-        />
-      )}
-
-      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
-        {/* Create new budget form */}
-        {creating && (
-          <View style={[themedStyles.card, { backgroundColor: currentColors.primary + '10' }]}>
-            <Text style={[themedStyles.subtitle, { marginBottom: 8 }]}>Create New Budget</Text>
+      <ScrollView style={themedStyles.content} contentContainerStyle={{ padding: 16 }}>
+        {/* Create New Budget */}
+        <View style={[themedStyles.card, { marginBottom: 24 }]}>
+          <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Create New Budget</Text>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
             <TextInput
-              style={themedStyles.input}
+              style={[
+                themedStyles.textInput,
+                {
+                  flex: 1,
+                  backgroundColor: currentColors.background,
+                  borderColor: currentColors.border,
+                  borderWidth: 1,
+                  borderRadius: 8,
+                  paddingHorizontal: 12,
+                  paddingVertical: 12,
+                  color: currentColors.text,
+                },
+              ]}
               placeholder="Budget name"
               placeholderTextColor={currentColors.textSecondary}
               value={newBudgetName}
               onChangeText={setNewBudgetName}
-              autoFocus
-              editable={!pendingCreate}
+              onSubmitEditing={handleCreateBudget}
+              editable={!isCreating}
             />
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                <TouchableOpacity
-                  style={[
-                    themedStyles.card,
-                    { padding: 12, minHeight: 44, borderColor: currentColors.primary, borderWidth: 2, backgroundColor: 'transparent' }
-                  ]}
-                  onPress={() => { setCreating(false); setNewBudgetName(''); }}
-                  disabled={pendingCreate}
-                >
-                  <Text style={[themedStyles.text, { textAlign: 'center', color: currentColors.primary, fontWeight: '700' }]}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={{ flex: 1 }}>
-                <TouchableOpacity
-                  style={[
-                    themedStyles.card,
-                    { padding: 12, minHeight: 44, backgroundColor: currentColors.primary, borderColor: currentColors.primary, borderWidth: 2 }
-                  ]}
-                  onPress={handleCreateSubmit}
-                  disabled={pendingCreate}
-                >
-                  {pendingCreate ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={[themedStyles.text, { textAlign: 'center', color: '#FFFFFF', fontWeight: '700' }]}>Create &amp; Set Active</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
+            <TouchableOpacity
+              style={[
+                themedStyles.card,
+                {
+                  backgroundColor: currentColors.primary,
+                  borderColor: currentColors.primary,
+                  borderWidth: 1,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  marginBottom: 0,
+                  minHeight: 44,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                },
+              ]}
+              onPress={handleCreateBudget}
+              disabled={isCreating || !newBudgetName.trim()}
+            >
+              {isCreating ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Icon name="add" size={20} style={{ color: '#fff' }} />
+              )}
+            </TouchableOpacity>
           </View>
-        )}
+        </View>
 
-        <View style={themedStyles.section}>
-          <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Your Budgets</Text>
-          {sortedBudgets.map((b) => {
-            const isActive = b.id === activeId;
-            const isPending = pendingId === b.id;
-            const isRenaming = renamingId === b.id;
-            const isDuplicating = duplicatingId === b.id;
-            const isDropdownOpen = dropdownForId === b.id;
+        {/* Budget List */}
+        <View style={{ gap: 12 }}>
+          {sortedBudgets.map((budget) => {
+            const isActive = budget.id === data.activeBudgetId;
+            const budgetLocked = isLocked(budget);
+            const isAuthenticatingThis = authenticating === budget.id;
 
             return (
-              <Pressable
-                key={b.id}
+              <TouchableOpacity
+                key={budget.id}
                 style={[
                   themedStyles.card,
                   {
-                    padding: 16,
-                    marginBottom: 12,
-                    position: 'relative',
-                    overflow: 'visible', // allow dropdown to overflow card bounds
-                    zIndex: isDropdownOpen ? 100 : 1, // bring the active card above others
-                    elevation: isDropdownOpen ? 20 : 4, // ensure Android draws it above
-                  }
+                    borderColor: isActive ? currentColors.primary : currentColors.border,
+                    borderWidth: isActive ? 2 : 1,
+                    backgroundColor: isActive ? currentColors.primary + '10' : currentColors.backgroundAlt,
+                  },
                 ]}
-                onPress={() => {
-                  if (isDropdownOpen) {
-                    setDropdownForId(null);
-                    return;
-                  }
-                  if (!isRenaming && !isDuplicating) {
-                    handleRowPress(b.id);
-                  }
-                }}
-                onLongPress={() => startInlineRename(b)}
-                disabled={isPending}
+                onPress={() => handleSelectBudget(budget)}
+                disabled={isAuthenticatingThis}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <View style={{ flex: 1, paddingRight: 12 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      {isRenaming ? (
-                        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                          <TextInput
-                            style={[themedStyles.input, { flex: 1 }]}
-                            placeholder="New budget name"
-                            placeholderTextColor={currentColors.textSecondary}
-                            value={renameValue}
-                            onChangeText={setRenameValue}
-                            editable={!isPending}
-                            autoFocus
-                            onSubmitEditing={() => handleRenameConfirm(b)}
-                          />
-                          <TouchableOpacity
-                            onPress={() => handleRenameConfirm(b)}
-                            disabled={isPending}
-                            style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: currentColors.primary }}
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                        <Text style={[themedStyles.text, { fontWeight: '600', marginRight: 8 }]}>
+                          {budget.name}
+                        </Text>
+                        {isActive && (
+                          <View
+                            style={{
+                              backgroundColor: currentColors.primary,
+                              paddingHorizontal: 8,
+                              paddingVertical: 2,
+                              borderRadius: 4,
+                            }}
                           >
-                            {isPending ? (
-                              <ActivityIndicator color="#FFFFFF" />
-                            ) : (
-                              <Icon name="checkmark" size={22} style={{ color: '#FFFFFF' }} />
-                            )}
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() => { setRenamingId(null); setRenameValue(''); }}
-                            disabled={isPending}
-                            style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: currentColors.border }}
-                          >
-                            <Icon name="close" size={22} style={{ color: currentColors.text }} />
-                          </TouchableOpacity>
-                        </View>
-                      ) : (
-                        <>
-                          <Pressable
-                            onPress={() => startInlineRename(b)}
-                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                          >
-                            <Text style={[themedStyles.text, { fontWeight: '800', fontSize: 18 }]}>
-                              {b.name}
-                            </Text>
-                            <Icon name="pencil" size={16} style={{ color: currentColors.textSecondary }} />
-                          </Pressable>
-                          {isActive && (
-                            <View style={[
-                              themedStyles.badge,
-                              { marginLeft: 8, backgroundColor: currentColors.primary, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12 }
-                            ]}>
-                              <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontSize: 11, fontWeight: '800' }]}>
-                                ACTIVE
-                              </Text>
-                            </View>
-                          )}
-                        </>
-                      )}
+                            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>ACTIVE</Text>
+                          </View>
+                        )}
+                        {budgetLocked && (
+                          <View style={{ marginLeft: 8 }}>
+                            <Icon name="lock-closed" size={16} style={{ color: currentColors.error }} />
+                          </View>
+                        )}
+                      </View>
+                      <Text style={themedStyles.textSecondary}>
+                        {budget.people.length} people • {budget.expenses.length} expenses
+                      </Text>
                     </View>
-                    <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
-                      Created {new Date(b.createdAt).toLocaleDateString()}
-                    </Text>
-                  </View>
 
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    {isPending ? (
-                      <ActivityIndicator color={currentColors.textSecondary} />
-                    ) : (
-                      <TouchableOpacity
-                        onPress={() => setDropdownForId(isDropdownOpen ? null : b.id)}
-                        style={{
-                          minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center',
-                          borderRadius: 22, backgroundColor: currentColors.border + '40'
-                        }}
-                      >
-                        <Icon name="ellipsis-horizontal" size={22} style={{ color: currentColors.text }} />
-                      </TouchableOpacity>
+                    {isAuthenticatingThis && (
+                      <ActivityIndicator color={currentColors.primary} size="small" style={{ marginRight: 12 }} />
                     )}
                   </View>
+
+                  <DropdownMenu budget={budget} />
                 </View>
-
-                {isDropdownOpen && <DropdownMenu budget={b} />}
-
-                {isDuplicating && (
-                  <View style={[themedStyles.card, { marginTop: 12, padding: 12 }]}>
-                    <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Duplicate Budget</Text>
-                    <TextInput
-                      style={themedStyles.input}
-                      placeholder="Duplicate name"
-                      placeholderTextColor={currentColors.textSecondary}
-                      value={duplicateValue}
-                      onChangeText={setDuplicateValue}
-                      editable={!isPending}
-                      autoFocus
-                      onSubmitEditing={() => handleDuplicateConfirm(b)}
-                    />
-                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
-                      <View style={{ flex: 1 }}>
-                        <TouchableOpacity
-                          style={[
-                            themedStyles.card,
-                            { padding: 12, minHeight: 44, borderColor: currentColors.secondary, borderWidth: 2, backgroundColor: 'transparent' }
-                          ]}
-                          onPress={() => { setDuplicatingId(null); setDuplicateValue(''); }}
-                          disabled={isPending}
-                        >
-                          <Text style={[themedStyles.text, { textAlign: 'center', color: currentColors.secondary, fontWeight: '700' }]}>Cancel</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <TouchableOpacity
-                          style={[
-                            themedStyles.card,
-                            { padding: 12, minHeight: 44, backgroundColor: currentColors.secondary, borderColor: currentColors.secondary, borderWidth: 2 }
-                          ]}
-                          onPress={() => handleDuplicateConfirm(b)}
-                          disabled={isPending}
-                        >
-                          {isPending ? (
-                            <ActivityIndicator color="#FFFFFF" />
-                          ) : (
-                            <Text style={[themedStyles.text, { textAlign: 'center', color: '#FFFFFF', fontWeight: '700' }]}>Create Duplicate</Text>
-                          )}
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                )}
-              </Pressable>
+              </TouchableOpacity>
             );
           })}
-
-          {sortedBudgets.length === 0 && (
-            <View style={themedStyles.card}>
-              <View style={themedStyles.centerContent}>
-                <Icon name="folder-open-outline" size={48} style={{ color: currentColors.textSecondary, marginBottom: 12 }} />
-                <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>No Budgets Yet</Text>
-                <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 12 }]}>
-                  Create your first budget to get started.
-                </Text>
-                <TouchableOpacity
-                  onPress={handleCreatePress}
-                  style={[
-                    themedStyles.card,
-                    { backgroundColor: currentColors.primary, borderColor: currentColors.primary, borderWidth: 2, minHeight: 44 }
-                  ]}
-                >
-                  <Text style={[themedStyles.text, { color: '#FFFFFF', textAlign: 'center', fontWeight: '700' }]}>+ New Budget</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
         </View>
+
+        {/* Import Link */}
+        <TouchableOpacity
+          style={[
+            themedStyles.card,
+            {
+              backgroundColor: currentColors.backgroundAlt,
+              borderColor: currentColors.border,
+              borderWidth: 1,
+              borderStyle: 'dashed',
+              marginTop: 24,
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: 60,
+            },
+          ]}
+          onPress={() => router.push('/import-link')}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Icon name="download-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+            <Text style={[themedStyles.text, { color: currentColors.primary, fontWeight: '600' }]}>
+              Import Budget from Link
+            </Text>
+          </View>
+        </TouchableOpacity>
       </ScrollView>
 
-      {/* Share modal */}
-      <Modal visible={shareOpen} transparent animationType="fade" onRequestClose={() => setShareOpen(false)}>
-        <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 20
-        }}>
-          <View style={[themedStyles.card, { width: '100%' }]}>
-            {renderShareModalContent()}
+      {/* Share Modal */}
+      <Modal visible={shareModalVisible} transparent animationType="slide" onRequestClose={() => setShareModalVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}>
+          <View
+            style={{
+              backgroundColor: currentColors.backgroundAlt,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              maxHeight: '80%',
+            }}
+          >
+            <ScrollView>{renderShareModalContent()}</ScrollView>
           </View>
         </View>
       </Modal>

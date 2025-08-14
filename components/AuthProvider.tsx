@@ -1,17 +1,8 @@
 
-import React, { ReactNode } from 'react';
-import { AuthContext, useAuthProvider } from '../hooks/useAuth';
+// This file has been removed as part of the offline-first refactor
+// Authentication is no longer used in this app
+import React from 'react';
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export default function AuthProvider({ children }: AuthProviderProps) {
-  const auth = useAuthProvider();
-
-  return (
-    <AuthContext.Provider value={auth}>
-      {children}
-    </AuthContext.Provider>
-  );
+export default function AuthProvider({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
 }

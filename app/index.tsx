@@ -1,13 +1,4 @@
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Text, View, ScrollView, TouchableOpacity } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
-import { useThemedStyles } from '../hooks/useThemedStyles';
-import { useBudgetData } from '../hooks/useBudgetData';
-import { useTheme } from '../hooks/useTheme';
-import { useCurrency } from '../hooks/useCurrency';
-import { useBiometricLock } from '../hooks/useBiometricLock';
-import { useToast } from '../hooks/useToast';
 import { 
   calculateTotalIncome, 
   calculateTotalExpenses, 
@@ -17,785 +8,413 @@ import {
   calculatePersonIncome,
   calculateHouseholdShare,
 } from '../utils/calculations';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useTheme } from '../hooks/useTheme';
+import { useCurrency } from '../hooks/useCurrency';
+import { router, useFocusEffect } from 'expo-router';
 import Icon from '../components/Icon';
-import PersonBreakdownChart from '../components/PersonBreakdownChart';
+import { Text, View, ScrollView, TouchableOpacity, AppState } from 'react-native';
+import { useBudgetData } from '../hooks/useBudgetData';
+import { useThemedStyles } from '../hooks/useThemedStyles';
+import { useToast } from '../hooks/useToast';
 import StandardHeader from '../components/StandardHeader';
+import PersonBreakdownChart from '../components/PersonBreakdownChart';
 import RecurringWidget from '../components/RecurringWidget';
-import BiometricEnableModal from '../components/BiometricEnableModal';
+import { useBudgetLock } from '../hooks/useBudgetLock';
+import { BlurView } from 'expo-blur';
 
 export default function HomeScreen() {
-  const { data, loading, refreshData, activeBudget } = useBudgetData();
   const { currentColors } = useTheme();
+  const { formatCurrency } = useCurrency();
   const { themedStyles } = useThemedStyles();
-  const { formatCurrency, loading: currencyLoading } = useCurrency();
-  const { shouldShowEnablePrompt, markPromptShown, enableBiometricLock, capabilities } = useBiometricLock();
   const { showToast } = useToast();
+  const { data, loading } = useBudgetData();
+  const { isLocked, authenticateForBudget } = useBudgetLock();
+  
+  const [authenticating, setAuthenticating] = useState(false);
+  const appState = useRef(AppState.currentState);
 
-  // Use ref to track if we've already refreshed on this focus
-  const hasRefreshedOnFocus = useRef(false);
-  const [showBiometricModal, setShowBiometricModal] = useState(false);
+  const activeBudget = useMemo(() => {
+    return data.budgets.find(b => b.id === data.activeBudgetId) || data.budgets[0];
+  }, [data.budgets, data.activeBudgetId]);
 
-  // Check if we should show biometric prompt when screen comes into focus
+  const budgetLocked = useMemo(() => {
+    return activeBudget ? isLocked(activeBudget) : false;
+  }, [activeBudget, isLocked]);
+
+  // Check lock status when app becomes active
   useFocusEffect(
     useCallback(() => {
-      console.log('HomeScreen: Screen focused');
-      
-      // Only refresh if we haven't already refreshed on this focus
-      if (!hasRefreshedOnFocus.current) {
-        console.log('HomeScreen: Refreshing data on focus');
-        hasRefreshedOnFocus.current = true;
-        refreshData();
-
-        // Check if we should show biometric prompt
-        const checkBiometricPrompt = async () => {
-          try {
-            const shouldShow = await shouldShowEnablePrompt();
-            if (shouldShow) {
-              console.log('HomeScreen: Showing biometric enable prompt');
-              setShowBiometricModal(true);
-            }
-          } catch (error) {
-            console.error('HomeScreen: Error checking biometric prompt:', error);
-          }
-        };
-
-        // Delay the prompt slightly to let the screen settle
-        setTimeout(checkBiometricPrompt, 1000);
-      }
-      
-      // Reset the flag when the screen loses focus
-      return () => {
-        console.log('HomeScreen: Screen lost focus, resetting refresh flag');
-        hasRefreshedOnFocus.current = false;
+      const handleAppStateChange = (nextAppState: string) => {
+        if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+          // App became active - the lock status will be re-evaluated by useMemo
+          console.log('HomeScreen: App became active, checking lock status');
+        }
+        appState.current = nextAppState;
       };
-    }, [refreshData, shouldShowEnablePrompt])
+
+      const subscription = AppState.addEventListener('change', handleAppStateChange);
+      return () => subscription?.remove();
+    }, [])
   );
 
-  // Handle biometric enable
-  const handleEnableBiometric = useCallback(async () => {
-    try {
-      console.log('HomeScreen: Enabling biometric authentication');
-      const result = await enableBiometricLock();
-      
-      if (result.success) {
-        showToast(result.message, 'success');
-        setShowBiometricModal(false);
-      } else {
-        showToast(result.message, 'error');
-      }
-    } catch (error) {
-      console.error('HomeScreen: Error enabling biometric:', error);
-      showToast('Failed to enable biometric authentication', 'error');
-    }
-  }, [enableBiometricLock, showToast]);
-
-  // Handle "Not Now" for biometric prompt
-  const handleBiometricNotNow = useCallback(async () => {
-    try {
-      console.log('HomeScreen: User declined biometric prompt');
-      await markPromptShown();
-      setShowBiometricModal(false);
-    } catch (error) {
-      console.error('HomeScreen: Error marking prompt shown:', error);
-    }
-  }, [markPromptShown]);
-
-  // Memoize calculations to ensure they update when data changes
   const calculations = useMemo(() => {
-    console.log('HomeScreen: Recalculating budget data...');
-    
-    const totalIncome = calculateTotalIncome(data.people);
-    const totalExpenses = calculateTotalExpenses(data.expenses);
-    const householdExpenses = calculateHouseholdExpenses(data.expenses);
-    const personalExpenses = totalExpenses - householdExpenses;
-    const remainingBudget = totalIncome - totalExpenses;
+    if (!activeBudget) return null;
 
-    const monthlyIncome = calculateMonthlyAmount(totalIncome, 'yearly');
-    const monthlyExpenses = calculateMonthlyAmount(totalExpenses, 'yearly');
-    const monthlyRemaining = calculateMonthlyAmount(remainingBudget, 'yearly');
-
-    console.log('HomeScreen: Calculated values:', {
-      totalIncome,
-      totalExpenses,
-      householdExpenses,
-      personalExpenses,
-      remainingBudget,
-      monthlyIncome,
-      monthlyExpenses,
-      monthlyRemaining
-    });
+    const totalIncome = calculateTotalIncome(activeBudget.people);
+    const totalExpenses = calculateTotalExpenses(activeBudget.expenses);
+    const householdExpenses = calculateHouseholdExpenses(activeBudget.expenses);
+    const personalExpenses = calculatePersonalExpenses(activeBudget.expenses);
+    const remaining = totalIncome - totalExpenses;
 
     return {
       totalIncome,
       totalExpenses,
       householdExpenses,
       personalExpenses,
-      remainingBudget,
-      monthlyIncome,
-      monthlyExpenses,
-      monthlyRemaining
+      remaining,
     };
-  }, [data.people, data.expenses]);
+  }, [activeBudget]);
 
-  // Memoize recent expenses
-  const recentExpenses = useMemo(() => {
-    return data.expenses
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 5);
-  }, [data.expenses]);
-
-  // Memoize person breakdowns
-  const personBreakdowns = useMemo(() => {
-    console.log('HomeScreen: Recalculating person breakdowns...');
+  const handleUnlock = useCallback(async () => {
+    if (!activeBudget) return;
     
-    return data.people.map((person) => {
-      const personIncome = calculatePersonIncome(person);
-      const personPersonalExpenses = calculatePersonalExpenses(data.expenses, person.id);
-      const personHouseholdShare = calculateHouseholdShare(
-        calculations.householdExpenses,
-        data.people,
-        data.householdSettings.distributionMethod,
-        person.id
-      );
-      const totalPersonExpenses = personPersonalExpenses + personHouseholdShare;
-      const remainingIncome = personIncome - totalPersonExpenses;
+    setAuthenticating(true);
+    try {
+      const success = await authenticateForBudget(activeBudget.id);
+      if (!success) {
+        showToast('Authentication failed', 'error');
+      }
+    } catch (error) {
+      console.error('HomeScreen: Authentication error:', error);
+      showToast('Authentication error', 'error');
+    } finally {
+      setAuthenticating(false);
+    }
+  }, [activeBudget, authenticateForBudget, showToast]);
 
-      const monthlyPersonIncome = calculateMonthlyAmount(personIncome, 'yearly');
-      const monthlyPersonalExpenses = calculateMonthlyAmount(personPersonalExpenses, 'yearly');
-      const monthlyHouseholdShare = calculateMonthlyAmount(personHouseholdShare, 'yearly');
-      const monthlyRemaining = calculateMonthlyAmount(remainingIncome, 'yearly');
-
-      return {
-        person,
-        personIncome,
-        personPersonalExpenses,
-        personHouseholdShare,
-        totalPersonExpenses,
-        remainingIncome,
-        monthlyPersonIncome,
-        monthlyPersonalExpenses,
-        monthlyHouseholdShare,
-        monthlyRemaining
-      };
-    });
-  }, [data.people, data.expenses, data.householdSettings.distributionMethod, calculations.householdExpenses]);
-
-  const handleEditExpense = useCallback((expenseId: string) => {
-    console.log('HomeScreen: Navigating to edit expense:', expenseId);
-    router.push({
-      pathname: '/add-expense',
-      params: { id: expenseId, origin: 'home' }
-    });
-  }, []);
-
-  const handleNavigateToAddExpense = useCallback(() => {
-    router.push('/add-expense');
-  }, []);
-
-  const handleNavigateToPeople = useCallback(() => {
-    router.push('/people');
-  }, []);
-
-  const handleNavigateToExpenses = useCallback(() => {
-    router.push('/expenses');
-  }, []);
-
-  const handleNavigateToBudgets = useCallback(() => {
+  const handleBackToBudgets = useCallback(() => {
     router.push('/budgets');
   }, []);
 
-  const handleNavigateToEditPerson = useCallback((personId: string) => {
-    console.log('HomeScreen: Navigating to edit person with origin:', personId);
-    router.push({
-      pathname: '/edit-person',
-      params: { personId: personId, origin: 'home' }
-    });
-  }, []);
-
-  const headerTitle = activeBudget?.name || 'No Active Budget';
-
-  // Show loading state if data is still loading
-  if (loading || currencyLoading) {
+  if (loading) {
     return (
-      <View style={themedStyles.container}>
-        <StandardHeader
-          title={headerTitle}
-          showLeftIcon={false}
-          rightIcon="swap-horizontal"
-          onRightPress={handleNavigateToBudgets}
-        />
-        <View style={[themedStyles.centerContent, { flex: 1 }]}>
+      <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
+        <StandardHeader title="Budget Flow" />
+        <View style={[themedStyles.content, { justifyContent: 'center', alignItems: 'center' }]}>
           <Text style={themedStyles.textSecondary}>Loading...</Text>
         </View>
       </View>
     );
   }
 
-  const isCompletelyEmpty = data.expenses.length === 0 && data.people.length === 0;
+  if (!activeBudget) {
+    return (
+      <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
+        <StandardHeader title="Budget Flow" />
+        <View style={[themedStyles.content, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+          <Icon name="wallet-outline" size={64} style={{ color: currentColors.textSecondary, marginBottom: 16 }} />
+          <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>
+            No Budget Found
+          </Text>
+          <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 24 }]}>
+            Create your first budget to get started
+          </Text>
+          <TouchableOpacity
+            style={[
+              themedStyles.card,
+              {
+                backgroundColor: currentColors.primary,
+                borderColor: currentColors.primary,
+                borderWidth: 1,
+                paddingHorizontal: 24,
+                paddingVertical: 12,
+              },
+            ]}
+            onPress={() => router.push('/budgets')}
+          >
+            <Text style={[themedStyles.text, { color: '#fff', fontWeight: '600' }]}>
+              Go to Budgets
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
-  return (
-    <View style={themedStyles.container}>
-      <StandardHeader
-        title={headerTitle}
-        showLeftIcon={false}
-        rightIcon="swap-horizontal"
-        onRightPress={handleNavigateToBudgets}
-      />
+  // Show lock screen if budget is locked
+  if (budgetLocked) {
+    return (
+      <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
+        <StandardHeader title="Budget Flow" />
+        
+        {/* Blurred background content */}
+        <View style={{ flex: 1, position: 'relative' }}>
+          <View style={{ flex: 1, opacity: 0.3 }}>
+            <ScrollView style={themedStyles.content} contentContainerStyle={{ padding: 16 }}>
+              {/* Placeholder content that's blurred */}
+              <View style={[themedStyles.card, { height: 120, marginBottom: 16 }]} />
+              <View style={[themedStyles.card, { height: 80, marginBottom: 16 }]} />
+              <View style={[themedStyles.card, { height: 200, marginBottom: 16 }]} />
+              <View style={[themedStyles.card, { height: 100 }]} />
+            </ScrollView>
+          </View>
 
-      {/* Biometric Enable Modal */}
-      <BiometricEnableModal
-        visible={showBiometricModal}
-        onEnable={handleEnableBiometric}
-        onNotNow={handleBiometricNotNow}
-      />
+          {/* Lock overlay */}
+          <BlurView
+            intensity={20}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: 24,
+            }}
+          >
+            <View
+              style={[
+                themedStyles.card,
+                {
+                  backgroundColor: currentColors.backgroundAlt,
+                  borderColor: currentColors.border,
+                  borderWidth: 1,
+                  padding: 32,
+                  alignItems: 'center',
+                  maxWidth: 320,
+                  width: '100%',
+                },
+              ]}
+            >
+              {/* Lock Icon */}
+              <View
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 40,
+                  backgroundColor: currentColors.error + '20',
+                  borderWidth: 2,
+                  borderColor: currentColors.error,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 24,
+                }}
+              >
+                <Icon name="lock-closed" size={32} style={{ color: currentColors.error }} />
+              </View>
 
-      {/* If no active budget (edge case), show CTA */}
-      {!activeBudget && (
-        <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
-          <View style={themedStyles.section}>
-            <View style={themedStyles.card}>
-              <View style={themedStyles.centerContent}>
-                <Icon name="albums-outline" size={56} style={{ color: currentColors.textSecondary, marginBottom: 12 }} />
-                <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>
-                  No Active Budget
-                </Text>
-                <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 16 }]}>
-                  Create or select a budget to get started.
-                </Text>
+              {/* Title */}
+              <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>
+                This budget is locked
+              </Text>
+
+              {/* Budget name */}
+              <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 24 }]}>
+                "{activeBudget.name}" requires authentication to view
+              </Text>
+
+              {/* Buttons */}
+              <View style={{ width: '100%', gap: 12 }}>
+                {/* Unlock Button */}
                 <TouchableOpacity
                   style={[
                     themedStyles.card,
-                    { backgroundColor: currentColors.primary, borderColor: currentColors.primary, borderWidth: 2, minHeight: 44 }
+                    {
+                      backgroundColor: currentColors.primary,
+                      borderColor: currentColors.primary,
+                      borderWidth: 2,
+                      minHeight: 50,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: 0,
+                    },
                   ]}
-                  onPress={handleNavigateToBudgets}
+                  onPress={handleUnlock}
+                  disabled={authenticating}
                 >
-                  <Text style={[themedStyles.text, { color: '#FFFFFF', textAlign: 'center', fontWeight: '700' }]}>
-                    Create a budget
+                  {authenticating ? (
+                    <Text style={[themedStyles.text, { color: '#fff', fontSize: 16, fontWeight: '600' }]}>
+                      Authenticating...
+                    </Text>
+                  ) : (
+                    <>
+                      <Icon name="lock-open" size={20} style={{ color: '#fff', marginRight: 12 }} />
+                      <Text style={[themedStyles.text, { color: '#fff', fontSize: 16, fontWeight: '600' }]}>
+                        Unlock to view
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                {/* Back to Budgets Button */}
+                <TouchableOpacity
+                  style={[
+                    themedStyles.card,
+                    {
+                      backgroundColor: 'transparent',
+                      borderColor: currentColors.border,
+                      borderWidth: 2,
+                      minHeight: 50,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: 0,
+                    },
+                  ]}
+                  onPress={handleBackToBudgets}
+                  disabled={authenticating}
+                >
+                  <Text style={[themedStyles.text, { fontSize: 16, fontWeight: '600' }]}>
+                    Back to Budgets
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
-        </ScrollView>
-      )}
+          </BlurView>
+        </View>
+      </View>
+    );
+  }
 
-      {activeBudget && (
-        <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
-          {/* Only show Get Started when completely empty */}
-          {isCompletelyEmpty ? (
-            <View style={themedStyles.section}>
-              <Text style={[themedStyles.subtitle, { marginBottom: 20 }]}>Get Started</Text>
-              
-              <View style={themedStyles.card}>
-                <View style={themedStyles.centerContent}>
-                  <Icon name="rocket-outline" size={48} style={{ color: currentColors.primary, marginBottom: 16 }} />
-                  <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 12 }]}>
-                    Welcome to Budget Tracker!
+  // Normal unlocked budget view
+  return (
+    <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
+      <StandardHeader 
+        title="Budget Flow" 
+        rightIcon="wallet-outline"
+        onRightPress={() => router.push('/budgets')}
+      />
+
+      <ScrollView style={themedStyles.content} contentContainerStyle={{ padding: 16 }}>
+        {/* Budget Header */}
+        <View style={[themedStyles.card, { marginBottom: 16 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <Text style={[themedStyles.subtitle, { flex: 1 }]}>{activeBudget.name}</Text>
+            <TouchableOpacity onPress={() => router.push('/budgets')}>
+              <Icon name="chevron-forward" size={20} style={{ color: currentColors.textSecondary }} />
+            </TouchableOpacity>
+          </View>
+          <Text style={themedStyles.textSecondary}>
+            {activeBudget.people.length} people • {activeBudget.expenses.length} expenses
+          </Text>
+        </View>
+
+        {calculations && (
+          <>
+            {/* Summary Cards */}
+            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+              <View style={[themedStyles.card, { flex: 1 }]}>
+                <Text style={[themedStyles.textSecondary, { fontSize: 12, marginBottom: 4 }]}>INCOME</Text>
+                <Text style={[themedStyles.text, { fontSize: 18, fontWeight: '600', color: currentColors.success || '#4CAF50' }]}>
+                  {formatCurrency(calculations.totalIncome)}
+                </Text>
+              </View>
+              <View style={[themedStyles.card, { flex: 1 }]}>
+                <Text style={[themedStyles.textSecondary, { fontSize: 12, marginBottom: 4 }]}>EXPENSES</Text>
+                <Text style={[themedStyles.text, { fontSize: 18, fontWeight: '600', color: currentColors.error }]}>
+                  {formatCurrency(calculations.totalExpenses)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Remaining */}
+            <View style={[themedStyles.card, { marginBottom: 16 }]}>
+              <Text style={[themedStyles.textSecondary, { fontSize: 12, marginBottom: 4 }]}>REMAINING</Text>
+              <Text style={[
+                themedStyles.text, 
+                { 
+                  fontSize: 24, 
+                  fontWeight: '700',
+                  color: calculations.remaining >= 0 ? (currentColors.success || '#4CAF50') : currentColors.error
+                }
+              ]}>
+                {formatCurrency(calculations.remaining)}
+              </Text>
+              {calculations.remaining < 0 && (
+                <Text style={[themedStyles.textSecondary, { fontSize: 12, marginTop: 4 }]}>
+                  Over budget by {formatCurrency(Math.abs(calculations.remaining))}
+                </Text>
+              )}
+            </View>
+
+            {/* Expense Breakdown */}
+            <View style={[themedStyles.card, { marginBottom: 16 }]}>
+              <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Expense Breakdown</Text>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[themedStyles.textSecondary, { fontSize: 12, marginBottom: 4 }]}>HOUSEHOLD</Text>
+                  <Text style={[themedStyles.text, { fontSize: 16, fontWeight: '600' }]}>
+                    {formatCurrency(calculations.householdExpenses)}
                   </Text>
-                  <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 20 }]}>
-                    Start by adding people and their income, then track your expenses.
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[themedStyles.textSecondary, { fontSize: 12, marginBottom: 4 }]}>PERSONAL</Text>
+                  <Text style={[themedStyles.text, { fontSize: 16, fontWeight: '600' }]}>
+                    {formatCurrency(calculations.personalExpenses)}
                   </Text>
-                  
-                  <View style={{ width: '100%', gap: 12 }}>
-                    <TouchableOpacity
-                      style={[
-                        themedStyles.card,
-                        { 
-                          backgroundColor: currentColors.primary + '15',
-                          borderColor: currentColors.primary + '30',
-                          borderWidth: 2,
-                          marginBottom: 0,
-                          padding: 16,
-                        }
-                      ]}
-                      onPress={handleNavigateToPeople}
-                    >
-                      <View style={[themedStyles.row, { alignItems: 'center' }]}>
-                        <Icon name="people" size={24} style={{ color: currentColors.primary, marginRight: 12 }} />
-                        <View style={themedStyles.flex1}>
-                          <Text style={[themedStyles.text, { fontWeight: '700' }]}>Add People</Text>
-                          <Text style={themedStyles.textSecondary}>
-                            Set up household members and income
-                          </Text>
-                        </View>
-                        <Icon name="chevron-forward" size={20} style={{ color: currentColors.primary }} />
-                      </View>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity
-                      style={[
-                        themedStyles.card,
-                        { 
-                          backgroundColor: currentColors.secondary + '15',
-                          borderColor: currentColors.secondary + '30',
-                          borderWidth: 2,
-                          marginBottom: 0,
-                          padding: 16,
-                        }
-                      ]}
-                      onPress={handleNavigateToAddExpense}
-                    >
-                      <View style={[themedStyles.row, { alignItems: 'center' }]}>
-                        <Icon name="receipt" size={24} style={{ color: currentColors.secondary, marginRight: 12 }} />
-                        <View style={themedStyles.flex1}>
-                          <Text style={[themedStyles.text, { fontWeight: '700' }]}>Add Expense</Text>
-                          <Text style={themedStyles.textSecondary}>
-                            Track your first expense
-                          </Text>
-                        </View>
-                        <Icon name="chevron-forward" size={20} style={{ color: currentColors.secondary }} />
-                      </View>
-                    </TouchableOpacity>
-                  </View>
                 </View>
               </View>
             </View>
-          ) : (
-            <>
-              {/* Budget Summary Cards */}
-              <View style={themedStyles.section}>
-                <Text style={[themedStyles.subtitle, { marginBottom: 20 }]}>Monthly Summary</Text>
-                
-                {/* Income Card */}
-                <View style={[
-                  themedStyles.card, 
-                  { 
-                    backgroundColor: currentColors.income + '15', 
-                    borderColor: currentColors.income + '30',
-                    borderWidth: 2,
-                  }
-                ]}>
-                  <View style={[themedStyles.row, { marginBottom: 8 }]}>
-                    <View style={themedStyles.rowStart}>
-                      <Icon name="trending-up" size={24} style={{ color: currentColors.income, marginRight: 12 }} />
-                      <Text style={[themedStyles.text, { fontWeight: '700' }]}>Total Income</Text>
-                    </View>
-                    <Text style={[themedStyles.text, { fontWeight: '800', color: currentColors.income, fontSize: 20 }]}>
-                      {formatCurrency(calculations.monthlyIncome)}
-                    </Text>
-                  </View>
-                  <Text style={themedStyles.textSecondary}>
-                    From {data.people.length} {data.people.length === 1 ? 'person' : 'people'}
-                  </Text>
-                </View>
 
-                {/* Expenses Card */}
-                <View style={[
-                  themedStyles.card, 
-                  { 
-                    backgroundColor: currentColors.expense + '15', 
-                    borderColor: currentColors.expense + '30',
-                    borderWidth: 2,
-                  }
-                ]}>
-                  <View style={[themedStyles.row, { marginBottom: 8 }]}>
-                    <View style={themedStyles.rowStart}>
-                      <Icon name="trending-down" size={24} style={{ color: currentColors.expense, marginRight: 12 }} />
-                      <Text style={[themedStyles.text, { fontWeight: '700' }]}>Total Expenses</Text>
-                    </View>
-                    <Text style={[themedStyles.text, { fontWeight: '800', color: currentColors.expense, fontSize: 20 }]}>
-                      {formatCurrency(calculations.monthlyExpenses)}
-                    </Text>
-                  </View>
-                  <Text style={themedStyles.textSecondary}>
-                    {data.expenses.length} {data.expenses.length === 1 ? 'expense' : 'expenses'} tracked
-                  </Text>
-                </View>
+            {/* Person Breakdown Chart */}
+            {activeBudget.people.length > 0 && (
+              <PersonBreakdownChart budget={activeBudget} />
+            )}
 
-                {/* Remaining Budget Card */}
-                <View style={[
-                  themedStyles.card, 
-                  { 
-                    backgroundColor: calculations.monthlyRemaining >= 0 ? currentColors.success + '15' : currentColors.error + '15',
-                    borderColor: calculations.monthlyRemaining >= 0 ? currentColors.success + '30' : currentColors.error + '30',
-                    borderWidth: 2,
-                  }
-                ]}>
-                  <View style={[themedStyles.row, { marginBottom: 8 }]}>
-                    <View style={themedStyles.rowStart}>
-                      <Icon 
-                        name={calculations.monthlyRemaining >= 0 ? "checkmark-circle" : "alert-circle"} 
-                        size={24} 
-                        style={{ 
-                          color: calculations.monthlyRemaining >= 0 ? currentColors.success : currentColors.error, 
-                          marginRight: 12 
-                        }} 
-                      />
-                      <Text style={[themedStyles.text, { fontWeight: '700' }]}>
-                        {calculations.monthlyRemaining >= 0 ? 'Remaining Budget' : 'Over Budget'}
-                      </Text>
-                    </View>
-                    <Text style={[
-                      themedStyles.text, 
-                      { 
-                        fontWeight: '800', 
-                        color: calculations.monthlyRemaining >= 0 ? currentColors.success : currentColors.error,
-                        fontSize: 20,
-                      }
-                    ]}>
-                      {formatCurrency(Math.abs(calculations.monthlyRemaining))}
-                    </Text>
-                  </View>
-                  <Text style={themedStyles.textSecondary}>
-                    {calculations.monthlyRemaining >= 0 
-                      ? 'You\'re within budget this month' 
-                      : 'Consider reducing expenses'
-                    }
+            {/* Recurring Widget */}
+            <RecurringWidget budget={activeBudget} />
+
+            {/* Quick Actions */}
+            <View style={[themedStyles.card, { marginBottom: 16 }]}>
+              <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Quick Actions</Text>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <TouchableOpacity
+                  style={[
+                    themedStyles.card,
+                    {
+                      flex: 1,
+                      backgroundColor: currentColors.primary,
+                      borderColor: currentColors.primary,
+                      borderWidth: 1,
+                      alignItems: 'center',
+                      paddingVertical: 16,
+                      marginBottom: 0,
+                    },
+                  ]}
+                  onPress={() => router.push('/add-expense')}
+                >
+                  <Icon name="add" size={20} style={{ color: '#fff', marginBottom: 4 }} />
+                  <Text style={[themedStyles.text, { color: '#fff', fontSize: 12, fontWeight: '600' }]}>
+                    Add Expense
                   </Text>
-                </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    themedStyles.card,
+                    {
+                      flex: 1,
+                      backgroundColor: currentColors.backgroundAlt,
+                      borderColor: currentColors.border,
+                      borderWidth: 1,
+                      alignItems: 'center',
+                      paddingVertical: 16,
+                      marginBottom: 0,
+                    },
+                  ]}
+                  onPress={() => router.push('/people')}
+                >
+                  <Icon name="people" size={20} style={{ color: currentColors.text, marginBottom: 4 }} />
+                  <Text style={[themedStyles.text, { fontSize: 12, fontWeight: '600' }]}>
+                    Manage People
+                  </Text>
+                </TouchableOpacity>
               </View>
-
-              {/* Individual Person Breakdowns */}
-              {data.people.length > 0 && (
-                <View style={themedStyles.section}>
-                  <Text style={[themedStyles.subtitle, { marginBottom: 20 }]}>
-                    Individual Breakdowns
-                  </Text>
-                  
-                  {personBreakdowns.map((breakdown) => {
-                    const { person, monthlyPersonIncome, monthlyPersonalExpenses, monthlyHouseholdShare, monthlyRemaining } = breakdown;
-
-                    return (
-                      <View 
-                        key={person.id} 
-                        style={[
-                          themedStyles.card, 
-                          { 
-                            marginBottom: 20,
-                          }
-                        ]}
-                      >
-                        {/* Person Header */}
-                        <View style={[themedStyles.row, { marginBottom: 20 }]}>
-                          <View style={themedStyles.rowStart}>
-                            <Icon name="person-circle" size={32} style={{ color: currentColors.primary, marginRight: 12 }} />
-                            <View>
-                              <Text style={[themedStyles.text, { fontWeight: '700', fontSize: 18 }]}>
-                                {person.name}
-                              </Text>
-                              <Text style={themedStyles.textSecondary}>
-                                Monthly Income: {formatCurrency(monthlyPersonIncome)}
-                              </Text>
-                            </View>
-                          </View>
-                          <TouchableOpacity onPress={() => handleNavigateToEditPerson(person.id)}>
-                            <Icon name="create-outline" size={24} style={{ color: currentColors.primary }} />
-                          </TouchableOpacity>
-                        </View>
-
-                        {/* Visual Breakdown Chart */}
-                        <PersonBreakdownChart
-                          income={monthlyPersonIncome}
-                          personalExpenses={monthlyPersonalExpenses}
-                          householdShare={monthlyHouseholdShare}
-                          remaining={monthlyRemaining}
-                        />
-
-                        {/* Detailed Breakdown */}
-                        <View style={{ marginTop: 20 }}>
-                          {/* Income Row */}
-                          <View style={[themedStyles.row, { marginBottom: 12 }]}>
-                            <View style={themedStyles.rowStart}>
-                              <View style={{
-                                width: 12,
-                                height: 12,
-                                borderRadius: 6,
-                                backgroundColor: currentColors.income,
-                                marginRight: 8,
-                              }} />
-                              <Text style={themedStyles.text}>Total Income</Text>
-                            </View>
-                            <Text style={[themedStyles.text, { fontWeight: '700', color: currentColors.income }]}>
-                              {formatCurrency(monthlyPersonIncome)}
-                            </Text>
-                          </View>
-
-                          {/* Personal Expenses Row */}
-                          <View style={[themedStyles.row, { marginBottom: 12 }]}>
-                            <View style={themedStyles.rowStart}>
-                              <View style={{
-                                width: 12,
-                                height: 12,
-                                borderRadius: 6,
-                                backgroundColor: currentColors.personal,
-                                marginRight: 8,
-                              }} />
-                              <Text style={themedStyles.text}>Personal Expenses</Text>
-                            </View>
-                            <Text style={[themedStyles.text, { fontWeight: '700', color: currentColors.personal }]}>
-                              {formatCurrency(monthlyPersonalExpenses)}
-                            </Text>
-                          </View>
-
-                          {/* Household Share Row */}
-                          <View style={[themedStyles.row, { marginBottom: 12 }]}>
-                            <View style={themedStyles.rowStart}>
-                              <View style={{
-                                width: 12,
-                                height: 12,
-                                borderRadius: 6,
-                                backgroundColor: currentColors.household,
-                                marginRight: 8,
-                              }} />
-                              <Text style={themedStyles.text}>
-                                Household Share ({data.householdSettings.distributionMethod === 'even' ? 'Even' : 'Income-based'})
-                              </Text>
-                            </View>
-                            <Text style={[themedStyles.text, { fontWeight: '700', color: currentColors.household }]}>
-                              {formatCurrency(monthlyHouseholdShare)}
-                            </Text>
-                          </View>
-
-                          {/* Remaining Income Row */}
-                          <View style={[
-                            themedStyles.row, 
-                            { 
-                              borderTopWidth: 1, 
-                              borderTopColor: currentColors.border, 
-                              paddingTop: 12,
-                              marginTop: 8,
-                            }
-                          ]}>
-                            <View style={themedStyles.rowStart}>
-                              <View style={{
-                                width: 12,
-                                height: 12,
-                                borderRadius: 6,
-                                backgroundColor: monthlyRemaining >= 0 ? currentColors.success : currentColors.error,
-                                marginRight: 8,
-                              }} />
-                              <Text style={[themedStyles.text, { fontWeight: '600' }]}>
-                                {monthlyRemaining >= 0 ? 'Remaining' : 'Over Budget'}
-                              </Text>
-                            </View>
-                            <Text style={[
-                              themedStyles.text, 
-                              { 
-                                fontWeight: '700', 
-                                color: monthlyRemaining >= 0 ? currentColors.success : currentColors.error,
-                                fontSize: 18,
-                              }
-                            ]}>
-                              {formatCurrency(Math.abs(monthlyRemaining))}
-                            </Text>
-                          </View>
-
-                          {/* Budget Status */}
-                          <View style={{ marginTop: 12 }}>
-                            <Text style={[
-                              themedStyles.textSecondary, 
-                              { 
-                                textAlign: 'center',
-                                fontStyle: 'italic',
-                              }
-                            ]}>
-                              {monthlyRemaining >= 0 
-                                ? `${((monthlyRemaining / monthlyPersonIncome) * 100).toFixed(1)}% of income remaining`
-                                : `${((Math.abs(monthlyRemaining) / monthlyPersonIncome) * 100).toFixed(1)}% over budget`
-                              }
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              )}
-
-              {/* Recurring ending/ended widget - moved below Individual Breakdowns and above Recent Expenses */}
-              <View style={themedStyles.section}>
-                <RecurringWidget />
-              </View>
-
-              {/* Overall Expense Breakdown */}
-              {data.expenses.length > 0 && (
-                <View style={themedStyles.section}>
-                  <Text style={[themedStyles.subtitle, { marginBottom: 20 }]}>
-                    Overall Expense Breakdown
-                  </Text>
-                  
-                  <View style={themedStyles.card}>
-                    <View style={[themedStyles.row, { marginBottom: 16 }]}>
-                      <View style={themedStyles.rowStart}>
-                        <Icon name="home" size={20} style={{ color: currentColors.household, marginRight: 8 }} />
-                        <Text style={themedStyles.text}>Household Expenses</Text>
-                      </View>
-                      <Text style={[themedStyles.text, { fontWeight: '700', color: currentColors.household }]}>
-                        {formatCurrency(calculateMonthlyAmount(calculations.householdExpenses, 'yearly'))}
-                      </Text>
-                    </View>
-                    
-                    <View style={[themedStyles.row, { borderTopWidth: 1, borderTopColor: currentColors.border, paddingTop: 16 }]}>
-                      <View style={themedStyles.rowStart}>
-                        <Icon name="person" size={20} style={{ color: currentColors.personal, marginRight: 8 }} />
-                        <Text style={themedStyles.text}>Personal Expenses</Text>
-                      </View>
-                      <Text style={[themedStyles.text, { fontWeight: '700', color: currentColors.personal }]}>
-                        {formatCurrency(calculateMonthlyAmount(calculations.personalExpenses, 'yearly'))}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* Recent Expenses */}
-              {recentExpenses.length > 0 && (
-                <View style={themedStyles.section}>
-                  <View style={[themedStyles.row, { marginBottom: 20 }]}>
-                    <Text style={[themedStyles.subtitle, { marginBottom: 0 }]}>Recent Expenses</Text>
-                    <TouchableOpacity onPress={handleNavigateToExpenses}>
-                      <Text style={[themedStyles.text, { color: currentColors.primary, fontWeight: '600' }]}>View All</Text>
-                    </TouchableOpacity>
-                  </View>
-                  
-                  {recentExpenses.map((expense) => {
-                    const person = expense.personId ? data.people.find(p => p.id === expense.personId) : null;
-                    const monthlyAmount = calculateMonthlyAmount(expense.amount, expense.frequency);
-                    
-                    return (
-                      <TouchableOpacity
-                        key={expense.id}
-                        style={[
-                          themedStyles.card,
-                          { 
-                            marginBottom: 12,
-                          }
-                        ]}
-                        onPress={() => handleEditExpense(expense.id)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={[themedStyles.row, { marginBottom: 8 }]}>
-                          <View style={themedStyles.flex1}>
-                            <Text style={[themedStyles.text, { fontWeight: '700' }]}>
-                              {expense.description}
-                            </Text>
-                            <Text style={[themedStyles.textSecondary, { marginTop: 2 }]}>
-                              {expense.category === 'personal' && person ? `${person.name} • ` : ''}
-                              {expense.frequency} • {new Date(expense.date).toLocaleDateString()}
-                            </Text>
-                          </View>
-                          <View style={{ alignItems: 'flex-end' }}>
-                            <Text style={[
-                              themedStyles.text, 
-                              { 
-                                fontWeight: '700', 
-                                color: expense.category === 'household' ? currentColors.household : currentColors.personal 
-                              }
-                            ]}>
-                              {formatCurrency(expense.amount)}
-                            </Text>
-                            <Text style={themedStyles.textSecondary}>
-                              {formatCurrency(monthlyAmount)}/mo
-                            </Text>
-                          </View>
-                        </View>
-                        
-                        <View style={[themedStyles.row, { alignItems: 'center' }]}>
-                          <View style={[
-                            themedStyles.badge,
-                            { 
-                              backgroundColor: expense.category === 'household' ? currentColors.household : currentColors.personal,
-                              marginRight: 8,
-                              paddingHorizontal: 8,
-                              paddingVertical: 4,
-                              borderRadius: 12,
-                            }
-                          ]}>
-                            <Text style={[
-                              themedStyles.badgeText,
-                              { color: '#FFFFFF', fontSize: 11, fontWeight: '700' }
-                            ]}>
-                              {expense.category.toUpperCase()}
-                            </Text>
-                          </View>
-                          
-                          <Text style={[themedStyles.textSecondary, { flex: 1 }]}>
-                            Tap to edit
-                          </Text>
-                          
-                          <Icon name="chevron-forward-outline" size={16} style={{ color: currentColors.textSecondary }} />
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
-
-              {/* Encourage adding people when there are expenses but no people */}
-              {data.expenses.length > 0 && data.people.length === 0 && (
-                <View style={themedStyles.section}>
-                  <View style={[themedStyles.card, { backgroundColor: currentColors.warning + '15', borderColor: currentColors.warning + '30', borderWidth: 2 }]}>
-                    <View style={themedStyles.centerContent}>
-                      <Icon name="people-outline" size={32} style={{ color: currentColors.warning, marginBottom: 12 }} />
-                      <Text style={[themedStyles.text, { fontWeight: '700', textAlign: 'center', marginBottom: 8 }]}>
-                        Add People for Better Insights
-                      </Text>
-                      <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 16 }]}>
-                        Add household members and their income to see detailed breakdowns and track personal vs household expenses.
-                      </Text>
-                      <TouchableOpacity
-                        style={[
-                          themedStyles.card,
-                          { 
-                            backgroundColor: currentColors.primary + '15',
-                            borderColor: currentColors.primary + '30',
-                            borderWidth: 2,
-                            marginBottom: 0,
-                            padding: 12,
-                            width: '100%',
-                          }
-                        ]}
-                        onPress={handleNavigateToPeople}
-                      >
-                        <View style={[themedStyles.row, { alignItems: 'center', justifyContent: 'center' }]}>
-                          <Icon name="people" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-                          <Text style={[themedStyles.text, { fontWeight: '700', color: currentColors.primary }]}>Add People</Text>
-                        </View>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* Encourage adding expenses when there are people but no expenses */}
-              {data.people.length > 0 && data.expenses.length === 0 && (
-                <View style={themedStyles.section}>
-                  <View style={[themedStyles.card, { backgroundColor: currentColors.secondary + '15', borderColor: currentColors.secondary + '30', borderWidth: 2 }]}>
-                    <View style={themedStyles.centerContent}>
-                      <Icon name="receipt-outline" size={32} style={{ color: currentColors.secondary, marginBottom: 12 }} />
-                      <Text style={[themedStyles.text, { fontWeight: '700', textAlign: 'center', marginBottom: 8 }]}>
-                        Start Tracking Expenses
-                      </Text>
-                      <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 16 }]}>
-                        You have {data.people.length} {data.people.length === 1 ? 'person' : 'people'} set up. Now start adding expenses to see your budget breakdown.
-                      </Text>
-                      <TouchableOpacity
-                        style={[
-                          themedStyles.card,
-                          { 
-                            backgroundColor: currentColors.secondary + '15',
-                            borderColor: currentColors.secondary + '30',
-                            borderWidth: 2,
-                            marginBottom: 0,
-                            padding: 12,
-                            width: '100%',
-                          }
-                        ]}
-                        onPress={handleNavigateToAddExpense}
-                      >
-                        <View style={[themedStyles.row, { alignItems: 'center', justifyContent: 'center' }]}>
-                          <Icon name="add-circle" size={20} style={{ color: currentColors.secondary, marginRight: 8 }} />
-                          <Text style={[themedStyles.text, { fontWeight: '700', color: currentColors.secondary }]}>Add Expense</Text>
-                        </View>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              )}
-            </>
-          )}
-        </ScrollView>
-      )}
+            </View>
+          </>
+        )}
+      </ScrollView>
     </View>
   );
 }

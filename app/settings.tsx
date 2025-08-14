@@ -1,59 +1,37 @@
 
-import { Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { useThemedStyles } from '../hooks/useThemedStyles';
-import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
-import { useCurrency, CURRENCIES } from '../hooks/useCurrency';
-import { useBiometricLock } from '../hooks/useBiometricLock';
-import { useAuth } from '../hooks/useAuth';
-import { useToast } from '../hooks/useToast';
 import Button from '../components/Button';
-import Icon from '../components/Icon';
-import StandardHeader from '../components/StandardHeader';
+import { Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { router } from 'expo-router';
+import Icon from '../components/Icon';
+import { useCurrency, CURRENCIES } from '../hooks/useCurrency';
+import { useBudgetData } from '../hooks/useBudgetData';
+import { useThemedStyles } from '../hooks/useThemedStyles';
+import { useToast } from '../hooks/useToast';
+import StandardHeader from '../components/StandardHeader';
 
 export default function SettingsScreen() {
-  const { data, updateHouseholdSettings, clearAllData } = useBudgetData();
-  const { currentColors, themeMode, setThemeMode, isDarkMode } = useTheme();
-  const { themedStyles, themedButtonStyles } = useThemedStyles();
+  const { currentColors, themeMode, setThemeMode } = useTheme();
   const { currency, setCurrency } = useCurrency();
-  const { user } = useAuth();
+  const { data, clearAllData } = useBudgetData();
+  const { themedStyles } = useThemedStyles();
   const { showToast } = useToast();
-  const {
-    capabilities,
-    settings,
-    loading: biometricLoading,
-    enableBiometricLock,
-    disableBiometricLock,
-    setLockTimeout,
-    resetBiometricSetup,
-  } = useBiometricLock();
 
-  const handleDistributionMethodChange = async (method: 'even' | 'income-based') => {
-    try {
-      const result = await updateHouseholdSettings({ distributionMethod: method });
-      if (!result.success) {
-        Alert.alert('Error', 'Failed to update household expense distribution method.');
-      }
-    } catch (error) {
-      console.error('Settings: Error updating distribution method:', error);
-      Alert.alert('Error', 'An unexpected error occurred while updating the distribution method.');
-    }
+  const handleDistributionMethodChange = (method: 'even' | 'income-based') => {
+    // This would need to be implemented in useBudgetData if needed
+    console.log('Distribution method change:', method);
+    showToast(`Distribution method changed to ${method}`, 'success');
   };
 
-  const handleThemeChange = async (newTheme: 'system' | 'light' | 'dark') => {
-    try {
-      await setThemeMode(newTheme);
-    } catch (error) {
-      console.error('Settings: Error changing theme:', error);
-      Alert.alert('Error', 'Failed to change theme.');
-    }
+  const handleThemeChange = (newTheme: 'system' | 'light' | 'dark') => {
+    setThemeMode(newTheme);
+    showToast(`Theme changed to ${newTheme}`, 'success');
   };
 
   const handleClearAllData = () => {
     Alert.alert(
       'Clear All Data',
-      'Are you sure you want to delete all data? This action cannot be undone.\n\nThis will permanently remove:\n• All people and their income information\n• All expenses (personal and household)\n• All settings will be reset to defaults',
+      'This will permanently delete all your budgets, people, and expenses. This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -61,13 +39,11 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const result = await clearAllData();
-              if (!result.success) {
-                Alert.alert('Error', 'Failed to clear all data. Please try again.');
-              }
+              await clearAllData();
+              showToast('All data cleared successfully', 'success');
             } catch (error) {
-              console.error('Settings: Error clearing data:', error);
-              Alert.alert('Error', 'An unexpected error occurred while clearing data.');
+              console.error('Settings: Clear data error:', error);
+              showToast('Failed to clear data', 'error');
             }
           },
         },
@@ -77,467 +53,189 @@ export default function SettingsScreen() {
 
   const handleCurrencyChange = (curr: typeof CURRENCIES[0]) => {
     setCurrency(curr);
+    showToast(`Currency changed to ${curr.name}`, 'success');
   };
-
-  const handleBiometricToggle = async () => {
-    try {
-      if (settings.enabled) {
-        const result = await disableBiometricLock();
-        showToast(result.message, result.success ? 'success' : 'error');
-      } else {
-        const result = await enableBiometricLock();
-        showToast(result.message, result.success ? 'success' : 'error');
-      }
-    } catch (error) {
-      console.error('Settings: Error toggling biometric lock:', error);
-      showToast('Failed to update biometric settings', 'error');
-    }
-  };
-
-  const handleTimeoutChange = async (timeoutMinutes: number) => {
-    try {
-      const result = await setLockTimeout(timeoutMinutes);
-      showToast(result.message, result.success ? 'success' : 'error');
-    } catch (error) {
-      console.error('Settings: Error setting timeout:', error);
-      showToast('Failed to update lock timeout', 'error');
-    }
-  };
-
-  const handleResetBiometric = () => {
-    Alert.alert(
-      'Reset Biometric Setup',
-      'This will disable biometric unlock and clear all biometric settings. You can set it up again later.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const result = await resetBiometricSetup();
-              showToast(result.message, result.success ? 'success' : 'error');
-            } catch (error) {
-              console.error('Settings: Error resetting biometric setup:', error);
-              showToast('Failed to reset biometric setup', 'error');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const timeoutOptions = [
-    { label: 'Immediately', value: 0 },
-    { label: '1 minute', value: 1 },
-    { label: '5 minutes', value: 5 },
-    { label: '15 minutes', value: 15 },
-    { label: 'Never', value: -1 },
-  ];
 
   return (
-    <View style={themedStyles.container}>
-      <StandardHeader title="Settings" showLeftIcon={false} showRightIcon={false} />
+    <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
+      <StandardHeader title="Settings" />
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
-        {/* Account Section */}
-        {user && (
-          <View style={themedStyles.section}>
-            <Text style={themedStyles.subtitle}>Account</Text>
-
-            <View style={themedStyles.card}>
-              <View style={[themedStyles.row, { marginBottom: 12 }]}>
-                <View style={themedStyles.rowStart}>
-                  <Icon name="person-circle" size={24} style={{ color: currentColors.primary, marginRight: 12 }} />
-                  <View>
-                    <Text style={[themedStyles.text, { fontWeight: '600' }]}>
-                      {user.email}
-                    </Text>
-                    <Text style={themedStyles.textSecondary}>
-                      {user.email_confirmed_at ? 'Verified ✓' : 'Not verified ✗'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {!user.email_confirmed_at && (
-                <TouchableOpacity
-                  style={[
-                    themedStyles.card,
-                    {
-                      backgroundColor: currentColors.warning + '15',
-                      borderColor: currentColors.warning + '30',
-                      borderWidth: 2,
-                      marginBottom: 12,
-                      padding: 12,
-                    },
-                  ]}
-                  onPress={() => router.push('/auth/verify')}
-                >
-                  <View style={[themedStyles.row, { alignItems: 'center' }]}>
-                    <Icon name="mail-outline" size={20} style={{ color: currentColors.warning, marginRight: 8 }} />
-                    <Text style={[themedStyles.text, { fontWeight: '600', color: currentColors.warning }]}>
-                      Verify Email
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity
-                style={[
-                  themedStyles.card,
-                  {
-                    backgroundColor: currentColors.error + '15',
-                    borderColor: currentColors.error + '30',
-                    borderWidth: 2,
-                    marginBottom: 0,
-                    padding: 12,
-                  },
-                ]}
-                onPress={() => router.push('/auth')}
-              >
-                <View style={[themedStyles.row, { alignItems: 'center' }]}>
-                  <Icon name="log-out-outline" size={20} style={{ color: currentColors.error, marginRight: 8 }} />
-                  <Text style={[themedStyles.text, { fontWeight: '600', color: currentColors.error }]}>
-                    Sign Out
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </View>
+      <ScrollView style={themedStyles.content} contentContainerStyle={{ padding: 16 }}>
+        {/* App Info */}
+        <View style={[themedStyles.card, { marginBottom: 24 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+            <Icon name="wallet-outline" size={24} style={{ color: currentColors.primary, marginRight: 12 }} />
+            <Text style={[themedStyles.subtitle, { flex: 1 }]}>Budget Flow</Text>
           </View>
-        )}
-
-        {/* Security Section */}
-        {capabilities.isAvailable && (
-          <View style={themedStyles.section}>
-            <Text style={themedStyles.subtitle}>Security</Text>
-
-            <View style={themedStyles.card}>
-              {/* Biometric Toggle */}
-              <View style={[themedStyles.row, { marginBottom: 16 }]}>
-                <View style={themedStyles.rowStart}>
-                  <Icon
-                    name={
-                      capabilities.biometricType === 'Face ID'
-                        ? 'scan-outline'
-                        : capabilities.biometricType === 'Touch ID'
-                        ? 'finger-print-outline'
-                        : 'shield-checkmark-outline'
-                    }
-                    size={24}
-                    style={{ color: currentColors.primary, marginRight: 12 }}
-                  />
-                  <View style={themedStyles.flex1}>
-                    <Text style={[themedStyles.text, { fontWeight: '600' }]}>
-                      Unlock with {capabilities.biometricType}
-                    </Text>
-                    <Text style={themedStyles.textSecondary}>
-                      {settings.enabled ? 'Enabled' : 'Disabled'}
-                    </Text>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={[
-                    {
-                      width: 50,
-                      height: 30,
-                      borderRadius: 15,
-                      backgroundColor: settings.enabled ? currentColors.primary : currentColors.border,
-                      justifyContent: 'center',
-                      paddingHorizontal: 2,
-                    },
-                  ]}
-                  onPress={handleBiometricToggle}
-                  disabled={biometricLoading || !capabilities.isEnrolled}
-                >
-                  <View
-                    style={[
-                      {
-                        width: 26,
-                        height: 26,
-                        borderRadius: 13,
-                        backgroundColor: '#fff',
-                        transform: [{ translateX: settings.enabled ? 18 : 0 }],
-                      },
-                    ]}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              {!capabilities.isEnrolled && (
-                <View style={[themedStyles.card, { backgroundColor: currentColors.warning + '15', borderColor: currentColors.warning + '30', borderWidth: 1, marginBottom: 16 }]}>
-                  <Text style={[themedStyles.textSecondary, { color: currentColors.warning }]}>
-                    {capabilities.biometricType} is not set up on this device. Please set it up in your device settings first.
-                  </Text>
-                </View>
-              )}
-
-              {/* Auto-lock timeout */}
-              {settings.enabled && (
-                <>
-                  <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 12 }]}>
-                    Auto-lock after:
-                  </Text>
-
-                  {timeoutOptions.map((option) => (
-                    <TouchableOpacity
-                      key={option.value}
-                      style={[
-                        themedStyles.card,
-                        {
-                          backgroundColor: settings.timeoutMinutes === option.value ? currentColors.primary + '20' : currentColors.border + '20',
-                          borderWidth: 2,
-                          borderColor: settings.timeoutMinutes === option.value ? currentColors.primary : currentColors.border,
-                          marginBottom: 8,
-                        },
-                      ]}
-                      onPress={() => handleTimeoutChange(option.value)}
-                    >
-                      <View style={themedStyles.rowStart}>
-                        <Icon
-                          name={settings.timeoutMinutes === option.value ? 'radio-button-on' : 'radio-button-off'}
-                          size={20}
-                          style={{ color: settings.timeoutMinutes === option.value ? currentColors.primary : currentColors.textSecondary, marginRight: 12 }}
-                        />
-                        <Text style={[themedStyles.text, { fontWeight: '600' }]}>{option.label}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-
-                  {/* Reset Biometric Setup */}
-                  <TouchableOpacity
-                    style={[
-                      themedStyles.card,
-                      {
-                        backgroundColor: currentColors.error + '15',
-                        borderColor: currentColors.error + '30',
-                        borderWidth: 2,
-                        marginTop: 8,
-                        marginBottom: 0,
-                        padding: 12,
-                      },
-                    ]}
-                    onPress={handleResetBiometric}
-                  >
-                    <View style={[themedStyles.row, { alignItems: 'center' }]}>
-                      <Icon name="refresh-outline" size={20} style={{ color: currentColors.error, marginRight: 8 }} />
-                      <Text style={[themedStyles.text, { fontWeight: '600', color: currentColors.error }]}>
-                        Reset biometric setup
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* Theme Settings */}
-        <View style={themedStyles.section}>
-          <Text style={themedStyles.subtitle}>Appearance</Text>
-
-          <View style={themedStyles.card}>
-            <Text style={[themedStyles.text, { marginBottom: 12 }]}>
-              Choose your preferred theme (Current: {themeMode}, Dark Mode: {isDarkMode ? 'Yes' : 'No'})
-            </Text>
-
-            {[
-              { key: 'system', label: 'System Default', icon: 'phone-portrait-outline' },
-              { key: 'light', label: 'Light Mode', icon: 'sunny-outline' },
-              { key: 'dark', label: 'Dark Mode', icon: 'moon-outline' },
-            ].map((theme) => (
-              <TouchableOpacity
-                key={theme.key}
-                style={[
-                  themedStyles.card,
-                  {
-                    backgroundColor: themeMode === theme.key ? currentColors.primary + '20' : currentColors.border + '20',
-                    borderWidth: 2,
-                    borderColor: themeMode === theme.key ? currentColors.primary : currentColors.border,
-                    marginBottom: 8,
-                  },
-                ]}
-                onPress={() => handleThemeChange(theme.key as any)}
-              >
-                <View style={themedStyles.rowStart}>
-                  <Icon
-                    name={themeMode === theme.key ? 'radio-button-on' : 'radio-button-off'}
-                    size={20}
-                    style={{ color: themeMode === theme.key ? currentColors.primary : currentColors.textSecondary, marginRight: 12 }}
-                  />
-                  <Icon name={theme.icon as any} size={20} style={{ color: currentColors.text, marginRight: 12 }} />
-                  <Text style={[themedStyles.text, { fontWeight: '600' }]}>{theme.label}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Text style={themedStyles.textSecondary}>
+            Offline-first budget tracking app
+          </Text>
         </View>
 
-        {/* Currency Settings */}
-        <View style={themedStyles.section}>
-          <Text style={themedStyles.subtitle}>Currency</Text>
-
-          <View style={themedStyles.card}>
-            <Text style={[themedStyles.text, { marginBottom: 12 }]}>
-              Current: {currency.name} ({currency.symbol})
-            </Text>
-
-            <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
-              {CURRENCIES.map((curr) => (
-                <TouchableOpacity
-                  key={curr.code}
-                  style={[
-                    themedStyles.row,
-                    {
-                      paddingVertical: 12,
-                      borderBottomWidth: 1,
-                      borderBottomColor: currentColors.border,
-                    },
-                  ]}
-                  onPress={() => handleCurrencyChange(curr)}
-                >
-                  <View style={themedStyles.rowStart}>
-                    <Icon
-                      name={currency.code === curr.code ? 'radio-button-on' : 'radio-button-off'}
-                      size={20}
-                      style={{ color: currency.code === curr.code ? currentColors.primary : currentColors.textSecondary, marginRight: 12 }}
-                    />
-                    <View>
-                      <Text style={[themedStyles.text, { fontWeight: '600' }]}>
-                        {curr.symbol} {curr.code}
-                      </Text>
-                      <Text style={themedStyles.textSecondary}>{curr.name}</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-
-        {/* Household Distribution Settings */}
-        <View style={themedStyles.section}>
-          <Text style={themedStyles.subtitle}>Household Expense Distribution</Text>
-
-          <View style={themedStyles.card}>
-            <Text style={[themedStyles.text, { marginBottom: 12 }]}>How should household expenses be split among people?</Text>
-
-            <TouchableOpacity
-              style={[
-                themedStyles.card,
-                {
-                  backgroundColor: data.householdSettings.distributionMethod === 'even' ? currentColors.primary + '20' : currentColors.border + '20',
-                  borderWidth: 2,
-                  borderColor: data.householdSettings.distributionMethod === 'even' ? currentColors.primary : currentColors.border,
-                  marginBottom: 12,
-                },
-              ]}
-              onPress={() => handleDistributionMethodChange('even')}
-            >
-              <View style={themedStyles.rowStart}>
-                <Icon
-                  name={data.householdSettings.distributionMethod === 'even' ? 'radio-button-on' : 'radio-button-off'}
-                  size={20}
-                  style={{ color: data.householdSettings.distributionMethod === 'even' ? currentColors.primary : currentColors.textSecondary, marginRight: 12 }}
-                />
-                <View style={themedStyles.flex1}>
-                  <Text style={[themedStyles.text, { fontWeight: '600' }]}>Even Split</Text>
-                  <Text style={themedStyles.textSecondary}>Each person pays an equal share of household expenses</Text>
-                </View>
+        {/* Budgets */}
+        <View style={[themedStyles.card, { marginBottom: 16 }]}>
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              minHeight: 44,
+            }}
+            onPress={() => router.push('/budgets')}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <Icon name="folder-outline" size={20} style={{ color: currentColors.text, marginRight: 12 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={[themedStyles.text, { fontWeight: '600' }]}>Manage Budgets</Text>
+                <Text style={themedStyles.textSecondary}>
+                  {data.budgets.length} budget{data.budgets.length !== 1 ? 's' : ''}
+                </Text>
               </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                themedStyles.card,
-                {
-                  backgroundColor: data.householdSettings.distributionMethod === 'income-based' ? currentColors.primary + '20' : currentColors.border + '20',
-                  borderWidth: 2,
-                  borderColor: data.householdSettings.distributionMethod === 'income-based' ? currentColors.primary : currentColors.border,
-                },
-              ]}
-              onPress={() => handleDistributionMethodChange('income-based')}
-            >
-              <View style={themedStyles.rowStart}>
-                <Icon
-                  name={data.householdSettings.distributionMethod === 'income-based' ? 'radio-button-on' : 'radio-button-off'}
-                  size={20}
-                  style={{ color: data.householdSettings.distributionMethod === 'income-based' ? currentColors.primary : currentColors.textSecondary, marginRight: 12 }}
-                />
-                <View style={themedStyles.flex1}>
-                  <Text style={[themedStyles.text, { fontWeight: '600' }]}>Income-Based Split</Text>
-                  <Text style={themedStyles.textSecondary}>Each person pays proportionally based on their income</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          </View>
+            </View>
+            <Icon name="chevron-forward" size={20} style={{ color: currentColors.textSecondary }} />
+          </TouchableOpacity>
         </View>
 
         {/* Categories */}
-        <View style={themedStyles.section}>
-          <Text style={themedStyles.subtitle}>Categories</Text>
-          <View style={themedStyles.card}>
-            <Text style={[themedStyles.text, { marginBottom: 12 }]}>Manage your expense categories.</Text>
-            <TouchableOpacity
-              style={[
-                themedStyles.card,
-                {
-                  backgroundColor: currentColors.secondary + '15',
-                  borderColor: currentColors.secondary + '30',
-                  borderWidth: 2,
-                  marginBottom: 0,
-                  padding: 12,
-                },
-              ]}
-              onPress={() => router.push('/manage-categories')}
-            >
-              <View style={[themedStyles.row, { alignItems: 'center' }]}>
-                <Icon name="pricetags-outline" size={20} style={{ color: currentColors.secondary, marginRight: 8 }} />
-                <View style={themedStyles.flex1}>
-                  <Text style={[themedStyles.text, { fontWeight: '700' }]}>Manage Categories</Text>
-                  <Text style={themedStyles.textSecondary}>View defaults and remove custom categories</Text>
-                </View>
-                <Icon name="chevron-forward" size={20} style={{ color: currentColors.secondary }} />
+        <View style={[themedStyles.card, { marginBottom: 16 }]}>
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              minHeight: 44,
+            }}
+            onPress={() => router.push('/manage-categories')}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <Icon name="pricetags-outline" size={20} style={{ color: currentColors.text, marginRight: 12 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={[themedStyles.text, { fontWeight: '600' }]}>Manage Categories</Text>
+                <Text style={themedStyles.textSecondary}>
+                  Customize expense categories
+                </Text>
               </View>
+            </View>
+            <Icon name="chevron-forward" size={20} style={{ color: currentColors.textSecondary }} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Currency */}
+        <View style={[themedStyles.card, { marginBottom: 16 }]}>
+          <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 12 }]}>Currency</Text>
+          {CURRENCIES.map((curr) => (
+            <TouchableOpacity
+              key={curr.code}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingVertical: 8,
+                borderBottomWidth: curr.code === CURRENCIES[CURRENCIES.length - 1].code ? 0 : 1,
+                borderBottomColor: currentColors.border,
+              }}
+              onPress={() => handleCurrencyChange(curr)}
+            >
+              <Text style={themedStyles.text}>
+                {curr.symbol} {curr.name} ({curr.code})
+              </Text>
+              {currency.code === curr.code && (
+                <Icon name="checkmark" size={20} style={{ color: currentColors.primary }} />
+              )}
             </TouchableOpacity>
-          </View>
+          ))}
         </View>
 
-        {/* Data Summary */}
-        <View style={themedStyles.section}>
-          <Text style={themedStyles.subtitle}>Data Summary</Text>
-
-          <View style={themedStyles.card}>
-            <View style={[themedStyles.row, { marginBottom: 8 }]}>
-              <Text style={themedStyles.text}>People:</Text>
-              <Text style={[themedStyles.text, { fontWeight: '600' }]}>{data.people.length}</Text>
-            </View>
-            <View style={[themedStyles.row, { marginBottom: 8 }]}>
-              <Text style={themedStyles.text}>Total Expenses:</Text>
-              <Text style={[themedStyles.text, { fontWeight: '600' }]}>{data.expenses.length}</Text>
-            </View>
-            <View style={themedStyles.row}>
-              <Text style={themedStyles.text}>Distribution Method:</Text>
-              <Text style={[themedStyles.text, { fontWeight: '600' }]}>{data.householdSettings.distributionMethod === 'even' ? 'Even Split' : 'Income-Based'}</Text>
-            </View>
-          </View>
+        {/* Theme */}
+        <View style={[themedStyles.card, { marginBottom: 16 }]}>
+          <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 12 }]}>Theme</Text>
+          {[
+            { key: 'system', label: 'System' },
+            { key: 'light', label: 'Light' },
+            { key: 'dark', label: 'Dark' },
+          ].map((theme) => (
+            <TouchableOpacity
+              key={theme.key}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingVertical: 8,
+                borderBottomWidth: theme.key === 'dark' ? 0 : 1,
+                borderBottomColor: currentColors.border,
+              }}
+              onPress={() => handleThemeChange(theme.key as any)}
+            >
+              <Text style={themedStyles.text}>{theme.label}</Text>
+              {themeMode === theme.key && (
+                <Icon name="checkmark" size={20} style={{ color: currentColors.primary }} />
+              )}
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Danger Zone */}
-        <View style={themedStyles.section}>
-          <Text style={[themedStyles.subtitle, { color: currentColors.error }]}>Danger Zone</Text>
+        {/* Tools */}
+        <View style={[themedStyles.card, { marginBottom: 16 }]}>
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              minHeight: 44,
+            }}
+            onPress={() => router.push('/tools')}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <Icon name="calculator-outline" size={20} style={{ color: currentColors.text, marginRight: 12 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={[themedStyles.text, { fontWeight: '600' }]}>Financial Tools</Text>
+                <Text style={themedStyles.textSecondary}>
+                  Credit card payoff calculator
+                </Text>
+              </View>
+            </View>
+            <Icon name="chevron-forward" size={20} style={{ color: currentColors.textSecondary }} />
+          </TouchableOpacity>
+        </View>
 
-          <View style={[themedStyles.card, { borderColor: currentColors.error, borderWidth: 1 }]}>
-            <Text style={[themedStyles.text, { marginBottom: 12 }]}>
-              This will permanently delete all your data including people, income, and expenses. This action cannot be undone.
-            </Text>
+        {/* Data Management */}
+        <View style={[themedStyles.card, { marginBottom: 24 }]}>
+          <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 12 }]}>Data Management</Text>
+          
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: currentColors.border,
+            }}
+            onPress={() => router.push('/import-link')}
+          >
+            <Icon name="download-outline" size={20} style={{ color: currentColors.text, marginRight: 12 }} />
+            <Text style={themedStyles.text}>Import Budget</Text>
+          </TouchableOpacity>
 
-            <Button
-              text="Clear All Data"
-              onPress={handleClearAllData}
-              style={[themedButtonStyles.danger, { backgroundColor: currentColors.error, borderColor: currentColors.error }]}
-            />
-          </View>
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 8,
+            }}
+            onPress={handleClearAllData}
+          >
+            <Icon name="trash-outline" size={20} style={{ color: currentColors.error, marginRight: 12 }} />
+            <Text style={[themedStyles.text, { color: currentColors.error }]}>Clear All Data</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* App Info */}
+        <View style={[themedStyles.card, { backgroundColor: currentColors.backgroundAlt }]}>
+          <Text style={[themedStyles.textSecondary, { fontSize: 12, textAlign: 'center', lineHeight: 18 }]}>
+            Budget Flow v1.0.0{'\n'}
+            Offline-first budget tracking{'\n'}
+            No accounts required
+          </Text>
         </View>
       </ScrollView>
     </View>

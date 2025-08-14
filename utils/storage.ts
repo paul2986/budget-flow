@@ -1,6 +1,6 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppDataV2, Budget, Expense, ExpenseCategory, DEFAULT_CATEGORIES } from '../types/budget';
+import { AppDataV2, Budget, Expense, ExpenseCategory, DEFAULT_CATEGORIES, BudgetLockSettings } from '../types/budget';
 
 // Storage keys for versions
 const STORAGE_KEYS = {
@@ -50,6 +50,12 @@ const sanitizeEndDate = (frequency: string, endDate: any): string | undefined =>
   if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return undefined;
   return v;
 };
+
+// Default lock settings
+const getDefaultLockSettings = (): BudgetLockSettings => ({
+  locked: false,
+  autoLockMinutes: 0,
+});
 
 // v2 app data saving protection
 let appSaveInProgress = false;
@@ -121,6 +127,7 @@ const createEmptyBudget = (name: string): Budget => ({
   expenses: [],
   householdSettings: { distributionMethod: 'even' },
   createdAt: Date.now(),
+  lock: getDefaultLockSettings(),
 });
 
 // Validate/sanitize legacy single-budget data (v1) contents
@@ -208,6 +215,13 @@ const validateAppData = (data: any): AppDataV2 => {
       endDate: sanitizeEndDate((e as any).frequency, (e as any).endDate),
     }));
 
+    // Ensure lock settings exist with defaults
+    const lockSettings: BudgetLockSettings = {
+      locked: b?.lock?.locked === true,
+      autoLockMinutes: typeof b?.lock?.autoLockMinutes === 'number' ? b.lock.autoLockMinutes : 0,
+      lastUnlockAt: typeof b?.lock?.lastUnlockAt === 'string' ? b.lock.lastUnlockAt : undefined,
+    };
+
     return {
       id: typeof b?.id === 'string' ? b.id : `budget_${Math.random().toString(36).slice(2)}`,
       name: typeof b?.name === 'string' ? b.name : 'My Budget',
@@ -215,6 +229,7 @@ const validateAppData = (data: any): AppDataV2 => {
       expenses: sanitizedExpenses,
       householdSettings: legacyShape.householdSettings,
       createdAt: typeof b?.createdAt === 'number' ? b.createdAt : Date.now(),
+      lock: lockSettings,
     };
   };
 
@@ -256,6 +271,7 @@ export const loadAppData = async (): Promise<AppDataV2> => {
         expenses: legacy.expenses,
         householdSettings: legacy.householdSettings,
         createdAt: Date.now(),
+        lock: getDefaultLockSettings(),
       };
       const appData: AppDataV2 = { version: 2, budgets: [migratedBudget], activeBudgetId: migratedBudget.id };
       await saveAppData(appData);
@@ -369,16 +385,49 @@ export const updateBudget = async (budget: Budget): Promise<{ success: boolean; 
       categoryTag: sanitizeCategoryTag((e as any).categoryTag || 'Misc'),
       endDate: sanitizeEndDate((e as any).frequency, (e as any).endDate),
     })),
+    lock: budget.lock || getDefaultLockSettings(),
   } as Budget;
   budgets[idx] = { ...sanitized };
   return await saveAppData({ ...appData, budgets });
+};
+
+// Budget lock helper functions
+export const getBudgetLock = (budgetId: string, appData: AppDataV2): BudgetLockSettings | undefined => {
+  const budget = appData.budgets.find((b) => b.id === budgetId);
+  return budget?.lock;
+};
+
+export const setBudgetLock = async (budgetId: string, patch: Partial<BudgetLockSettings>): Promise<{ success: boolean; error?: Error }> => {
+  const appData = await loadAppData();
+  const budgetIndex = appData.budgets.findIndex((b) => b.id === budgetId);
+  if (budgetIndex === -1) return { success: false, error: new Error('Budget not found') };
+  
+  const budget = appData.budgets[budgetIndex];
+  const currentLock = budget.lock || getDefaultLockSettings();
+  const updatedLock = { ...currentLock, ...patch };
+  
+  const updatedBudget = { ...budget, lock: updatedLock };
+  const budgets = [...appData.budgets];
+  budgets[budgetIndex] = updatedBudget;
+  
+  return await saveAppData({ ...appData, budgets });
+};
+
+export const markBudgetUnlocked = async (budgetId: string): Promise<{ success: boolean; error?: Error }> => {
+  return await setBudgetLock(budgetId, { lastUnlockAt: new Date().toISOString() });
 };
 
 // Clear contents of ACTIVE budget (utility)
 export const clearActiveBudgetData = async (): Promise<void> => {
   const appData = await loadAppData();
   const active = getActiveBudget(appData);
-  const cleared: Budget = { ...active, people: [], expenses: [], householdSettings: { distributionMethod: 'even' } };
+  const cleared: Budget = { 
+    ...active, 
+    people: [], 
+    expenses: [], 
+    householdSettings: { distributionMethod: 'even' },
+    lock: active.lock || getDefaultLockSettings(),
+  };
   const budgets = appData.budgets.map((b) => (b.id === active.id ? cleared : b));
   await performAppSave({ ...appData, budgets });
 };
@@ -452,6 +501,7 @@ export const restoreData = async (backup: string): Promise<{ success: boolean; e
       expenses: legacy.expenses,
       householdSettings: legacy.householdSettings,
       createdAt: Date.now(),
+      lock: getDefaultLockSettings(),
     };
     const appData: AppDataV2 = { version: 2, budgets: [migratedBudget], activeBudgetId: migratedBudget.id };
     return await saveAppData(appData);
