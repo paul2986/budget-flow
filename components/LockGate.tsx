@@ -16,24 +16,6 @@ export default function LockGate({ children }: LockGateProps) {
   const [appState, setAppState] = useState(AppState.currentState);
   const [hasCheckedInitialLock, setHasCheckedInitialLock] = useState(false);
 
-  // Handle app state changes
-  useEffect(() => {
-    const handleAppStateChange = (nextAppState: string) => {
-      console.log('LockGate: App state changed from', appState, 'to', nextAppState);
-      
-      // When app becomes active, check if we should lock
-      if (appState.match(/inactive|background/) && nextAppState === 'active') {
-        console.log('LockGate: App became active, checking lock status');
-        checkLockStatus();
-      }
-      
-      setAppState(nextAppState);
-    };
-
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-    return () => subscription?.remove();
-  }, [appState]);
-
   const checkLockStatus = useCallback(() => {
     // Don't check lock status if still loading or not authenticated
     if (authLoading || biometricLoading || !session || !user) {
@@ -62,6 +44,24 @@ export default function LockGate({ children }: LockGateProps) {
       router.replace('/auth/lock');
     }
   }, [authLoading, biometricLoading, session, user, pathname, shouldLock]);
+
+  // Handle app state changes
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      console.log('LockGate: App state changed from', appState, 'to', nextAppState);
+      
+      // When app becomes active, check if we should lock
+      if (appState.match(/inactive|background/) && nextAppState === 'active') {
+        console.log('LockGate: App became active, checking lock status');
+        checkLockStatus();
+      }
+      
+      setAppState(nextAppState);
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
+  }, [appState, checkLockStatus]);
 
   // Check lock status on mount and when dependencies change (but only once initially)
   useEffect(() => {

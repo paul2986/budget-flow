@@ -22,80 +22,6 @@ export default function LockScreen() {
   const [faceIdConfigurationError, setFaceIdConfigurationError] = useState(false);
   const authTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // Clear timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (authTimeoutRef.current) {
-        clearTimeout(authTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Auto-trigger authentication when screen loads, but only once
-  useEffect(() => {
-    const triggerInitialAuth = async () => {
-      // Only trigger once per screen load
-      if (hasTriggeredInitialAuth) {
-        console.log('LockScreen: Initial auth already triggered, skipping');
-        return;
-      }
-
-      console.log('LockScreen: Checking biometric configuration...');
-      console.log('LockScreen: Capabilities:', {
-        isAvailable: capabilities.isAvailable,
-        isEnrolled: capabilities.isEnrolled,
-        supportedTypes: capabilities.supportedTypes,
-        biometricType: capabilities.biometricType
-      });
-
-      // Don't auto-trigger if biometrics aren't properly configured
-      if (!isBiometricConfigured()) {
-        console.log('LockScreen: Biometrics not configured, showing manual unlock');
-        setShowManualUnlock(true);
-        setHasTriggeredInitialAuth(true);
-        return;
-      }
-
-      console.log('LockScreen: Biometrics configured, triggering initial authentication');
-      setHasTriggeredInitialAuth(true);
-      
-      // Longer delay to ensure Face ID is ready
-      authTimeoutRef.current = setTimeout(() => {
-        handleAuthenticate();
-      }, 1500); // Reduced delay for better UX
-    };
-
-    triggerInitialAuth();
-  }, [hasTriggeredInitialAuth, isBiometricConfigured, capabilities]);
-
-  // Handle app state changes - only trigger auth when coming back from background
-  useEffect(() => {
-    const handleAppStateChange = (nextAppState: string) => {
-      console.log('LockScreen: App state changed to:', nextAppState);
-      
-      // When app becomes active from background, trigger auth if configured
-      if (nextAppState === 'active' && hasTriggeredInitialAuth && isBiometricConfigured()) {
-        const now = Date.now();
-        
-        // Only trigger if enough time has passed since last attempt
-        if (now - lastAuthAttempt > 3000 && !isAuthenticating && authAttempts < 3) {
-          console.log('LockScreen: App became active, triggering authentication');
-          authTimeoutRef.current = setTimeout(() => {
-            handleAuthenticate();
-          }, 500); // Shorter delay for app state changes
-        }
-      }
-    };
-
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-    return () => {
-      subscription?.remove();
-      if (authTimeoutRef.current) {
-        clearTimeout(authTimeoutRef.current);
-      }
-    };
-  }, [hasTriggeredInitialAuth, lastAuthAttempt, isAuthenticating, authAttempts, isBiometricConfigured]);
-
   const handleAuthenticate = useCallback(async () => {
     if (isAuthenticating) {
       console.log('LockScreen: Already authenticating, skipping');
@@ -191,6 +117,80 @@ export default function LockScreen() {
       console.log('LockScreen: Authentication attempt completed');
     }
   }, [authenticate, isAuthenticating, lastAuthAttempt, authAttempts, capabilities, isBiometricConfigured]);
+
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Auto-trigger authentication when screen loads, but only once
+  useEffect(() => {
+    const triggerInitialAuth = async () => {
+      // Only trigger once per screen load
+      if (hasTriggeredInitialAuth) {
+        console.log('LockScreen: Initial auth already triggered, skipping');
+        return;
+      }
+
+      console.log('LockScreen: Checking biometric configuration...');
+      console.log('LockScreen: Capabilities:', {
+        isAvailable: capabilities.isAvailable,
+        isEnrolled: capabilities.isEnrolled,
+        supportedTypes: capabilities.supportedTypes,
+        biometricType: capabilities.biometricType
+      });
+
+      // Don't auto-trigger if biometrics aren't properly configured
+      if (!isBiometricConfigured()) {
+        console.log('LockScreen: Biometrics not configured, showing manual unlock');
+        setShowManualUnlock(true);
+        setHasTriggeredInitialAuth(true);
+        return;
+      }
+
+      console.log('LockScreen: Biometrics configured, triggering initial authentication');
+      setHasTriggeredInitialAuth(true);
+      
+      // Longer delay to ensure Face ID is ready
+      authTimeoutRef.current = setTimeout(() => {
+        handleAuthenticate();
+      }, 1500); // Reduced delay for better UX
+    };
+
+    triggerInitialAuth();
+  }, [hasTriggeredInitialAuth, isBiometricConfigured, capabilities, handleAuthenticate]);
+
+  // Handle app state changes - only trigger auth when coming back from background
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      console.log('LockScreen: App state changed to:', nextAppState);
+      
+      // When app becomes active from background, trigger auth if configured
+      if (nextAppState === 'active' && hasTriggeredInitialAuth && isBiometricConfigured()) {
+        const now = Date.now();
+        
+        // Only trigger if enough time has passed since last attempt
+        if (now - lastAuthAttempt > 3000 && !isAuthenticating && authAttempts < 3) {
+          console.log('LockScreen: App became active, triggering authentication');
+          authTimeoutRef.current = setTimeout(() => {
+            handleAuthenticate();
+          }, 500); // Shorter delay for app state changes
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => {
+      subscription?.remove();
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current);
+      }
+    };
+  }, [hasTriggeredInitialAuth, lastAuthAttempt, isAuthenticating, authAttempts, isBiometricConfigured, handleAuthenticate]);
 
   const handleManualUnlock = useCallback(async () => {
     console.log('LockScreen: Manual unlock - marking as unlocked');

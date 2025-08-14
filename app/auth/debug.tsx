@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -18,11 +18,7 @@ export default function AuthDebugScreen() {
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    loadDebugInfo();
-  }, []);
-
-  const loadDebugInfo = async () => {
+  const loadDebugInfo = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -66,7 +62,11 @@ export default function AuthDebugScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session, user, capabilities, settings]);
+
+  useEffect(() => {
+    loadDebugInfo();
+  }, [loadDebugInfo]);
 
   const runBiometricTest = async () => {
     try {
