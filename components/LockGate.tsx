@@ -11,7 +11,7 @@ interface LockGateProps {
 
 export default function LockGate({ children }: LockGateProps) {
   const { session, user, loading: authLoading } = useAuth();
-  const { shouldLock, loading: biometricLoading } = useBiometricLock();
+  const { shouldLock, loading: biometricLoading, isBiometricConfigured } = useBiometricLock();
   const pathname = usePathname();
   const [appState, setAppState] = useState(AppState.currentState);
 
@@ -36,21 +36,29 @@ export default function LockGate({ children }: LockGateProps) {
   const checkLockStatus = useCallback(() => {
     // Don't check lock status if still loading or not authenticated
     if (authLoading || biometricLoading || !session || !user) {
+      console.log('LockGate: Skipping lock check - loading or not authenticated');
       return;
     }
 
     // Don't lock if user hasn't verified email
     if (!user.email_confirmed_at) {
+      console.log('LockGate: Skipping lock check - email not verified');
       return;
     }
 
     // Don't lock if already on auth routes
     if (pathname.startsWith('/auth/')) {
+      console.log('LockGate: Skipping lock check - on auth route');
       return;
     }
 
     // Check if we should lock
-    if (shouldLock()) {
+    const shouldLockResult = shouldLock();
+    console.log('LockGate: Should lock result:', shouldLockResult);
+    
+    if (shouldLockResult) {
+      // Only navigate to lock screen if biometrics are properly configured
+      // If not configured, the lock screen will handle showing appropriate options
       console.log('LockGate: Should lock, navigating to lock screen');
       router.replace('/auth/lock');
     }
@@ -74,8 +82,15 @@ export default function LockGate({ children }: LockGateProps) {
       
       // Only redirect to home if authenticated and verified
       if (session && user && user.email_confirmed_at && pathname !== '/auth/lock') {
-        console.log('LockGate: Authenticated and verified, redirecting to home');
-        router.replace('/');
+        console.log('LockGate: Authenticated and verified, checking if should redirect to home');
+        
+        // If biometric lock is enabled but not configured, don't auto-redirect to home
+        // Let the user handle the biometric configuration issue first
+        const shouldLockResult = shouldLock();
+        if (!shouldLockResult) {
+          console.log('LockGate: No lock needed, redirecting to home');
+          router.replace('/');
+        }
       }
       return;
     }
@@ -91,7 +106,7 @@ export default function LockGate({ children }: LockGateProps) {
       router.replace('/auth/verify');
       return;
     }
-  }, [session, user, authLoading, pathname]);
+  }, [session, user, authLoading, pathname, shouldLock]);
 
   return <>{children}</>;
 }

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Alert, AppState } from 'react-native';
 import { router } from 'expo-router';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -13,36 +13,87 @@ export default function LockScreen() {
   const { currentColors, isDarkMode } = useTheme();
   const { themedStyles } = useThemedStyles();
   const { signOut } = useAuth();
-  const { capabilities, authenticate, markUnlocked } = useBiometricLock();
+  const { capabilities, authenticate, markUnlocked, isBiometricConfigured } = useBiometricLock();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authAttempts, setAuthAttempts] = useState(0);
+  const [lastAuthAttempt, setLastAuthAttempt] = useState<number>(0);
+  const [showManualUnlock, setShowManualUnlock] = useState(false);
+  const authTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // Auto-trigger authentication when screen loads
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Auto-trigger authentication when screen loads, but with safeguards
   useEffect(() => {
     const triggerAuth = async () => {
-      if (!isAuthenticating && authAttempts < 3) {
+      const now = Date.now();
+      
+      // Prevent rapid-fire authentication attempts
+      if (now - lastAuthAttempt < 2000) {
+        console.log('LockScreen: Skipping auth - too soon since last attempt');
+        return;
+      }
+
+      // Don't auto-trigger if we've had too many failures
+      if (authAttempts >= 3) {
+        console.log('LockScreen: Skipping auth - too many failed attempts');
+        setShowManualUnlock(true);
+        return;
+      }
+
+      // Don't auto-trigger if biometrics aren't properly configured
+      if (!isBiometricConfigured()) {
+        console.log('LockScreen: Skipping auth - biometrics not configured');
+        setShowManualUnlock(true);
+        return;
+      }
+
+      if (!isAuthenticating) {
         await handleAuthenticate();
       }
     };
 
-    // Trigger immediately
-    triggerAuth();
+    // Trigger immediately with a small delay
+    authTimeoutRef.current = setTimeout(triggerAuth, 500);
 
-    // Also trigger when app becomes active
+    // Also trigger when app becomes active, but with the same safeguards
     const handleAppStateChange = (nextAppState: string) => {
-      if (nextAppState === 'active' && !isAuthenticating && authAttempts < 3) {
-        triggerAuth();
+      if (nextAppState === 'active') {
+        authTimeoutRef.current = setTimeout(triggerAuth, 500);
       }
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
-    return () => subscription?.remove();
-  }, [authAttempts, isAuthenticating]);
+    return () => {
+      subscription?.remove();
+      if (authTimeoutRef.current) {
+        clearTimeout(authTimeoutRef.current);
+      }
+    };
+  }, [authAttempts, isAuthenticating, lastAuthAttempt, isBiometricConfigured]);
 
   const handleAuthenticate = useCallback(async () => {
-    if (isAuthenticating) return;
+    if (isAuthenticating) {
+      console.log('LockScreen: Already authenticating, skipping');
+      return;
+    }
+
+    const now = Date.now();
+    
+    // Prevent rapid-fire attempts
+    if (now - lastAuthAttempt < 2000) {
+      console.log('LockScreen: Skipping auth - too soon since last attempt');
+      return;
+    }
 
     setIsAuthenticating(true);
+    setLastAuthAttempt(now);
     console.log('LockScreen: Starting authentication');
 
     try {
@@ -50,25 +101,50 @@ export default function LockScreen() {
       
       if (result.success) {
         console.log('LockScreen: Authentication successful, navigating to home');
+        // Reset attempts on success
+        setAuthAttempts(0);
+        setShowManualUnlock(false);
         // Navigate back to the app
         router.replace('/');
       } else {
         console.log('LockScreen: Authentication failed:', result.message);
         setAuthAttempts(prev => prev + 1);
         
-        // Show error for user-cancelled attempts
-        if (result.message !== 'User canceled authentication') {
+        // Show manual unlock option after 3 failed attempts
+        if (authAttempts >= 2) {
+          setShowManualUnlock(true);
+        }
+        
+        // Only show error alerts for certain types of failures
+        if (result.message && 
+            !result.message.includes('cancelled') && 
+            !result.message.includes('system_cancel') &&
+            !result.message.includes('user_cancel')) {
           Alert.alert('Authentication Failed', result.message);
         }
       }
     } catch (error) {
       console.error('LockScreen: Authentication error:', error);
       setAuthAttempts(prev => prev + 1);
+      setShowManualUnlock(true);
       Alert.alert('Error', 'An unexpected error occurred during authentication');
     } finally {
       setIsAuthenticating(false);
     }
-  }, [authenticate, isAuthenticating]);
+  }, [authenticate, isAuthenticating, lastAuthAttempt, authAttempts]);
+
+  const handleManualUnlock = useCallback(async () => {
+    console.log('LockScreen: Manual unlock - marking as unlocked');
+    try {
+      await markUnlocked();
+      setAuthAttempts(0);
+      setShowManualUnlock(false);
+      router.replace('/');
+    } catch (error) {
+      console.error('LockScreen: Manual unlock error:', error);
+      Alert.alert('Error', 'Failed to unlock manually');
+    }
+  }, [markUnlocked]);
 
   const handleSignOut = useCallback(() => {
     Alert.alert(
@@ -90,9 +166,15 @@ export default function LockScreen() {
   }, [signOut]);
 
   const handleRetry = useCallback(() => {
+    console.log('LockScreen: Retry button pressed');
     setAuthAttempts(0);
+    setShowManualUnlock(false);
+    setLastAuthAttempt(0);
     handleAuthenticate();
   }, [handleAuthenticate]);
+
+  // Check if biometrics are properly configured
+  const biometricsConfigured = isBiometricConfigured();
 
   return (
     <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
@@ -155,12 +237,22 @@ export default function LockScreen() {
           </View>
 
           <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>
-            {isAuthenticating ? 'Authenticating...' : `Unlock with ${capabilities.biometricType}`}
+            {!biometricsConfigured
+              ? 'Biometric Authentication Unavailable'
+              : isAuthenticating
+              ? 'Authenticating...'
+              : showManualUnlock
+              ? 'Authentication Required'
+              : `Unlock with ${capabilities.biometricType}`}
           </Text>
 
           <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
-            {isAuthenticating
+            {!biometricsConfigured
+              ? 'Please set up biometric authentication in your device settings'
+              : isAuthenticating
               ? 'Please complete the authentication'
+              : showManualUnlock
+              ? 'Use the buttons below to unlock or sign out'
               : authAttempts > 0
               ? `Authentication failed. Tap to try again.`
               : 'Tap the button below to authenticate'}
@@ -169,8 +261,8 @@ export default function LockScreen() {
 
         {/* Action Buttons */}
         <View style={{ width: '100%', maxWidth: 320 }}>
-          {/* Authenticate Button */}
-          {!isAuthenticating && (
+          {/* Authenticate Button - only show if biometrics are configured */}
+          {biometricsConfigured && !isAuthenticating && (
             <TouchableOpacity
               style={[
                 themedStyles.card,
@@ -204,6 +296,32 @@ export default function LockScreen() {
             </TouchableOpacity>
           )}
 
+          {/* Manual Unlock Button - show if biometrics failed or not configured */}
+          {(showManualUnlock || !biometricsConfigured) && (
+            <TouchableOpacity
+              style={[
+                themedStyles.card,
+                {
+                  backgroundColor: currentColors.secondary,
+                  borderColor: currentColors.secondary,
+                  borderWidth: 2,
+                  marginBottom: 16,
+                  minHeight: 50,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                },
+              ]}
+              onPress={handleManualUnlock}
+              disabled={isAuthenticating}
+            >
+              <Icon name="key-outline" size={20} style={{ color: '#fff', marginRight: 12 }} />
+              <Text style={[themedStyles.text, { color: '#fff', fontSize: 16, fontWeight: '600' }]}>
+                Unlock Manually
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {/* Sign Out Button */}
           <TouchableOpacity
             style={[
@@ -229,10 +347,12 @@ export default function LockScreen() {
         </View>
 
         {/* Help Text */}
-        {authAttempts >= 3 && (
+        {(authAttempts >= 3 || !biometricsConfigured) && (
           <View style={{ marginTop: 24, alignItems: 'center' }}>
             <Text style={[themedStyles.textSecondary, { textAlign: 'center', fontSize: 14 }]}>
-              Having trouble? You can sign out and sign back in, or check your device's biometric settings.
+              {!biometricsConfigured
+                ? 'To use biometric authentication, please enable Face ID or Touch ID in your device settings and restart the app.'
+                : 'Having trouble? You can unlock manually, sign out and sign back in, or check your device\'s biometric settings.'}
             </Text>
           </View>
         )}

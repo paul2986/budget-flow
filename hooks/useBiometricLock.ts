@@ -249,6 +249,12 @@ export function useBiometricLock() {
       return false;
     }
 
+    // If biometrics are not available or enrolled, don't lock
+    if (!capabilities.isAvailable || !capabilities.isEnrolled) {
+      console.log('useBiometricLock: Should not lock - biometrics not available or enrolled');
+      return false;
+    }
+
     // If timeout is 0 (immediately), always lock
     if (settings.timeoutMinutes === 0) {
       console.log('useBiometricLock: Should lock - immediate timeout');
@@ -276,7 +282,7 @@ export function useBiometricLock() {
     });
     
     return shouldLockResult;
-  }, [settings]);
+  }, [settings, capabilities]);
 
   // Mark as unlocked
   const markUnlocked = useCallback(async (): Promise<{ success: boolean; message: string }> => {
@@ -295,13 +301,24 @@ export function useBiometricLock() {
     }
   }, []);
 
+  // Check if biometric authentication is properly configured
+  const isBiometricConfigured = useCallback((): boolean => {
+    return capabilities.isAvailable && capabilities.isEnrolled;
+  }, [capabilities]);
+
   // Authenticate with biometrics
   const authenticate = useCallback(async (): Promise<{ success: boolean; message: string }> => {
     try {
       console.log('useBiometricLock: Starting biometric authentication');
       
-      if (!capabilities.isAvailable || !capabilities.isEnrolled) {
-        return { success: false, message: 'Biometric authentication is not available' };
+      if (!capabilities.isAvailable) {
+        console.log('useBiometricLock: Biometric hardware not available');
+        return { success: false, message: 'Biometric authentication is not available on this device' };
+      }
+
+      if (!capabilities.isEnrolled) {
+        console.log('useBiometricLock: No biometrics enrolled');
+        return { success: false, message: 'No biometric data is enrolled on this device' };
       }
 
       const result = await LocalAuthentication.authenticateAsync({
@@ -317,11 +334,28 @@ export function useBiometricLock() {
         await markUnlocked();
         return { success: true, message: 'Authentication successful' };
       } else {
-        return { success: false, message: result.error || 'Authentication failed' };
+        // Handle specific error cases
+        if (result.error === 'user_cancel') {
+          return { success: false, message: 'Authentication was cancelled' };
+        } else if (result.error === 'system_cancel') {
+          return { success: false, message: 'Authentication was cancelled by the system' };
+        } else if (result.error === 'user_fallback') {
+          return { success: false, message: 'User chose to use device passcode' };
+        } else if (result.error === 'biometric_unknown_error') {
+          return { success: false, message: 'An unknown biometric error occurred' };
+        } else if (result.error === 'invalid_context') {
+          return { success: false, message: 'Biometric authentication context is invalid' };
+        } else if (result.error === 'not_enrolled') {
+          return { success: false, message: 'No biometric data is enrolled' };
+        } else if (result.error === 'not_available') {
+          return { success: false, message: 'Biometric authentication is not available' };
+        } else {
+          return { success: false, message: result.error || 'Authentication failed' };
+        }
       }
     } catch (error) {
       console.error('useBiometricLock: Authentication error:', error);
-      return { success: false, message: 'Authentication failed' };
+      return { success: false, message: 'Authentication failed due to an unexpected error' };
     }
   }, [capabilities, markUnlocked]);
 
@@ -380,5 +414,6 @@ export function useBiometricLock() {
     markPromptShown,
     checkCapabilities,
     loadSettings,
+    isBiometricConfigured,
   };
 }
