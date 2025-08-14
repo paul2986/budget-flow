@@ -34,7 +34,7 @@ export function useBudgetLock() {
       // Can use device passcode if hardware is available (even without biometrics enrolled)
       const canUseDevicePasscode = hasHardware && hasPasscode;
       
-      const caps = {
+      const caps: BudgetLockCapabilities = {
         hasHardware,
         hasPasscode,
         canUseDevicePasscode,
@@ -46,7 +46,7 @@ export function useBudgetLock() {
       return caps;
     } catch (error) {
       console.error('useBudgetLock: Error checking capabilities:', error);
-      const fallbackCaps = {
+      const fallbackCaps: BudgetLockCapabilities = {
         hasHardware: false,
         hasPasscode: false,
         canUseDevicePasscode: false,

@@ -1,8 +1,7 @@
 
-// This file has been removed as part of the offline-first refactor
-// Biometric authentication is no longer used in this app
 import React from 'react';
 
+// This component is deprecated but kept for compatibility
 export default function BiometricEnableModal() {
   return null;
 }

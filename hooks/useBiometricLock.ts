@@ -1,6 +1,16 @@
 
-// This file has been removed as part of the offline-first refactor
-// Replaced with useBudgetLock for per-budget locking
+// This file is deprecated and should not be used
+// All biometric functionality has been moved to useBudgetLock
+
 export const useBiometricLock = () => {
-  throw new Error('Biometric lock has been replaced with budget-level locking');
+  console.warn('useBiometricLock is deprecated. Use useBudgetLock instead.');
+  return {
+    isEnabled: false,
+    canUseBiometrics: false,
+    authenticate: async () => false,
+    enable: async () => false,
+    disable: async () => false,
+  };
 };
+
+export default useBiometricLock;

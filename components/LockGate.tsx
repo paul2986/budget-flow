@@ -1,8 +1,7 @@
 
-// This file has been removed as part of the offline-first refactor
-// Budget-level locking is now handled in individual screens
 import React from 'react';
 
+// This component is deprecated but kept for compatibility
 export default function LockGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }

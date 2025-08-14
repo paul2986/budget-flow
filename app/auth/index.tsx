@@ -1,8 +1,7 @@
 
-// This file has been removed as part of the offline-first refactor
-// The app no longer requires authentication
 import { Redirect } from 'expo-router';
 
+// This route is deprecated - redirecting to home
 export default function AuthIndex() {
   return <Redirect href="/" />;
 }

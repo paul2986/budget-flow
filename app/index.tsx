@@ -43,19 +43,19 @@ export default function HomeScreen() {
   }, [activeBudget, isLocked]);
 
   // Check lock status when app becomes active
+  const handleAppStateChange = useCallback((nextAppState: string) => {
+    if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+      // App became active - the lock status will be re-evaluated by useMemo
+      console.log('HomeScreen: App became active, checking lock status');
+    }
+    appState.current = nextAppState;
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      const handleAppStateChange = (nextAppState: string) => {
-        if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-          // App became active - the lock status will be re-evaluated by useMemo
-          console.log('HomeScreen: App became active, checking lock status');
-        }
-        appState.current = nextAppState;
-      };
-
       const subscription = AppState.addEventListener('change', handleAppStateChange);
       return () => subscription?.remove();
-    }, [])
+    }, [handleAppStateChange])
   );
 
   const calculations = useMemo(() => {
