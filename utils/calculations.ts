@@ -24,6 +24,12 @@ export const isExpenseActive = (expense: Expense, asOfDate?: string): boolean =>
 // Returns recurring expenses with an endDate that is either already ended OR
 // will end within the next N days. Sorted by endDate ascending.
 export const getEndingSoon = (expenses: Expense[], days: number = 30): Expense[] => {
+  // Add null check for expenses array
+  if (!expenses || !Array.isArray(expenses)) {
+    console.log('getEndingSoon: expenses is not an array:', expenses);
+    return [];
+  }
+
   const now = new Date();
   const startYMD = toYMD(now);
   const limit = new Date(now);
@@ -70,7 +76,19 @@ export const calculateMonthlyAmount = (amount: number, frequency: Frequency): nu
 };
 
 export const calculateTotalIncome = (people: Person[]): number => {
+  // Add null check for people array
+  if (!people || !Array.isArray(people)) {
+    console.log('calculateTotalIncome: people is not an array:', people);
+    return 0;
+  }
+
   return people.reduce((total, person) => {
+    // Add null check for person.income
+    if (!person || !person.income || !Array.isArray(person.income)) {
+      console.log('calculateTotalIncome: person.income is not an array:', person);
+      return total;
+    }
+
     const personIncome = person.income.reduce((sum, income) => {
       return sum + calculateAnnualAmount(income.amount, income.frequency);
     }, 0);
@@ -79,12 +97,24 @@ export const calculateTotalIncome = (people: Person[]): number => {
 };
 
 export const calculatePersonIncome = (person: Person): number => {
+  // Add null check for person and person.income
+  if (!person || !person.income || !Array.isArray(person.income)) {
+    console.log('calculatePersonIncome: person.income is not an array:', person);
+    return 0;
+  }
+
   return person.income.reduce((sum, income) => {
     return sum + calculateAnnualAmount(income.amount, income.frequency);
   }, 0);
 };
 
 export const calculateTotalExpenses = (expenses: Expense[]): number => {
+  // Add null check for expenses array
+  if (!expenses || !Array.isArray(expenses)) {
+    console.log('calculateTotalExpenses: expenses is not an array:', expenses);
+    return 0;
+  }
+
   const asOf = todayYMD();
   return expenses.reduce((total, expense) => {
     if (!isExpenseActive(expense, asOf)) return total;
@@ -93,6 +123,12 @@ export const calculateTotalExpenses = (expenses: Expense[]): number => {
 };
 
 export const calculateHouseholdExpenses = (expenses: Expense[]): number => {
+  // Add null check for expenses array
+  if (!expenses || !Array.isArray(expenses)) {
+    console.log('calculateHouseholdExpenses: expenses is not an array:', expenses);
+    return 0;
+  }
+
   const asOf = todayYMD();
   return expenses
     .filter((expense) => expense.category === 'household')
@@ -103,6 +139,12 @@ export const calculateHouseholdExpenses = (expenses: Expense[]): number => {
 };
 
 export const calculatePersonalExpenses = (expenses: Expense[], personId?: string): number => {
+  // Add null check for expenses array
+  if (!expenses || !Array.isArray(expenses)) {
+    console.log('calculatePersonalExpenses: expenses is not an array:', expenses);
+    return 0;
+  }
+
   const asOf = todayYMD();
   return expenses
     .filter((expense) => expense.category === 'personal' && (!personId || expense.personId === personId))
@@ -118,7 +160,11 @@ export const calculateHouseholdShare = (
   distributionMethod: 'even' | 'income-based',
   personId: string
 ): number => {
-  if (people.length === 0) return 0;
+  // Add null check for people array
+  if (!people || !Array.isArray(people) || people.length === 0) {
+    console.log('calculateHouseholdShare: people is not an array or is empty:', people);
+    return 0;
+  }
 
   if (distributionMethod === 'even') {
     return householdExpenses / people.length;

@@ -202,6 +202,7 @@ const validateLegacyBudgetData = (data: any): LegacyBudgetData => {
 const validateAppData = (data: any): AppDataV2 => {
   console.log('storage: Validating AppDataV2...');
   if (!data || typeof data !== 'object') {
+    console.log('storage: No data or invalid data, creating default budget');
     const initialBudget = createEmptyBudget('My Budget');
     return { version: 2, budgets: [initialBudget], activeBudgetId: initialBudget.id };
   }
@@ -239,6 +240,12 @@ const validateAppData = (data: any): AppDataV2 => {
   let activeBudgetId = typeof data.activeBudgetId === 'string' ? data.activeBudgetId : budgets[0].id;
   if (!budgets.find((b) => b.id === activeBudgetId)) activeBudgetId = budgets[0].id;
 
+  console.log('storage: AppDataV2 validation complete', {
+    budgetsCount: budgets.length,
+    activeBudgetId,
+    budgetNames: budgets.map(b => b.name)
+  });
+
   return { version: 2 as const, budgets, activeBudgetId };
 };
 
@@ -249,7 +256,9 @@ export const loadAppData = async (): Promise<AppDataV2> => {
     const v2Raw = await AsyncStorage.getItem(STORAGE_KEYS.APP_DATA_V2);
     if (v2Raw) {
       const parsed = JSON.parse(v2Raw);
-      return validateAppData(parsed);
+      const validated = validateAppData(parsed);
+      console.log('storage: Loaded existing AppDataV2 successfully');
+      return validated;
     }
 
     // Attempt to read legacy v1
@@ -280,6 +289,7 @@ export const loadAppData = async (): Promise<AppDataV2> => {
     }
 
     // No data at all, create default
+    console.log('storage: No existing data found, creating default budget');
     const initialBudget = createEmptyBudget('My Budget');
     const appData: AppDataV2 = { version: 2, budgets: [initialBudget], activeBudgetId: initialBudget.id };
     await saveAppData(appData);
@@ -331,14 +341,32 @@ export const saveAppData = async (data: AppDataV2): Promise<{ success: boolean; 
 };
 
 export const getActiveBudget = (appData: AppDataV2): Budget => {
-  if (!appData.budgets || appData.budgets.length === 0) {
+  // Add better null checks and logging
+  if (!appData) {
+    console.error('storage: getActiveBudget called with null/undefined appData');
+    const defaultBudget = createEmptyBudget('My Budget');
+    return defaultBudget;
+  }
+
+  if (!appData.budgets || !Array.isArray(appData.budgets) || appData.budgets.length === 0) {
     console.error('storage: No budgets available, creating default');
     const defaultBudget = createEmptyBudget('My Budget');
     return defaultBudget;
   }
   
   const active = appData.budgets.find((b) => b.id === appData.activeBudgetId);
-  return active || appData.budgets[0];
+  const result = active || appData.budgets[0];
+  
+  console.log('storage: getActiveBudget result:', {
+    activeBudgetId: appData.activeBudgetId,
+    foundActive: !!active,
+    resultId: result.id,
+    resultName: result.name,
+    peopleCount: result.people?.length || 0,
+    expensesCount: result.expenses?.length || 0
+  });
+  
+  return result;
 };
 
 export const setActiveBudget = async (budgetId: string): Promise<{ success: boolean; error?: Error }> => {

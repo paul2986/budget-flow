@@ -31,12 +31,21 @@ export default function RecurringWidget() {
     return `${y}-${m}-${day}`;
   }, []);
 
-  const recurringWithEnd = useMemo(
-    () => data.expenses.filter((e) => e.frequency !== 'one-time' && (e as any).endDate),
-    [data.expenses]
-  );
+  const recurringWithEnd = useMemo(() => {
+    // Add null checks for data and expenses array
+    if (!data || !data.expenses || !Array.isArray(data.expenses)) {
+      console.log('RecurringWidget: data.expenses is not available or not an array:', data);
+      return [];
+    }
+    
+    return data.expenses.filter((e) => e.frequency !== 'one-time' && (e as any).endDate);
+  }, [data]);
 
   const { endingSoonList, endedList } = useMemo(() => {
+    if (!recurringWithEnd || recurringWithEnd.length === 0) {
+      return { endingSoonList: [], endedList: [] };
+    }
+
     const ending = getEndingSoon(recurringWithEnd, 30).filter((e) => {
       const end = (e as any).endDate as string;
       const ymd = end ? end.slice(0, 10) : '';
@@ -95,6 +104,11 @@ export default function RecurringWidget() {
       }
 
       // Find the expense and update its endDate
+      if (!data || !data.expenses || !Array.isArray(data.expenses)) {
+        showToast('Data not available', 'error');
+        return;
+      }
+
       const expense = data.expenses.find((e) => e.id === target.id);
       if (!expense) {
         showToast('Expense not found', 'error');
@@ -109,14 +123,17 @@ export default function RecurringWidget() {
         showToast(res.error?.message || 'Failed to extend', 'error');
       }
     },
-    [extendTarget, data.expenses, toYMD, updateExpense, showToast]
+    [extendTarget, data, toYMD, updateExpense, showToast]
   );
 
   const ItemRow = useCallback(
     ({ expense }: { expense: Expense }) => {
       const monthly = calculateMonthlyAmount(expense.amount, expense.frequency);
       const end = (expense as any).endDate ? String((expense as any).endDate).slice(0, 10) : '';
-      const person = expense.personId ? data.people.find((p) => p.id === expense.personId) : null;
+      
+      // Add null check for data.people
+      const people = data && data.people && Array.isArray(data.people) ? data.people : [];
+      const person = expense.personId ? people.find((p) => p.id === expense.personId) : null;
 
       return (
         <View
@@ -187,7 +204,7 @@ export default function RecurringWidget() {
         </View>
       );
     },
-    [currentColors, themedStyles, data.people, formatCurrency, handleExtend, handleDelete]
+    [currentColors, themedStyles, data, formatCurrency, handleExtend, handleDelete]
   );
 
   const TabButton = useCallback(
@@ -245,7 +262,7 @@ export default function RecurringWidget() {
           </View>
         </View>
 
-        {list.length === 0 ? (
+        {!list || list.length === 0 ? (
           <View style={themedStyles.centerContent}>
             <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginVertical: 12 }]}>
               No {activeTab === 'ending' ? 'ending soon' : 'ended'} recurring expenses

@@ -55,12 +55,26 @@ export default function HomeScreen() {
   );
 
   const calculations = useMemo(() => {
-    if (!activeBudget || !data) return null;
+    if (!activeBudget || !data) {
+      console.log('HomeScreen: Missing activeBudget or data for calculations:', { activeBudget: !!activeBudget, data: !!data });
+      return null;
+    }
 
-    const totalIncome = calculateTotalIncome(data.people);
-    const totalExpenses = calculateTotalExpenses(data.expenses);
-    const householdExpenses = calculateHouseholdExpenses(data.expenses);
-    const personalExpenses = calculatePersonalExpenses(data.expenses);
+    // Add null checks for data arrays
+    const people = data.people && Array.isArray(data.people) ? data.people : [];
+    const expenses = data.expenses && Array.isArray(data.expenses) ? data.expenses : [];
+
+    console.log('HomeScreen: Calculating with data:', { 
+      peopleCount: people.length, 
+      expensesCount: expenses.length,
+      peopleIds: people.map(p => p.id),
+      expenseIds: expenses.map(e => e.id)
+    });
+
+    const totalIncome = calculateTotalIncome(people);
+    const totalExpenses = calculateTotalExpenses(expenses);
+    const householdExpenses = calculateHouseholdExpenses(expenses);
+    const personalExpenses = calculatePersonalExpenses(expenses);
     const remaining = totalIncome - totalExpenses;
 
     return {
@@ -274,6 +288,10 @@ export default function HomeScreen() {
     );
   }
 
+  // Add null checks for data arrays before rendering
+  const people = data && data.people && Array.isArray(data.people) ? data.people : [];
+  const expenses = data && data.expenses && Array.isArray(data.expenses) ? data.expenses : [];
+
   // Normal unlocked budget view
   return (
     <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
@@ -293,7 +311,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           <Text style={themedStyles.textSecondary}>
-            {data.people.length} people • {data.expenses.length} expenses
+            {people.length} people • {expenses.length} expenses
           </Text>
         </View>
 
@@ -355,7 +373,7 @@ export default function HomeScreen() {
             </View>
 
             {/* Person Breakdown Chart */}
-            {data.people.length > 0 && calculations && (
+            {people.length > 0 && calculations && (
               <View style={[themedStyles.card, { marginBottom: 16 }]}>
                 <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Budget Overview</Text>
                 <PersonBreakdownChart 
