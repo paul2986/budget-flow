@@ -23,14 +23,14 @@ export default function BudgetLockScreen() {
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
   const { showToast } = useToast();
-  const { data, loading: dataLoading } = useBudgetData();
+  const { appData, loading: dataLoading } = useBudgetData();
   const { capabilities, loading: lockLoading, toggleBudgetLock, setBudgetAutoLock, lockBudgetNow } = useBudgetLock();
   const params = useLocalSearchParams();
   
   const [saving, setSaving] = useState(false);
   
   const budgetId = params.budgetId as string;
-  const budget = data.budgets.find(b => b.id === budgetId);
+  const budget = appData.budgets.find(b => b.id === budgetId);
 
   useEffect(() => {
     if (!dataLoading && !budget) {

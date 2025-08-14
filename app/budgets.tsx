@@ -19,7 +19,7 @@ export default function BudgetsScreen() {
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
   const { showToast } = useToast();
-  const { data, loading, setActiveBudget, addBudget, renameBudget, deleteBudget } = useBudgetData();
+  const { appData, data, loading, setActiveBudget, addBudget, renameBudget, deleteBudget } = useBudgetData();
   const { isLocked, authenticateForBudget, toggleBudgetLock } = useBudgetLock();
   
   const [newBudgetName, setNewBudgetName] = useState('');
@@ -29,14 +29,14 @@ export default function BudgetsScreen() {
   const [authenticating, setAuthenticating] = useState<string | null>(null);
 
   const sortedBudgets = useMemo(() => {
-    return [...data.budgets].sort((a, b) => {
+    return [...appData.budgets].sort((a, b) => {
       // Active budget first
-      if (a.id === data.activeBudgetId) return -1;
-      if (b.id === data.activeBudgetId) return 1;
+      if (a.id === appData.activeBudgetId) return -1;
+      if (b.id === appData.activeBudgetId) return 1;
       // Then by creation date (newest first)
       return b.createdAt - a.createdAt;
     });
-  }, [data.budgets, data.activeBudgetId]);
+  }, [appData.budgets, appData.activeBudgetId]);
 
   const handleCreateBudget = useCallback(async () => {
     if (!newBudgetName.trim()) {
@@ -312,7 +312,7 @@ export default function BudgetsScreen() {
                 <Text style={themedStyles.text}>Rename</Text>
               </TouchableOpacity>
 
-              {data.budgets.length > 1 && (
+              {appData.budgets.length > 1 && (
                 <TouchableOpacity
                   style={{
                     flexDirection: 'row',
@@ -425,7 +425,7 @@ export default function BudgetsScreen() {
         {/* Budget List */}
         <View style={{ gap: 12 }}>
           {sortedBudgets.map((budget) => {
-            const isActive = budget.id === data.activeBudgetId;
+            const isActive = budget.id === appData.activeBudgetId;
             const budgetLocked = isLocked(budget);
             const isAuthenticatingThis = authenticating === budget.id;
 

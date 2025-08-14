@@ -138,7 +138,7 @@ export function useBudgetLock() {
 
   // Check if a budget is currently locked
   const isLocked = useCallback((budget: Budget): boolean => {
-    if (!budget.lock || !budget.lock.locked) {
+    if (!budget || !budget.lock || !budget.lock.locked) {
       return false;
     }
 

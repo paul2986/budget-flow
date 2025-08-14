@@ -331,6 +331,12 @@ export const saveAppData = async (data: AppDataV2): Promise<{ success: boolean; 
 };
 
 export const getActiveBudget = (appData: AppDataV2): Budget => {
+  if (!appData.budgets || appData.budgets.length === 0) {
+    console.error('storage: No budgets available, creating default');
+    const defaultBudget = createEmptyBudget('My Budget');
+    return defaultBudget;
+  }
+  
   const active = appData.budgets.find((b) => b.id === appData.activeBudgetId);
   return active || appData.budgets[0];
 };
