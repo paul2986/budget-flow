@@ -28,15 +28,11 @@ export default function HomeScreen() {
   const { formatCurrency } = useCurrency();
   const { themedStyles } = useThemedStyles();
   const { showToast } = useToast();
-  const { data, loading } = useBudgetData();
+  const { data, loading, activeBudget } = useBudgetData();
   const { isLocked, authenticateForBudget } = useBudgetLock();
   
   const [authenticating, setAuthenticating] = useState(false);
   const appState = useRef(AppState.currentState);
-
-  const activeBudget = useMemo(() => {
-    return data.budgets.find(b => b.id === data.activeBudgetId) || data.budgets[0];
-  }, [data.budgets, data.activeBudgetId]);
 
   const budgetLocked = useMemo(() => {
     return activeBudget ? isLocked(activeBudget) : false;
@@ -59,12 +55,12 @@ export default function HomeScreen() {
   );
 
   const calculations = useMemo(() => {
-    if (!activeBudget) return null;
+    if (!activeBudget || !data) return null;
 
-    const totalIncome = calculateTotalIncome(activeBudget.people);
-    const totalExpenses = calculateTotalExpenses(activeBudget.expenses);
-    const householdExpenses = calculateHouseholdExpenses(activeBudget.expenses);
-    const personalExpenses = calculatePersonalExpenses(activeBudget.expenses);
+    const totalIncome = calculateTotalIncome(data.people);
+    const totalExpenses = calculateTotalExpenses(data.expenses);
+    const householdExpenses = calculateHouseholdExpenses(data.expenses);
+    const personalExpenses = calculatePersonalExpenses(data.expenses);
     const remaining = totalIncome - totalExpenses;
 
     return {
@@ -74,7 +70,7 @@ export default function HomeScreen() {
       personalExpenses,
       remaining,
     };
-  }, [activeBudget]);
+  }, [activeBudget, data]);
 
   const handleUnlock = useCallback(async () => {
     if (!activeBudget) return;
@@ -297,7 +293,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           <Text style={themedStyles.textSecondary}>
-            {activeBudget.people.length} people • {activeBudget.expenses.length} expenses
+            {data.people.length} people • {data.expenses.length} expenses
           </Text>
         </View>
 
@@ -359,7 +355,7 @@ export default function HomeScreen() {
             </View>
 
             {/* Person Breakdown Chart */}
-            {activeBudget.people.length > 0 && calculations && (
+            {data.people.length > 0 && calculations && (
               <View style={[themedStyles.card, { marginBottom: 16 }]}>
                 <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Budget Overview</Text>
                 <PersonBreakdownChart 
