@@ -10,6 +10,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
+    // Add retry configuration for better reliability
+    retryAttempts: 3,
+    // Storage key to avoid conflicts
+    storageKey: 'supabase.auth.token',
   },
 });
 

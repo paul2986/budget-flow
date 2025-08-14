@@ -3,6 +3,35 @@ import { useState, useEffect, useCallback, createContext, useContext } from 'rea
 import { Session, User, AuthError } from '@supabase/supabase-js';
 import { supabase, AUTH_REDIRECT_HTTPS } from '../utils/supabase';
 
+// Helper function to check if a session is expired
+function isSessionExpired(session: Session | null): boolean {
+  if (!session || !session.expires_at) return true;
+  const now = Math.floor(Date.now() / 1000);
+  return now >= session.expires_at;
+}
+
+// Helper function to safely refresh a session
+async function safeRefreshSession(): Promise<{ session: Session | null; error: AuthError | null }> {
+  try {
+    const { data: currentSession } = await supabase.auth.getSession();
+    
+    if (!currentSession.session) {
+      return { session: null, error: null };
+    }
+
+    if (isSessionExpired(currentSession.session)) {
+      console.log('useAuth: Session expired, attempting refresh');
+      const { data, error } = await supabase.auth.refreshSession();
+      return { session: data.session, error };
+    }
+
+    return { session: currentSession.session, error: null };
+  } catch (error) {
+    console.error('useAuth: Safe refresh session error:', error);
+    return { session: null, error: error as AuthError };
+  }
+}
+
 export interface AuthContextType {
   session: Session | null;
   user: User | null;
@@ -34,12 +63,14 @@ export function useAuthProvider(): AuthContextType {
   useEffect(() => {
     console.log('useAuth: Initializing auth state');
     
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
+    // Get initial session with safe refresh
+    safeRefreshSession().then(({ session, error }) => {
       if (error) {
-        console.error('useAuth: Error getting initial session:', error);
+        console.error('useAuth: Error during initial session check:', error);
+        setSession(null);
+        setUser(null);
       } else {
-        console.log('useAuth: Initial session:', session?.user?.email);
+        console.log('useAuth: Initial session check complete:', session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
       }
@@ -50,6 +81,16 @@ export function useAuthProvider(): AuthContextType {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('useAuth: Auth state changed:', event, session?.user?.email);
+        
+        // Handle specific auth events
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('useAuth: Token refreshed automatically');
+        } else if (event === 'SIGNED_OUT') {
+          console.log('useAuth: User signed out');
+        } else if (event === 'SIGNED_IN') {
+          console.log('useAuth: User signed in');
+        }
+        
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -216,19 +257,26 @@ export function useAuthProvider(): AuthContextType {
   }, []);
 
   const refreshSession = useCallback(async () => {
-    console.log('useAuth: Refreshing session');
+    console.log('useAuth: Manually refreshing session');
     
-    try {
-      const { data, error } = await supabase.auth.refreshSession();
-      if (error) {
-        console.error('useAuth: Refresh session error:', error);
-      } else {
-        console.log('useAuth: Session refreshed successfully');
-        setSession(data.session);
-        setUser(data.session?.user ?? null);
+    const { session, error } = await safeRefreshSession();
+    
+    if (error) {
+      console.error('useAuth: Refresh session error:', error.message);
+      
+      // If refresh fails due to invalid token, clear the session
+      if (error.message.includes('Invalid Refresh Token') || 
+          error.message.includes('refresh_token_not_found') ||
+          error.message.includes('invalid_grant')) {
+        console.log('useAuth: Invalid refresh token, clearing session');
+        setSession(null);
+        setUser(null);
+        await supabase.auth.signOut();
       }
-    } catch (error) {
-      console.error('useAuth: Refresh session exception:', error);
+    } else {
+      console.log('useAuth: Session refresh completed');
+      setSession(session);
+      setUser(session?.user ?? null);
     }
   }, []);
 
