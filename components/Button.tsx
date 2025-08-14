@@ -19,9 +19,12 @@ export default function Button({ text, onPress, style, textStyle, disabled, icon
   console.log('Button: Rendering button with text:', text, 'disabled:', disabled);
 
   const handlePress = () => {
-    console.log('Button: Button pressed:', text);
+    console.log('Button: Button pressed:', text, 'disabled:', disabled);
     if (!disabled && onPress) {
+      console.log('Button: Calling onPress for:', text);
       onPress();
+    } else {
+      console.log('Button: onPress not called - disabled:', disabled, 'onPress exists:', !!onPress);
     }
   };
 
@@ -38,6 +41,9 @@ export default function Button({ text, onPress, style, textStyle, disabled, icon
       onPress={handlePress}
       disabled={disabled}
       activeOpacity={0.8}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={text}
     >
       <View style={styles.content}>
         {icon && (

@@ -7,7 +7,6 @@ import { useTheme } from '../../hooks/useTheme';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../hooks/useAuth';
 import Icon from '../../components/Icon';
-import Button from '../../components/Button';
 
 export default function AuthWelcomeScreen() {
   const { currentColors } = useTheme();
@@ -17,10 +16,12 @@ export default function AuthWelcomeScreen() {
   const [loading, setLoading] = useState<string | null>(null);
 
   const handleAppleSignIn = async () => {
-    console.log('AuthWelcome: Apple sign in pressed');
+    console.log('AuthWelcome: Apple sign in pressed - START');
     setLoading('apple');
     try {
+      console.log('AuthWelcome: About to call signInWithApple');
       const result = await signInWithApple();
+      console.log('AuthWelcome: Apple sign in result:', result);
       if (result.success) {
         showToast(result.message, 'success');
       } else {
@@ -35,10 +36,12 @@ export default function AuthWelcomeScreen() {
   };
 
   const handleGoogleSignIn = async () => {
-    console.log('AuthWelcome: Google sign in pressed');
+    console.log('AuthWelcome: Google sign in pressed - START');
     setLoading('google');
     try {
+      console.log('AuthWelcome: About to call signInWithGoogle');
       const result = await signInWithGoogle();
+      console.log('AuthWelcome: Google sign in result:', result);
       if (result.success) {
         showToast(result.message, 'success');
       } else {
@@ -53,10 +56,11 @@ export default function AuthWelcomeScreen() {
   };
 
   const handleEmailSignIn = () => {
-    console.log('AuthWelcome: Email sign in pressed');
+    console.log('AuthWelcome: Email sign in pressed - START');
     try {
+      console.log('AuthWelcome: About to call router.push');
       router.push('/auth/email');
-      console.log('AuthWelcome: Navigation to /auth/email initiated');
+      console.log('AuthWelcome: Navigation to /auth/email initiated - SUCCESS');
     } catch (error) {
       console.error('AuthWelcome: Navigation error:', error);
       showToast('Navigation error occurred', 'error');
@@ -91,66 +95,113 @@ export default function AuthWelcomeScreen() {
         <View style={{ width: '100%', maxWidth: 320 }}>
           {/* Apple Sign In */}
           {Platform.OS === 'ios' && (
-            <Button
-              text={loading === 'apple' ? '' : 'Continue with Apple'}
+            <TouchableOpacity
               onPress={handleAppleSignIn}
               disabled={loading !== null}
               style={[
                 {
                   backgroundColor: '#000',
                   borderColor: '#000',
+                  borderWidth: 2,
                   marginBottom: 12,
                   minHeight: 50,
+                  paddingHorizontal: 24,
+                  paddingVertical: 16,
+                  borderRadius: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  elevation: 2,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 4,
                 },
               ]}
-              textStyle={{ color: '#fff', fontSize: 16, fontWeight: '600' }}
-              icon={loading === 'apple' ? (
+              activeOpacity={0.8}
+            >
+              {loading === 'apple' ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Icon name="logo-apple" size={20} style={{ color: '#fff' }} />
+                <>
+                  <Icon name="logo-apple" size={20} style={{ color: '#fff', marginRight: 8 }} />
+                  <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', letterSpacing: 0.5 }}>
+                    Continue with Apple
+                  </Text>
+                </>
               )}
-            />
+            </TouchableOpacity>
           )}
 
           {/* Google Sign In */}
-          <Button
-            text={loading === 'google' ? '' : 'Continue with Google'}
+          <TouchableOpacity
             onPress={handleGoogleSignIn}
             disabled={loading !== null}
             style={[
               {
                 backgroundColor: '#fff',
                 borderColor: '#dadce0',
-                borderWidth: 1,
+                borderWidth: 2,
                 marginBottom: 12,
                 minHeight: 50,
+                paddingHorizontal: 24,
+                paddingVertical: 16,
+                borderRadius: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                elevation: 2,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
               },
             ]}
-            textStyle={{ color: '#1f1f1f', fontSize: 16, fontWeight: '600' }}
-            icon={loading === 'google' ? (
+            activeOpacity={0.8}
+          >
+            {loading === 'google' ? (
               <ActivityIndicator color="#1f1f1f" size="small" />
             ) : (
-              <Icon name="logo-google" size={20} style={{ color: '#4285f4' }} />
+              <>
+                <Icon name="logo-google" size={20} style={{ color: '#4285f4', marginRight: 8 }} />
+                <Text style={{ color: '#1f1f1f', fontSize: 16, fontWeight: '700', letterSpacing: 0.5 }}>
+                  Continue with Google
+                </Text>
+              </>
             )}
-          />
+          </TouchableOpacity>
 
           {/* Email Sign In */}
-          <Button
-            text="Continue with Email"
+          <TouchableOpacity
             onPress={handleEmailSignIn}
             disabled={loading !== null}
             style={[
               {
                 backgroundColor: currentColors.backgroundAlt,
                 borderColor: currentColors.border,
-                borderWidth: 1,
+                borderWidth: 2,
                 marginBottom: 24,
                 minHeight: 50,
+                paddingHorizontal: 24,
+                paddingVertical: 16,
+                borderRadius: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                elevation: 2,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
               },
             ]}
-            textStyle={{ color: currentColors.text, fontSize: 16, fontWeight: '600' }}
-            icon={<Icon name="mail-outline" size={20} style={{ color: currentColors.text }} />}
-          />
+            activeOpacity={0.8}
+          >
+            <Icon name="mail-outline" size={20} style={{ color: currentColors.text, marginRight: 8 }} />
+            <Text style={{ color: currentColors.text, fontSize: 16, fontWeight: '700', letterSpacing: 0.5 }}>
+              Continue with Email
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Terms and Privacy */}

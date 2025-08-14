@@ -68,6 +68,18 @@ export default function LockGate({ children }: LockGateProps) {
       return;
     }
 
+    // Don't redirect if already on auth routes - let the user navigate freely within auth
+    if (pathname.startsWith('/auth/')) {
+      console.log('LockGate: On auth route, allowing navigation:', pathname);
+      
+      // Only redirect to home if authenticated and verified
+      if (session && user && user.email_confirmed_at && pathname !== '/auth/lock') {
+        console.log('LockGate: Authenticated and verified, redirecting to home');
+        router.replace('/');
+      }
+      return;
+    }
+
     if (!session || !user) {
       console.log('LockGate: No session or user, redirecting to auth');
       router.replace('/auth');
@@ -77,13 +89,6 @@ export default function LockGate({ children }: LockGateProps) {
     if (!user.email_confirmed_at) {
       console.log('LockGate: Email not confirmed, redirecting to verify');
       router.replace('/auth/verify');
-      return;
-    }
-
-    // If we're on auth routes but authenticated and verified, go to home
-    if (pathname.startsWith('/auth/') && pathname !== '/auth/lock') {
-      console.log('LockGate: Authenticated and verified, redirecting to home');
-      router.replace('/');
       return;
     }
   }, [session, user, authLoading, pathname]);
