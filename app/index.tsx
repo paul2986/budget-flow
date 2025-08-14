@@ -28,7 +28,7 @@ export default function HomeScreen() {
   const { formatCurrency } = useCurrency();
   const { themedStyles } = useThemedStyles();
   const { showToast } = useToast();
-  const { data, loading, activeBudget } = useBudgetData();
+  const { data, loading, activeBudget, refreshTrigger, refreshData } = useBudgetData();
   const { isLocked, authenticateForBudget } = useBudgetLock();
   
   const [authenticating, setAuthenticating] = useState(false);
@@ -49,9 +49,13 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      // Refresh data when screen comes into focus to ensure latest budget is displayed
+      console.log('HomeScreen: Screen focused, refreshing data');
+      refreshData(true);
+      
       const subscription = AppState.addEventListener('change', handleAppStateChange);
       return () => subscription?.remove();
-    }, [handleAppStateChange])
+    }, [handleAppStateChange, refreshData])
   );
 
   const calculations = useMemo(() => {
@@ -65,6 +69,9 @@ export default function HomeScreen() {
     const expenses = data && data.expenses && Array.isArray(data.expenses) ? data.expenses : [];
 
     console.log('HomeScreen: Calculating with data:', { 
+      refreshTrigger,
+      activeBudgetId: activeBudget.id,
+      activeBudgetName: activeBudget.name,
       peopleCount: people.length, 
       expensesCount: expenses.length,
       peopleIds: people.map(p => p && p.id).filter(Boolean),
@@ -84,7 +91,7 @@ export default function HomeScreen() {
       personalExpenses,
       remaining,
     };
-  }, [activeBudget, data]);
+  }, [activeBudget, data, refreshTrigger]);
 
   const handleUnlock = useCallback(async () => {
     if (!activeBudget) return;
@@ -381,6 +388,11 @@ export default function HomeScreen() {
                   personalExpenses={calculations.personalExpenses}
                   householdShare={calculations.householdExpenses}
                   remaining={calculations.remaining}
+                  people={people}
+                  expenses={expenses}
+                  householdSettings={data.householdSettings}
+                  showMonthlyBreakdown={true}
+                  showIndividualBreakdowns={true}
                 />
               </View>
             )}

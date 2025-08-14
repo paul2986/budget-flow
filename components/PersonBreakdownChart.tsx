@@ -3,19 +3,31 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { useCurrency } from '../hooks/useCurrency';
+import { Person } from '../types/budget';
+import { calculatePersonIncome, calculatePersonalExpenses, calculateHouseholdShare, calculateMonthlyAmount } from '../utils/calculations';
 
 interface PersonBreakdownChartProps {
   income: number;
   personalExpenses: number;
   householdShare: number;
   remaining: number;
+  people?: Person[];
+  expenses?: any[];
+  householdSettings?: { distributionMethod: 'even' | 'income-based' };
+  showMonthlyBreakdown?: boolean;
+  showIndividualBreakdowns?: boolean;
 }
 
 export default function PersonBreakdownChart({ 
   income, 
   personalExpenses, 
   householdShare, 
-  remaining 
+  remaining,
+  people = [],
+  expenses = [],
+  householdSettings = { distributionMethod: 'even' },
+  showMonthlyBreakdown = false,
+  showIndividualBreakdowns = false
 }: PersonBreakdownChartProps) {
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
@@ -63,6 +75,12 @@ export default function PersonBreakdownChart({
     remainingPercentage,
     overBudgetPercentage
   });
+
+  // Calculate monthly amounts for breakdown
+  const monthlyIncome = calculateMonthlyAmount(income, 'yearly');
+  const monthlyPersonalExpenses = calculateMonthlyAmount(personalExpenses, 'yearly');
+  const monthlyHouseholdShare = calculateMonthlyAmount(householdShare, 'yearly');
+  const monthlyRemaining = calculateMonthlyAmount(remaining, 'yearly');
 
   return (
     <View style={styles.container}>
@@ -134,6 +152,97 @@ export default function PersonBreakdownChart({
         )}
       </View>
 
+      {/* Monthly Breakdown */}
+      {showMonthlyBreakdown && (
+        <View style={[styles.monthlyBreakdown, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
+          <Text style={[styles.breakdownTitle, { color: currentColors.text }]}>Monthly Breakdown</Text>
+          <View style={styles.breakdownRow}>
+            <Text style={[styles.breakdownLabel, { color: currentColors.textSecondary }]}>Income:</Text>
+            <Text style={[styles.breakdownValue, { color: currentColors.success }]}>
+              {formatCurrency(monthlyIncome)}
+            </Text>
+          </View>
+          <View style={styles.breakdownRow}>
+            <Text style={[styles.breakdownLabel, { color: currentColors.textSecondary }]}>Personal Expenses:</Text>
+            <Text style={[styles.breakdownValue, { color: currentColors.personal }]}>
+              {formatCurrency(monthlyPersonalExpenses)}
+            </Text>
+          </View>
+          <View style={styles.breakdownRow}>
+            <Text style={[styles.breakdownLabel, { color: currentColors.textSecondary }]}>Household Share:</Text>
+            <Text style={[styles.breakdownValue, { color: currentColors.household }]}>
+              {formatCurrency(monthlyHouseholdShare)}
+            </Text>
+          </View>
+          <View style={[styles.breakdownRow, { borderTopWidth: 1, borderTopColor: currentColors.border, paddingTop: 8, marginTop: 8 }]}>
+            <Text style={[styles.breakdownLabel, { color: currentColors.text, fontWeight: '600' }]}>Remaining:</Text>
+            <Text style={[styles.breakdownValue, { 
+              color: monthlyRemaining >= 0 ? currentColors.success : currentColors.error,
+              fontWeight: '600'
+            }]}>
+              {formatCurrency(monthlyRemaining)}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Individual Breakdowns */}
+      {showIndividualBreakdowns && people.length > 0 && (
+        <View style={[styles.individualBreakdowns, { backgroundColor: currentColors.backgroundAlt, borderColor: currentColors.border }]}>
+          <Text style={[styles.breakdownTitle, { color: currentColors.text }]}>Individual Breakdowns</Text>
+          {people.map((person) => {
+            const personIncome = calculatePersonIncome(person);
+            const personPersonalExpenses = calculatePersonalExpenses(expenses, person.id);
+            const personHouseholdShare = calculateHouseholdShare(
+              householdShare,
+              people,
+              householdSettings.distributionMethod,
+              person.id
+            );
+            const personRemaining = personIncome - personPersonalExpenses - personHouseholdShare;
+            
+            const monthlyPersonIncome = calculateMonthlyAmount(personIncome, 'yearly');
+            const monthlyPersonPersonalExpenses = calculateMonthlyAmount(personPersonalExpenses, 'yearly');
+            const monthlyPersonHouseholdShare = calculateMonthlyAmount(personHouseholdShare, 'yearly');
+            const monthlyPersonRemaining = calculateMonthlyAmount(personRemaining, 'yearly');
+
+            return (
+              <View key={person.id} style={[styles.personBreakdown, { borderColor: currentColors.border }]}>
+                <Text style={[styles.personName, { color: currentColors.text }]}>{person.name}</Text>
+                <View style={styles.breakdownRow}>
+                  <Text style={[styles.breakdownLabel, { color: currentColors.textSecondary }]}>Monthly Income:</Text>
+                  <Text style={[styles.breakdownValue, { color: currentColors.success }]}>
+                    {formatCurrency(monthlyPersonIncome)}
+                  </Text>
+                </View>
+                <View style={styles.breakdownRow}>
+                  <Text style={[styles.breakdownLabel, { color: currentColors.textSecondary }]}>Personal Expenses:</Text>
+                  <Text style={[styles.breakdownValue, { color: currentColors.personal }]}>
+                    {formatCurrency(monthlyPersonPersonalExpenses)}
+                  </Text>
+                </View>
+                <View style={styles.breakdownRow}>
+                  <Text style={[styles.breakdownLabel, { color: currentColors.textSecondary }]}>Household Share:</Text>
+                  <Text style={[styles.breakdownValue, { color: currentColors.household }]}>
+                    {formatCurrency(monthlyPersonHouseholdShare)}
+                  </Text>
+                </View>
+                <View style={[styles.breakdownRow, { borderTopWidth: 1, borderTopColor: currentColors.border, paddingTop: 4, marginTop: 4 }]}>
+                  <Text style={[styles.breakdownLabel, { color: currentColors.text, fontWeight: '600', fontSize: 12 }]}>Remaining:</Text>
+                  <Text style={[styles.breakdownValue, { 
+                    color: monthlyPersonRemaining >= 0 ? currentColors.success : currentColors.error,
+                    fontWeight: '600',
+                    fontSize: 12
+                  }]}>
+                    {formatCurrency(monthlyPersonRemaining)}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
+
       {/* Over Budget Indicator */}
       {remaining < 0 && (
         <View style={[styles.overBudgetIndicator, { backgroundColor: currentColors.error + '20', borderColor: currentColors.error }]}>
@@ -190,5 +299,47 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  monthlyBreakdown: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  individualBreakdowns: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  breakdownTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  breakdownLabel: {
+    fontSize: 14,
+    flex: 1,
+  },
+  breakdownValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'right',
+  },
+  personBreakdown: {
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+  },
+  personName: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 8,
   },
 });

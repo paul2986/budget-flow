@@ -27,6 +27,7 @@ export const useBudgetData = () => {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Save operation queue to prevent concurrent saves
   const saveQueue = useRef<(() => Promise<{ success: boolean; error?: Error }>)[]>([]);
@@ -35,9 +36,21 @@ export const useBudgetData = () => {
   const lastRefreshTimeRef = useRef<number>(0);
 
   const refreshFromStorage = useCallback(async () => {
+    console.log('useBudgetData: refreshFromStorage called');
     const loadedApp = await loadAppData();
+    console.log('useBudgetData: loaded app data:', {
+      budgetsCount: loadedApp.budgets?.length || 0,
+      activeBudgetId: loadedApp.activeBudgetId,
+      budgetNames: loadedApp.budgets?.map(b => b.name) || []
+    });
     setAppData(loadedApp);
     const active = getActiveBudget(loadedApp);
+    console.log('useBudgetData: active budget:', {
+      id: active.id,
+      name: active.name,
+      peopleCount: active.people?.length || 0,
+      expensesCount: active.expenses?.length || 0
+    });
     setData({ people: active.people, expenses: active.expenses, householdSettings: active.householdSettings });
   }, []);
 
@@ -250,8 +263,15 @@ export const useBudgetData = () => {
 
   const setActiveBudget = useCallback(
     async (budgetId: string) => {
+      console.log('useBudgetData: setActiveBudget called with:', budgetId);
       const res = await storageSetActiveBudget(budgetId);
-      if (res.success) await refreshFromStorage();
+      console.log('useBudgetData: setActiveBudget storage result:', res);
+      if (res.success) {
+        console.log('useBudgetData: setActiveBudget success, refreshing from storage');
+        await refreshFromStorage();
+        // Trigger a refresh to ensure components re-render with new data
+        setRefreshTrigger(prev => prev + 1);
+      }
       return res;
     },
     [refreshFromStorage]
@@ -645,6 +665,7 @@ export const useBudgetData = () => {
     data,
     loading,
     saving,
+    refreshTrigger, // Add this to help components know when data has changed
     // budget ops
     addBudget,
     renameBudget,
