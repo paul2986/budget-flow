@@ -17,6 +17,7 @@ export default function AuthWelcomeScreen() {
   const [loading, setLoading] = useState<string | null>(null);
 
   const handleAppleSignIn = async () => {
+    console.log('AuthWelcome: Apple sign in pressed');
     setLoading('apple');
     try {
       const result = await signInWithApple();
@@ -34,6 +35,7 @@ export default function AuthWelcomeScreen() {
   };
 
   const handleGoogleSignIn = async () => {
+    console.log('AuthWelcome: Google sign in pressed');
     setLoading('google');
     try {
       const result = await signInWithGoogle();
@@ -51,7 +53,14 @@ export default function AuthWelcomeScreen() {
   };
 
   const handleEmailSignIn = () => {
-    router.push('/auth/email');
+    console.log('AuthWelcome: Email sign in pressed');
+    try {
+      router.push('/auth/email');
+      console.log('AuthWelcome: Navigation to /auth/email initiated');
+    } catch (error) {
+      console.error('AuthWelcome: Navigation error:', error);
+      showToast('Navigation error occurred', 'error');
+    }
   };
 
   const openTerms = () => {
@@ -61,6 +70,8 @@ export default function AuthWelcomeScreen() {
   const openPrivacy = () => {
     Linking.openURL('https://natively.dev/privacy');
   };
+
+  console.log('AuthWelcome: Rendering with loading state:', loading);
 
   return (
     <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
@@ -80,88 +91,66 @@ export default function AuthWelcomeScreen() {
         <View style={{ width: '100%', maxWidth: 320 }}>
           {/* Apple Sign In */}
           {Platform.OS === 'ios' && (
-            <TouchableOpacity
+            <Button
+              text={loading === 'apple' ? '' : 'Continue with Apple'}
+              onPress={handleAppleSignIn}
+              disabled={loading !== null}
               style={[
-                themedButtonStyles.primary,
                 {
                   backgroundColor: '#000',
                   borderColor: '#000',
                   marginBottom: 12,
                   minHeight: 50,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
                 },
               ]}
-              onPress={handleAppleSignIn}
-              disabled={loading !== null}
-            >
-              {loading === 'apple' ? (
+              textStyle={{ color: '#fff', fontSize: 16, fontWeight: '600' }}
+              icon={loading === 'apple' ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <>
-                  <Icon name="logo-apple" size={20} style={{ color: '#fff', marginRight: 12 }} />
-                  <Text style={[themedButtonStyles.primaryText, { color: '#fff', fontSize: 16, fontWeight: '600' }]}>
-                    Continue with Apple
-                  </Text>
-                </>
+                <Icon name="logo-apple" size={20} style={{ color: '#fff' }} />
               )}
-            </TouchableOpacity>
+            />
           )}
 
           {/* Google Sign In */}
-          <TouchableOpacity
+          <Button
+            text={loading === 'google' ? '' : 'Continue with Google'}
+            onPress={handleGoogleSignIn}
+            disabled={loading !== null}
             style={[
-              themedButtonStyles.secondary,
               {
                 backgroundColor: '#fff',
                 borderColor: '#dadce0',
                 borderWidth: 1,
                 marginBottom: 12,
                 minHeight: 50,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
               },
             ]}
-            onPress={handleGoogleSignIn}
-            disabled={loading !== null}
-          >
-            {loading === 'google' ? (
+            textStyle={{ color: '#1f1f1f', fontSize: 16, fontWeight: '600' }}
+            icon={loading === 'google' ? (
               <ActivityIndicator color="#1f1f1f" size="small" />
             ) : (
-              <>
-                <Icon name="logo-google" size={20} style={{ color: '#4285f4', marginRight: 12 }} />
-                <Text style={[themedButtonStyles.secondaryText, { color: '#1f1f1f', fontSize: 16, fontWeight: '600' }]}>
-                  Continue with Google
-                </Text>
-              </>
+              <Icon name="logo-google" size={20} style={{ color: '#4285f4' }} />
             )}
-          </TouchableOpacity>
+          />
 
           {/* Email Sign In */}
-          <TouchableOpacity
+          <Button
+            text="Continue with Email"
+            onPress={handleEmailSignIn}
+            disabled={loading !== null}
             style={[
-              themedButtonStyles.secondary,
               {
                 backgroundColor: currentColors.backgroundAlt,
                 borderColor: currentColors.border,
                 borderWidth: 1,
                 marginBottom: 24,
                 minHeight: 50,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
               },
             ]}
-            onPress={handleEmailSignIn}
-            disabled={loading !== null}
-          >
-            <Icon name="mail-outline" size={20} style={{ color: currentColors.text, marginRight: 12 }} />
-            <Text style={[themedButtonStyles.secondaryText, { fontSize: 16, fontWeight: '600' }]}>
-              Continue with Email
-            </Text>
-          </TouchableOpacity>
+            textStyle={{ color: currentColors.text, fontSize: 16, fontWeight: '600' }}
+            icon={<Icon name="mail-outline" size={20} style={{ color: currentColors.text }} />}
+          />
         </View>
 
         {/* Terms and Privacy */}

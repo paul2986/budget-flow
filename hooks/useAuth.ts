@@ -75,7 +75,10 @@ export function useAuthProvider(): AuthContextType {
   }, []);
 
   const resendVerification = useCallback(async (): Promise<{ success: boolean; message: string }> => {
+    console.log('useAuth: Resending verification email');
+    
     if (!user?.email) {
+      console.log('useAuth: No email address found for resend');
       return { success: false, message: 'No email address found' };
     }
 
@@ -93,6 +96,7 @@ export function useAuthProvider(): AuthContextType {
         return { success: false, message: error.message };
       }
 
+      console.log('useAuth: Verification email sent successfully');
       return { success: true, message: 'Verification email sent successfully' };
     } catch (error) {
       console.error('useAuth: Resend verification exception:', error);
@@ -101,6 +105,8 @@ export function useAuthProvider(): AuthContextType {
   }, [user?.email]);
 
   const signInWithApple = useCallback(async (): Promise<{ success: boolean; message: string }> => {
+    console.log('useAuth: Starting Apple sign in');
+    
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
@@ -114,6 +120,7 @@ export function useAuthProvider(): AuthContextType {
         return { success: false, message: error.message };
       }
 
+      console.log('useAuth: Apple sign in initiated successfully');
       return { success: true, message: 'Redirecting to Apple...' };
     } catch (error) {
       console.error('useAuth: Apple sign in exception:', error);
@@ -122,6 +129,8 @@ export function useAuthProvider(): AuthContextType {
   }, []);
 
   const signInWithGoogle = useCallback(async (): Promise<{ success: boolean; message: string }> => {
+    console.log('useAuth: Starting Google sign in');
+    
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -135,6 +144,7 @@ export function useAuthProvider(): AuthContextType {
         return { success: false, message: error.message };
       }
 
+      console.log('useAuth: Google sign in initiated successfully');
       return { success: true, message: 'Redirecting to Google...' };
     } catch (error) {
       console.error('useAuth: Google sign in exception:', error);
@@ -143,6 +153,8 @@ export function useAuthProvider(): AuthContextType {
   }, []);
 
   const signUpWithEmail = useCallback(async (email: string, password: string): Promise<{ success: boolean; message: string }> => {
+    console.log('useAuth: Starting email signup for:', email);
+    
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -157,6 +169,11 @@ export function useAuthProvider(): AuthContextType {
         return { success: false, message: error.message };
       }
 
+      console.log('useAuth: Email signup response:', {
+        user: data.user?.email,
+        emailConfirmed: data.user?.email_confirmed_at,
+      });
+
       if (data.user && !data.user.email_confirmed_at) {
         return { success: true, message: 'Please check your email to verify your account' };
       }
@@ -169,6 +186,8 @@ export function useAuthProvider(): AuthContextType {
   }, []);
 
   const signInWithEmail = useCallback(async (email: string, password: string): Promise<{ success: boolean; message: string }> => {
+    console.log('useAuth: Starting email signin for:', email);
+    
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -179,6 +198,11 @@ export function useAuthProvider(): AuthContextType {
         console.error('useAuth: Email signin error:', error);
         return { success: false, message: error.message };
       }
+
+      console.log('useAuth: Email signin response:', {
+        user: data.user?.email,
+        emailConfirmed: data.user?.email_confirmed_at,
+      });
 
       if (data.user && !data.user.email_confirmed_at) {
         return { success: false, message: 'Please verify your email address before signing in' };
@@ -192,12 +216,14 @@ export function useAuthProvider(): AuthContextType {
   }, []);
 
   const refreshSession = useCallback(async () => {
+    console.log('useAuth: Refreshing session');
+    
     try {
       const { data, error } = await supabase.auth.refreshSession();
       if (error) {
         console.error('useAuth: Refresh session error:', error);
       } else {
-        console.log('useAuth: Session refreshed');
+        console.log('useAuth: Session refreshed successfully');
         setSession(data.session);
         setUser(data.session?.user ?? null);
       }

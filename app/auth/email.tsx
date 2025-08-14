@@ -26,12 +26,16 @@ export default function EmailAuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  console.log('EmailAuth: Rendering with activeTab:', activeTab, 'loading:', loading);
+
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
   const validateForm = () => {
+    console.log('EmailAuth: Validating form');
+    
     if (!email.trim()) {
       showToast('Please enter your email address', 'error');
       return false;
@@ -64,42 +68,62 @@ export default function EmailAuthScreen() {
       }
     }
 
+    console.log('EmailAuth: Form validation passed');
     return true;
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return;
+    console.log('EmailAuth: Submit button pressed, activeTab:', activeTab);
+    
+    if (!validateForm()) {
+      console.log('EmailAuth: Form validation failed');
+      return;
+    }
 
     setLoading(true);
+    console.log('EmailAuth: Starting authentication process');
+    
     try {
       let result;
       
       if (activeTab === 'signup') {
+        console.log('EmailAuth: Attempting signup');
         result = await signUpWithEmail(email.trim(), password);
+        console.log('EmailAuth: Signup result:', result);
+        
         if (result.success) {
           showToast(result.message, 'success');
+          console.log('EmailAuth: Signup successful, navigating to verify');
           router.replace('/auth/verify');
         } else {
+          console.log('EmailAuth: Signup failed:', result.message);
           showToast(result.message, 'error');
         }
       } else {
+        console.log('EmailAuth: Attempting signin');
         result = await signInWithEmail(email.trim(), password);
+        console.log('EmailAuth: Signin result:', result);
+        
         if (result.success) {
           showToast(result.message, 'success');
+          console.log('EmailAuth: Signin successful, navigating to home');
           router.replace('/');
         } else {
+          console.log('EmailAuth: Signin failed:', result.message);
           showToast(result.message, 'error');
           // If email not confirmed, redirect to verify screen
           if (result.message.toLowerCase().includes('email') && result.message.toLowerCase().includes('confirm')) {
+            console.log('EmailAuth: Email not confirmed, navigating to verify');
             router.replace('/auth/verify');
           }
         }
       }
     } catch (error) {
-      console.error('Auth: Email auth error:', error);
+      console.error('EmailAuth: Email auth error:', error);
       showToast('An unexpected error occurred', 'error');
     } finally {
       setLoading(false);
+      console.log('EmailAuth: Authentication process completed');
     }
   };
 
@@ -109,7 +133,10 @@ export default function EmailAuthScreen() {
         title="Email Authentication" 
         showLeftIcon={true} 
         leftIcon="arrow-back" 
-        onLeftPress={() => router.back()}
+        onLeftPress={() => {
+          console.log('EmailAuth: Back button pressed');
+          router.back();
+        }}
         showRightIcon={false}
       />
 
@@ -141,7 +168,10 @@ export default function EmailAuthScreen() {
                     backgroundColor: currentColors.primary,
                   }
                 ]}
-                onPress={() => setActiveTab('signup')}
+                onPress={() => {
+                  console.log('EmailAuth: Switching to signup tab');
+                  setActiveTab('signup');
+                }}
               >
                 <Text style={[
                   themedStyles.text,
@@ -164,7 +194,10 @@ export default function EmailAuthScreen() {
                     backgroundColor: currentColors.primary,
                   }
                 ]}
-                onPress={() => setActiveTab('signin')}
+                onPress={() => {
+                  console.log('EmailAuth: Switching to signin tab');
+                  setActiveTab('signin');
+                }}
               >
                 <Text style={[
                   themedStyles.text,
@@ -203,7 +236,10 @@ export default function EmailAuthScreen() {
                     placeholder="Enter your email"
                     placeholderTextColor={currentColors.textSecondary}
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={(text) => {
+                      console.log('EmailAuth: Email changed');
+                      setEmail(text);
+                    }}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -237,7 +273,10 @@ export default function EmailAuthScreen() {
                     placeholder="Enter your password"
                     placeholderTextColor={currentColors.textSecondary}
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(text) => {
+                      console.log('EmailAuth: Password changed');
+                      setPassword(text);
+                    }}
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -279,7 +318,10 @@ export default function EmailAuthScreen() {
                       placeholder="Confirm your password"
                       placeholderTextColor={currentColors.textSecondary}
                       value={confirmPassword}
-                      onChangeText={setConfirmPassword}
+                      onChangeText={(text) => {
+                        console.log('EmailAuth: Confirm password changed');
+                        setConfirmPassword(text);
+                      }}
                       secureTextEntry={!showConfirmPassword}
                       autoCapitalize="none"
                       autoCorrect={false}

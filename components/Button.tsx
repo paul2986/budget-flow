@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, View } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { colors } from '../styles/commonStyles';
 
@@ -10,10 +10,20 @@ interface ButtonProps {
   style?: ViewStyle | ViewStyle[];
   textStyle?: TextStyle;
   disabled?: boolean;
+  icon?: React.ReactNode;
 }
 
-export default function Button({ text, onPress, style, textStyle, disabled }: ButtonProps) {
+export default function Button({ text, onPress, style, textStyle, disabled, icon }: ButtonProps) {
   const { currentColors } = useTheme();
+
+  console.log('Button: Rendering button with text:', text, 'disabled:', disabled);
+
+  const handlePress = () => {
+    console.log('Button: Button pressed:', text);
+    if (!disabled && onPress) {
+      onPress();
+    }
+  };
 
   return (
     <TouchableOpacity
@@ -25,21 +35,30 @@ export default function Button({ text, onPress, style, textStyle, disabled }: Bu
         },
         style
       ]}
-      onPress={onPress}
+      onPress={handlePress}
       disabled={disabled}
       activeOpacity={0.8}
     >
-      <Text 
-        style={[
-          styles.text, 
-          { 
-            color: disabled ? currentColors.background : '#FFFFFF',
-          },
-          textStyle
-        ]}
-      >
-        {text}
-      </Text>
+      <View style={styles.content}>
+        {icon && (
+          <View style={styles.iconContainer}>
+            {icon}
+          </View>
+        )}
+        {text ? (
+          <Text 
+            style={[
+              styles.text, 
+              { 
+                color: disabled ? currentColors.background : '#FFFFFF',
+              },
+              textStyle
+            ]}
+          >
+            {text}
+          </Text>
+        ) : null}
+      </View>
     </TouchableOpacity>
   );
 }
@@ -58,6 +77,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconContainer: {
+    marginRight: 8,
   },
   text: {
     fontSize: 16,
