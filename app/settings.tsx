@@ -4,6 +4,9 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
 import { useCurrency, CURRENCIES } from '../hooks/useCurrency';
+import { useBiometricLock } from '../hooks/useBiometricLock';
+import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
 import StandardHeader from '../components/StandardHeader';
@@ -14,6 +17,17 @@ export default function SettingsScreen() {
   const { currentColors, themeMode, setThemeMode, isDarkMode } = useTheme();
   const { themedStyles, themedButtonStyles } = useThemedStyles();
   const { currency, setCurrency } = useCurrency();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const {
+    capabilities,
+    settings,
+    loading: biometricLoading,
+    enableBiometricLock,
+    disableBiometricLock,
+    setLockTimeout,
+    resetBiometricSetup,
+  } = useBiometricLock();
 
   const handleDistributionMethodChange = async (method: 'even' | 'income-based') => {
     try {
@@ -65,11 +79,259 @@ export default function SettingsScreen() {
     setCurrency(curr);
   };
 
+  const handleBiometricToggle = async () => {
+    try {
+      if (settings.enabled) {
+        const result = await disableBiometricLock();
+        showToast(result.message, result.success ? 'success' : 'error');
+      } else {
+        const result = await enableBiometricLock();
+        showToast(result.message, result.success ? 'success' : 'error');
+      }
+    } catch (error) {
+      console.error('Settings: Error toggling biometric lock:', error);
+      showToast('Failed to update biometric settings', 'error');
+    }
+  };
+
+  const handleTimeoutChange = async (timeoutMinutes: number) => {
+    try {
+      const result = await setLockTimeout(timeoutMinutes);
+      showToast(result.message, result.success ? 'success' : 'error');
+    } catch (error) {
+      console.error('Settings: Error setting timeout:', error);
+      showToast('Failed to update lock timeout', 'error');
+    }
+  };
+
+  const handleResetBiometric = () => {
+    Alert.alert(
+      'Reset Biometric Setup',
+      'This will disable biometric unlock and clear all biometric settings. You can set it up again later.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const result = await resetBiometricSetup();
+              showToast(result.message, result.success ? 'success' : 'error');
+            } catch (error) {
+              console.error('Settings: Error resetting biometric setup:', error);
+              showToast('Failed to reset biometric setup', 'error');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const timeoutOptions = [
+    { label: 'Immediately', value: 0 },
+    { label: '1 minute', value: 1 },
+    { label: '5 minutes', value: 5 },
+    { label: '15 minutes', value: 15 },
+    { label: 'Never', value: -1 },
+  ];
+
   return (
     <View style={themedStyles.container}>
       <StandardHeader title="Settings" showLeftIcon={false} showRightIcon={false} />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
+        {/* Account Section */}
+        {user && (
+          <View style={themedStyles.section}>
+            <Text style={themedStyles.subtitle}>Account</Text>
+
+            <View style={themedStyles.card}>
+              <View style={[themedStyles.row, { marginBottom: 12 }]}>
+                <View style={themedStyles.rowStart}>
+                  <Icon name="person-circle" size={24} style={{ color: currentColors.primary, marginRight: 12 }} />
+                  <View>
+                    <Text style={[themedStyles.text, { fontWeight: '600' }]}>
+                      {user.email}
+                    </Text>
+                    <Text style={themedStyles.textSecondary}>
+                      {user.email_confirmed_at ? 'Verified ✓' : 'Not verified ✗'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {!user.email_confirmed_at && (
+                <TouchableOpacity
+                  style={[
+                    themedStyles.card,
+                    {
+                      backgroundColor: currentColors.warning + '15',
+                      borderColor: currentColors.warning + '30',
+                      borderWidth: 2,
+                      marginBottom: 12,
+                      padding: 12,
+                    },
+                  ]}
+                  onPress={() => router.push('/auth/verify')}
+                >
+                  <View style={[themedStyles.row, { alignItems: 'center' }]}>
+                    <Icon name="mail-outline" size={20} style={{ color: currentColors.warning, marginRight: 8 }} />
+                    <Text style={[themedStyles.text, { fontWeight: '600', color: currentColors.warning }]}>
+                      Verify Email
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                style={[
+                  themedStyles.card,
+                  {
+                    backgroundColor: currentColors.error + '15',
+                    borderColor: currentColors.error + '30',
+                    borderWidth: 2,
+                    marginBottom: 0,
+                    padding: 12,
+                  },
+                ]}
+                onPress={() => router.push('/auth')}
+              >
+                <View style={[themedStyles.row, { alignItems: 'center' }]}>
+                  <Icon name="log-out-outline" size={20} style={{ color: currentColors.error, marginRight: 8 }} />
+                  <Text style={[themedStyles.text, { fontWeight: '600', color: currentColors.error }]}>
+                    Sign Out
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Security Section */}
+        {capabilities.isAvailable && (
+          <View style={themedStyles.section}>
+            <Text style={themedStyles.subtitle}>Security</Text>
+
+            <View style={themedStyles.card}>
+              {/* Biometric Toggle */}
+              <View style={[themedStyles.row, { marginBottom: 16 }]}>
+                <View style={themedStyles.rowStart}>
+                  <Icon
+                    name={
+                      capabilities.biometricType === 'Face ID'
+                        ? 'scan-outline'
+                        : capabilities.biometricType === 'Touch ID'
+                        ? 'finger-print-outline'
+                        : 'shield-checkmark-outline'
+                    }
+                    size={24}
+                    style={{ color: currentColors.primary, marginRight: 12 }}
+                  />
+                  <View style={themedStyles.flex1}>
+                    <Text style={[themedStyles.text, { fontWeight: '600' }]}>
+                      Unlock with {capabilities.biometricType}
+                    </Text>
+                    <Text style={themedStyles.textSecondary}>
+                      {settings.enabled ? 'Enabled' : 'Disabled'}
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[
+                    {
+                      width: 50,
+                      height: 30,
+                      borderRadius: 15,
+                      backgroundColor: settings.enabled ? currentColors.primary : currentColors.border,
+                      justifyContent: 'center',
+                      paddingHorizontal: 2,
+                    },
+                  ]}
+                  onPress={handleBiometricToggle}
+                  disabled={biometricLoading || !capabilities.isEnrolled}
+                >
+                  <View
+                    style={[
+                      {
+                        width: 26,
+                        height: 26,
+                        borderRadius: 13,
+                        backgroundColor: '#fff',
+                        transform: [{ translateX: settings.enabled ? 18 : 0 }],
+                      },
+                    ]}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {!capabilities.isEnrolled && (
+                <View style={[themedStyles.card, { backgroundColor: currentColors.warning + '15', borderColor: currentColors.warning + '30', borderWidth: 1, marginBottom: 16 }]}>
+                  <Text style={[themedStyles.textSecondary, { color: currentColors.warning }]}>
+                    {capabilities.biometricType} is not set up on this device. Please set it up in your device settings first.
+                  </Text>
+                </View>
+              )}
+
+              {/* Auto-lock timeout */}
+              {settings.enabled && (
+                <>
+                  <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 12 }]}>
+                    Auto-lock after:
+                  </Text>
+
+                  {timeoutOptions.map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        themedStyles.card,
+                        {
+                          backgroundColor: settings.timeoutMinutes === option.value ? currentColors.primary + '20' : currentColors.border + '20',
+                          borderWidth: 2,
+                          borderColor: settings.timeoutMinutes === option.value ? currentColors.primary : currentColors.border,
+                          marginBottom: 8,
+                        },
+                      ]}
+                      onPress={() => handleTimeoutChange(option.value)}
+                    >
+                      <View style={themedStyles.rowStart}>
+                        <Icon
+                          name={settings.timeoutMinutes === option.value ? 'radio-button-on' : 'radio-button-off'}
+                          size={20}
+                          style={{ color: settings.timeoutMinutes === option.value ? currentColors.primary : currentColors.textSecondary, marginRight: 12 }}
+                        />
+                        <Text style={[themedStyles.text, { fontWeight: '600' }]}>{option.label}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+
+                  {/* Reset Biometric Setup */}
+                  <TouchableOpacity
+                    style={[
+                      themedStyles.card,
+                      {
+                        backgroundColor: currentColors.error + '15',
+                        borderColor: currentColors.error + '30',
+                        borderWidth: 2,
+                        marginTop: 8,
+                        marginBottom: 0,
+                        padding: 12,
+                      },
+                    ]}
+                    onPress={handleResetBiometric}
+                  >
+                    <View style={[themedStyles.row, { alignItems: 'center' }]}>
+                      <Icon name="refresh-outline" size={20} style={{ color: currentColors.error, marginRight: 8 }} />
+                      <Text style={[themedStyles.text, { fontWeight: '600', color: currentColors.error }]}>
+                        Reset biometric setup
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* Theme Settings */}
         <View style={themedStyles.section}>
           <Text style={themedStyles.subtitle}>Appearance</Text>

@@ -6,6 +6,8 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
 import { useCurrency } from '../hooks/useCurrency';
+import { useBiometricLock } from '../hooks/useBiometricLock';
+import { useToast } from '../hooks/useToast';
 import { 
   calculateTotalIncome, 
   calculateTotalExpenses, 
@@ -19,17 +21,21 @@ import Icon from '../components/Icon';
 import PersonBreakdownChart from '../components/PersonBreakdownChart';
 import StandardHeader from '../components/StandardHeader';
 import RecurringWidget from '../components/RecurringWidget';
+import BiometricEnableModal from '../components/BiometricEnableModal';
 
 export default function HomeScreen() {
   const { data, loading, refreshData, activeBudget } = useBudgetData();
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
   const { formatCurrency, loading: currencyLoading } = useCurrency();
+  const { shouldShowEnablePrompt, markPromptShown, enableBiometricLock, capabilities } = useBiometricLock();
+  const { showToast } = useToast();
 
   // Use ref to track if we've already refreshed on this focus
   const hasRefreshedOnFocus = useRef(false);
+  const [showBiometricModal, setShowBiometricModal] = useState(false);
 
-  // Only refresh data when screen comes into focus, but only once per focus
+  // Check if we should show biometric prompt when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       console.log('HomeScreen: Screen focused');
@@ -39,6 +45,22 @@ export default function HomeScreen() {
         console.log('HomeScreen: Refreshing data on focus');
         hasRefreshedOnFocus.current = true;
         refreshData();
+
+        // Check if we should show biometric prompt
+        const checkBiometricPrompt = async () => {
+          try {
+            const shouldShow = await shouldShowEnablePrompt();
+            if (shouldShow) {
+              console.log('HomeScreen: Showing biometric enable prompt');
+              setShowBiometricModal(true);
+            }
+          } catch (error) {
+            console.error('HomeScreen: Error checking biometric prompt:', error);
+          }
+        };
+
+        // Delay the prompt slightly to let the screen settle
+        setTimeout(checkBiometricPrompt, 1000);
       }
       
       // Reset the flag when the screen loses focus
@@ -46,8 +68,37 @@ export default function HomeScreen() {
         console.log('HomeScreen: Screen lost focus, resetting refresh flag');
         hasRefreshedOnFocus.current = false;
       };
-    }, [refreshData])
+    }, [refreshData, shouldShowEnablePrompt])
   );
+
+  // Handle biometric enable
+  const handleEnableBiometric = useCallback(async () => {
+    try {
+      console.log('HomeScreen: Enabling biometric authentication');
+      const result = await enableBiometricLock();
+      
+      if (result.success) {
+        showToast(result.message, 'success');
+        setShowBiometricModal(false);
+      } else {
+        showToast(result.message, 'error');
+      }
+    } catch (error) {
+      console.error('HomeScreen: Error enabling biometric:', error);
+      showToast('Failed to enable biometric authentication', 'error');
+    }
+  }, [enableBiometricLock, showToast]);
+
+  // Handle "Not Now" for biometric prompt
+  const handleBiometricNotNow = useCallback(async () => {
+    try {
+      console.log('HomeScreen: User declined biometric prompt');
+      await markPromptShown();
+      setShowBiometricModal(false);
+    } catch (error) {
+      console.error('HomeScreen: Error marking prompt shown:', error);
+    }
+  }, [markPromptShown]);
 
   // Memoize calculations to ensure they update when data changes
   const calculations = useMemo(() => {
@@ -189,6 +240,13 @@ export default function HomeScreen() {
         showLeftIcon={false}
         rightIcon="swap-horizontal"
         onRightPress={handleNavigateToBudgets}
+      />
+
+      {/* Biometric Enable Modal */}
+      <BiometricEnableModal
+        visible={showBiometricModal}
+        onEnable={handleEnableBiometric}
+        onNotNow={handleBiometricNotNow}
       />
 
       {/* If no active budget (edge case), show CTA */}
