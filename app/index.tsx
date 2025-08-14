@@ -359,12 +359,20 @@ export default function HomeScreen() {
             </View>
 
             {/* Person Breakdown Chart */}
-            {activeBudget.people.length > 0 && (
-              <PersonBreakdownChart budget={activeBudget} />
+            {activeBudget.people.length > 0 && calculations && (
+              <View style={[themedStyles.card, { marginBottom: 16 }]}>
+                <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Budget Overview</Text>
+                <PersonBreakdownChart 
+                  income={calculations.totalIncome}
+                  personalExpenses={calculations.personalExpenses}
+                  householdShare={calculations.householdExpenses}
+                  remaining={calculations.remaining}
+                />
+              </View>
             )}
 
             {/* Recurring Widget */}
-            <RecurringWidget budget={activeBudget} />
+            <RecurringWidget />
 
             {/* Quick Actions */}
             <View style={[themedStyles.card, { marginBottom: 16 }]}>

@@ -18,7 +18,7 @@ export default function RecurringWidget() {
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
   const { data, updateExpense, removeExpense } = useBudgetData();
-  const toast = useToast();
+  const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<TabKey>('ending');
   const [extendTarget, setExtendTarget] = useState<{ id: string; current?: string } | null>(null);
@@ -71,15 +71,15 @@ export default function RecurringWidget() {
           onPress: async () => {
             const res = await removeExpense(expense.id);
             if (res.success) {
-              toast.show('Deleted expense', { type: 'success' });
+              showToast('Deleted expense', 'success');
             } else {
-              toast.show(res.error?.message || 'Failed to delete expense', { type: 'error' });
+              showToast(res.error?.message || 'Failed to delete expense', 'error');
             }
           },
         },
       ]
     );
-  }, [removeExpense, toast]);
+  }, [removeExpense, showToast]);
 
   const onDatePicked = useCallback(
     async (event: any, date?: Date) => {
@@ -90,26 +90,26 @@ export default function RecurringWidget() {
       const picked = toYMD(date);
       const today = toYMD(new Date());
       if (picked < today) {
-        toast.show('End date must be today or later', { type: 'error' });
+        showToast('End date must be today or later', 'error');
         return;
       }
 
       // Find the expense and update its endDate
       const expense = data.expenses.find((e) => e.id === target.id);
       if (!expense) {
-        toast.show('Expense not found', { type: 'error' });
+        showToast('Expense not found', 'error');
         return;
       }
 
       const updated: Expense = { ...expense, endDate: picked } as Expense;
       const res = await updateExpense(updated);
       if (res.success) {
-        toast.show(`Extended to ${picked}`, { type: 'success' });
+        showToast(`Extended to ${picked}`, 'success');
       } else {
-        toast.show(res.error?.message || 'Failed to extend', { type: 'error' });
+        showToast(res.error?.message || 'Failed to extend', 'error');
       }
     },
-    [extendTarget, data.expenses, toYMD, updateExpense, toast]
+    [extendTarget, data.expenses, toYMD, updateExpense, showToast]
   );
 
   const ItemRow = useCallback(
