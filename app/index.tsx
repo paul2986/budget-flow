@@ -60,15 +60,15 @@ export default function HomeScreen() {
       return null;
     }
 
-    // Add null checks for data arrays
-    const people = data.people && Array.isArray(data.people) ? data.people : [];
-    const expenses = data.expenses && Array.isArray(data.expenses) ? data.expenses : [];
+    // Add comprehensive null checks for data arrays
+    const people = data && data.people && Array.isArray(data.people) ? data.people : [];
+    const expenses = data && data.expenses && Array.isArray(data.expenses) ? data.expenses : [];
 
     console.log('HomeScreen: Calculating with data:', { 
       peopleCount: people.length, 
       expensesCount: expenses.length,
-      peopleIds: people.map(p => p.id),
-      expenseIds: expenses.map(e => e.id)
+      peopleIds: people.map(p => p && p.id).filter(Boolean),
+      expenseIds: expenses.map(e => e && e.id).filter(Boolean)
     });
 
     const totalIncome = calculateTotalIncome(people);
@@ -288,7 +288,7 @@ export default function HomeScreen() {
     );
   }
 
-  // Add null checks for data arrays before rendering
+  // Add comprehensive null checks for data arrays before rendering
   const people = data && data.people && Array.isArray(data.people) ? data.people : [];
   const expenses = data && data.expenses && Array.isArray(data.expenses) ? data.expenses : [];
 

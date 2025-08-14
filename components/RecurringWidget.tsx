@@ -32,17 +32,17 @@ export default function RecurringWidget() {
   }, []);
 
   const recurringWithEnd = useMemo(() => {
-    // Add null checks for data and expenses array
+    // Add comprehensive null checks for data and expenses array
     if (!data || !data.expenses || !Array.isArray(data.expenses)) {
       console.log('RecurringWidget: data.expenses is not available or not an array:', data);
       return [];
     }
     
-    return data.expenses.filter((e) => e.frequency !== 'one-time' && (e as any).endDate);
+    return data.expenses.filter((e) => e && e.frequency !== 'one-time' && (e as any).endDate);
   }, [data]);
 
   const { endingSoonList, endedList } = useMemo(() => {
-    if (!recurringWithEnd || recurringWithEnd.length === 0) {
+    if (!recurringWithEnd || !Array.isArray(recurringWithEnd) || recurringWithEnd.length === 0) {
       return { endingSoonList: [], endedList: [] };
     }
 
@@ -109,7 +109,7 @@ export default function RecurringWidget() {
         return;
       }
 
-      const expense = data.expenses.find((e) => e.id === target.id);
+      const expense = data.expenses.find((e) => e && e.id === target.id);
       if (!expense) {
         showToast('Expense not found', 'error');
         return;
@@ -131,9 +131,9 @@ export default function RecurringWidget() {
       const monthly = calculateMonthlyAmount(expense.amount, expense.frequency);
       const end = (expense as any).endDate ? String((expense as any).endDate).slice(0, 10) : '';
       
-      // Add null check for data.people
+      // Add comprehensive null checks for data.people
       const people = data && data.people && Array.isArray(data.people) ? data.people : [];
-      const person = expense.personId ? people.find((p) => p.id === expense.personId) : null;
+      const person = expense.personId ? people.find((p) => p && p.id === expense.personId) : null;
 
       return (
         <View
@@ -262,14 +262,14 @@ export default function RecurringWidget() {
           </View>
         </View>
 
-        {!list || list.length === 0 ? (
+        {!list || !Array.isArray(list) || list.length === 0 ? (
           <View style={themedStyles.centerContent}>
             <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginVertical: 12 }]}>
               No {activeTab === 'ending' ? 'ending soon' : 'ended'} recurring expenses
             </Text>
           </View>
         ) : (
-          list.map((e) => <ItemRow key={e.id} expense={e} />)
+          list.map((e) => e && e.id ? <ItemRow key={e.id} expense={e} /> : null)
         )}
       </View>
 

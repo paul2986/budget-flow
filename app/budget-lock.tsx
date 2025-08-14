@@ -30,7 +30,11 @@ export default function BudgetLockScreen() {
   const [saving, setSaving] = useState(false);
   
   const budgetId = params.budgetId as string;
-  const budget = appData.budgets.find(b => b.id === budgetId);
+  
+  // Add comprehensive null checks for appData and budgets array
+  const budget = appData && appData.budgets && Array.isArray(appData.budgets) 
+    ? appData.budgets.find(b => b && b.id === budgetId) 
+    : undefined;
 
   useEffect(() => {
     if (!dataLoading && !budget) {

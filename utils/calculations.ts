@@ -14,6 +14,7 @@ const todayYMD = (): string => toYMD(new Date());
 // - One-time: always included (treated as active on totals)
 // - Recurring: no endDate or endDate >= asOf
 export const isExpenseActive = (expense: Expense, asOfDate?: string): boolean => {
+  if (!expense) return false;
   const asOf = asOfDate || todayYMD();
   if (expense.frequency === 'one-time') return true;
   const end = (expense.endDate || '').slice(0, 10);
@@ -24,7 +25,7 @@ export const isExpenseActive = (expense: Expense, asOfDate?: string): boolean =>
 // Returns recurring expenses with an endDate that is either already ended OR
 // will end within the next N days. Sorted by endDate ascending.
 export const getEndingSoon = (expenses: Expense[], days: number = 30): Expense[] => {
-  // Add null check for expenses array
+  // Add comprehensive null checks for expenses array
   if (!expenses || !Array.isArray(expenses)) {
     console.log('getEndingSoon: expenses is not an array:', expenses);
     return [];
@@ -37,7 +38,7 @@ export const getEndingSoon = (expenses: Expense[], days: number = 30): Expense[]
   const limitYMD = toYMD(limit);
 
   const list = expenses
-    .filter((e) => e.frequency !== 'one-time' && typeof e.endDate === 'string' && e.endDate)
+    .filter((e) => e && e.frequency !== 'one-time' && typeof e.endDate === 'string' && e.endDate)
     .filter((e) => {
       const end = (e.endDate as string).slice(0, 10);
       // Include if already ended OR ending within next N days
@@ -50,11 +51,17 @@ export const getEndingSoon = (expenses: Expense[], days: number = 30): Expense[]
     });
 
   const byId = new Map<string, Expense>();
-  list.forEach((e) => byId.set(e.id, e));
+  list.forEach((e) => {
+    if (e && e.id) {
+      byId.set(e.id, e);
+    }
+  });
   return Array.from(byId.values());
 };
 
 export const calculateAnnualAmount = (amount: number, frequency: Frequency): number => {
+  if (typeof amount !== 'number' || isNaN(amount)) return 0;
+  
   switch (frequency) {
     case 'daily':
       return amount * 365;
@@ -76,20 +83,23 @@ export const calculateMonthlyAmount = (amount: number, frequency: Frequency): nu
 };
 
 export const calculateTotalIncome = (people: Person[]): number => {
-  // Add null check for people array
+  // Add comprehensive null checks for people array
   if (!people || !Array.isArray(people)) {
     console.log('calculateTotalIncome: people is not an array:', people);
     return 0;
   }
 
   return people.reduce((total, person) => {
-    // Add null check for person.income
+    // Add null checks for person and person.income
     if (!person || !person.income || !Array.isArray(person.income)) {
       console.log('calculateTotalIncome: person.income is not an array:', person);
       return total;
     }
 
     const personIncome = person.income.reduce((sum, income) => {
+      if (!income || typeof income.amount !== 'number' || isNaN(income.amount)) {
+        return sum;
+      }
       return sum + calculateAnnualAmount(income.amount, income.frequency);
     }, 0);
     return total + personIncome;
@@ -97,19 +107,22 @@ export const calculateTotalIncome = (people: Person[]): number => {
 };
 
 export const calculatePersonIncome = (person: Person): number => {
-  // Add null check for person and person.income
+  // Add comprehensive null checks for person and person.income
   if (!person || !person.income || !Array.isArray(person.income)) {
     console.log('calculatePersonIncome: person.income is not an array:', person);
     return 0;
   }
 
   return person.income.reduce((sum, income) => {
+    if (!income || typeof income.amount !== 'number' || isNaN(income.amount)) {
+      return sum;
+    }
     return sum + calculateAnnualAmount(income.amount, income.frequency);
   }, 0);
 };
 
 export const calculateTotalExpenses = (expenses: Expense[]): number => {
-  // Add null check for expenses array
+  // Add comprehensive null checks for expenses array
   if (!expenses || !Array.isArray(expenses)) {
     console.log('calculateTotalExpenses: expenses is not an array:', expenses);
     return 0;
@@ -117,13 +130,16 @@ export const calculateTotalExpenses = (expenses: Expense[]): number => {
 
   const asOf = todayYMD();
   return expenses.reduce((total, expense) => {
+    if (!expense || typeof expense.amount !== 'number' || isNaN(expense.amount)) {
+      return total;
+    }
     if (!isExpenseActive(expense, asOf)) return total;
     return total + calculateAnnualAmount(expense.amount, expense.frequency);
   }, 0);
 };
 
 export const calculateHouseholdExpenses = (expenses: Expense[]): number => {
-  // Add null check for expenses array
+  // Add comprehensive null checks for expenses array
   if (!expenses || !Array.isArray(expenses)) {
     console.log('calculateHouseholdExpenses: expenses is not an array:', expenses);
     return 0;
@@ -131,15 +147,18 @@ export const calculateHouseholdExpenses = (expenses: Expense[]): number => {
 
   const asOf = todayYMD();
   return expenses
-    .filter((expense) => expense.category === 'household')
+    .filter((expense) => expense && expense.category === 'household')
     .filter((expense) => isExpenseActive(expense, asOf))
     .reduce((total, expense) => {
+      if (!expense || typeof expense.amount !== 'number' || isNaN(expense.amount)) {
+        return total;
+      }
       return total + calculateAnnualAmount(expense.amount, expense.frequency);
     }, 0);
 };
 
 export const calculatePersonalExpenses = (expenses: Expense[], personId?: string): number => {
-  // Add null check for expenses array
+  // Add comprehensive null checks for expenses array
   if (!expenses || !Array.isArray(expenses)) {
     console.log('calculatePersonalExpenses: expenses is not an array:', expenses);
     return 0;
@@ -147,9 +166,12 @@ export const calculatePersonalExpenses = (expenses: Expense[], personId?: string
 
   const asOf = todayYMD();
   return expenses
-    .filter((expense) => expense.category === 'personal' && (!personId || expense.personId === personId))
+    .filter((expense) => expense && expense.category === 'personal' && (!personId || expense.personId === personId))
     .filter((expense) => isExpenseActive(expense, asOf))
     .reduce((total, expense) => {
+      if (!expense || typeof expense.amount !== 'number' || isNaN(expense.amount)) {
+        return total;
+      }
       return total + calculateAnnualAmount(expense.amount, expense.frequency);
     }, 0);
 };
@@ -160,9 +182,13 @@ export const calculateHouseholdShare = (
   distributionMethod: 'even' | 'income-based',
   personId: string
 ): number => {
-  // Add null check for people array
+  // Add comprehensive null checks for people array
   if (!people || !Array.isArray(people) || people.length === 0) {
     console.log('calculateHouseholdShare: people is not an array or is empty:', people);
+    return 0;
+  }
+
+  if (typeof householdExpenses !== 'number' || isNaN(householdExpenses)) {
     return 0;
   }
 
@@ -172,7 +198,7 @@ export const calculateHouseholdShare = (
     const totalIncome = calculateTotalIncome(people);
     if (totalIncome === 0) return householdExpenses / people.length;
 
-    const person = people.find((p) => p.id === personId);
+    const person = people.find((p) => p && p.id === personId);
     if (!person) return 0;
 
     const personIncome = calculatePersonIncome(person);
@@ -181,6 +207,9 @@ export const calculateHouseholdShare = (
 };
 
 export const roundTo = (val: number, digits: number): number => {
+  if (typeof val !== 'number' || isNaN(val) || typeof digits !== 'number' || isNaN(digits)) {
+    return 0;
+  }
   const factor = Math.pow(10, digits);
   return Math.round(val * factor) / factor;
 };
@@ -195,8 +224,8 @@ export const computeInterestOnlyMinimum = (
   aprPercent: number,
   fractionDigits: number = 2
 ): number => {
-  const B = Math.max(0, balance);
-  const i = Math.max(0, aprPercent) / 12 / 100;
+  const B = Math.max(0, balance || 0);
+  const i = Math.max(0, aprPercent || 0) / 12 / 100;
   return roundTo(B * i, fractionDigits);
 };
 
@@ -209,9 +238,9 @@ export const computeInterestOnlyMinimum = (
  * For i=0, n = ceil(B / P), interest=0
  */
 export const computeCreditCardPayoff = (balance: number, aprPercent: number, monthlyPayment: number): CreditCardPayoffResult => {
-  const B = Math.max(0, balance);
-  const P = Math.max(0, monthlyPayment);
-  const i = Math.max(0, aprPercent) / 12 / 100;
+  const B = Math.max(0, balance || 0);
+  const P = Math.max(0, monthlyPayment || 0);
+  const i = Math.max(0, aprPercent || 0) / 12 / 100;
 
   if (B === 0 || P === 0) {
     return {
@@ -219,7 +248,7 @@ export const computeCreditCardPayoff = (balance: number, aprPercent: number, mon
       months: 0,
       totalInterest: 0,
       schedule: [],
-      inputs: { balance: B, apr: Math.max(0, aprPercent), monthlyPayment: P },
+      inputs: { balance: B, apr: Math.max(0, aprPercent || 0), monthlyPayment: P },
       monthlyRate: i,
     };
   }
@@ -246,7 +275,7 @@ export const computeCreditCardPayoff = (balance: number, aprPercent: number, mon
       months: n,
       totalInterest,
       schedule,
-      inputs: { balance: B, apr: Math.max(0, aprPercent), monthlyPayment: P },
+      inputs: { balance: B, apr: Math.max(0, aprPercent || 0), monthlyPayment: P },
       monthlyRate: i,
     };
   }
@@ -258,7 +287,7 @@ export const computeCreditCardPayoff = (balance: number, aprPercent: number, mon
       months: 0,
       totalInterest: 0,
       schedule: [],
-      inputs: { balance: B, apr: Math.max(0, aprPercent), monthlyPayment: P },
+      inputs: { balance: B, apr: Math.max(0, aprPercent || 0), monthlyPayment: P },
       monthlyRate: i,
     };
   }
@@ -291,7 +320,7 @@ export const computeCreditCardPayoff = (balance: number, aprPercent: number, mon
     months: n,
     totalInterest,
     schedule,
-    inputs: { balance: B, apr: Math.max(0, aprPercent), monthlyPayment: P },
+    inputs: { balance: B, apr: Math.max(0, aprPercent || 0), monthlyPayment: P },
     monthlyRate: i,
   };
 };
