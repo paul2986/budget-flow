@@ -13,7 +13,7 @@ export default function LockScreen() {
   const { currentColors, isDarkMode } = useTheme();
   const { themedStyles } = useThemedStyles();
   const { signOut } = useAuth();
-  const { capabilities, authenticate, markUnlocked, isBiometricConfigured } = useBiometricLock();
+  const { capabilities, authenticate, markUnlocked, isBiometricConfigured, testBiometricAuth, simpleAuthenticate } = useBiometricLock();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authAttempts, setAuthAttempts] = useState(0);
   const [lastAuthAttempt, setLastAuthAttempt] = useState<number>(0);
@@ -39,6 +39,14 @@ export default function LockScreen() {
         return;
       }
 
+      console.log('LockScreen: Checking biometric configuration...');
+      console.log('LockScreen: Capabilities:', {
+        isAvailable: capabilities.isAvailable,
+        isEnrolled: capabilities.isEnrolled,
+        supportedTypes: capabilities.supportedTypes,
+        biometricType: capabilities.biometricType
+      });
+
       // Don't auto-trigger if biometrics aren't properly configured
       if (!isBiometricConfigured()) {
         console.log('LockScreen: Biometrics not configured, showing manual unlock');
@@ -47,17 +55,17 @@ export default function LockScreen() {
         return;
       }
 
-      console.log('LockScreen: Triggering initial authentication');
+      console.log('LockScreen: Biometrics configured, triggering initial authentication');
       setHasTriggeredInitialAuth(true);
       
-      // Small delay to ensure UI is ready
+      // Longer delay to ensure Face ID is ready
       authTimeoutRef.current = setTimeout(() => {
         handleAuthenticate();
-      }, 1000);
+      }, 2500);
     };
 
     triggerInitialAuth();
-  }, [hasTriggeredInitialAuth, isBiometricConfigured]);
+  }, [hasTriggeredInitialAuth, isBiometricConfigured, capabilities]);
 
   // Handle app state changes - only trigger auth when coming back from background
   useEffect(() => {
@@ -73,7 +81,7 @@ export default function LockScreen() {
           console.log('LockScreen: App became active, triggering authentication');
           authTimeoutRef.current = setTimeout(() => {
             handleAuthenticate();
-          }, 500);
+          }, 1000); // Longer delay for app state changes
         }
       }
     };
@@ -108,12 +116,21 @@ export default function LockScreen() {
       return;
     }
 
+    console.log('LockScreen: Starting authentication attempt', authAttempts + 1);
+    console.log('LockScreen: Current biometric configuration:', {
+      isAvailable: capabilities.isAvailable,
+      isEnrolled: capabilities.isEnrolled,
+      biometricType: capabilities.biometricType,
+      isBiometricConfigured: isBiometricConfigured()
+    });
+
     setIsAuthenticating(true);
     setLastAuthAttempt(now);
-    console.log('LockScreen: Starting authentication attempt', authAttempts + 1);
 
     try {
+      console.log('LockScreen: Calling authenticate()...');
       const result = await authenticate();
+      console.log('LockScreen: Authentication result received:', result);
       
       if (result.success) {
         console.log('LockScreen: Authentication successful, navigating to home');
@@ -123,16 +140,21 @@ export default function LockScreen() {
         // Navigate back to the app
         router.replace('/');
       } else {
-        console.log('LockScreen: Authentication failed:', result.message);
+        console.log('LockScreen: Authentication failed:', result.message, 'userCancelled:', result.userCancelled);
         
         // Don't count user cancellations as failed attempts
         if (!result.userCancelled) {
-          setAuthAttempts(prev => prev + 1);
-        }
-        
-        // Show manual unlock option after 3 failed attempts
-        if (authAttempts >= 2) {
-          setShowManualUnlock(true);
+          const newAttempts = authAttempts + 1;
+          console.log('LockScreen: Incrementing failed attempts to:', newAttempts);
+          setAuthAttempts(newAttempts);
+          
+          // Show manual unlock option after 3 failed attempts
+          if (newAttempts >= 3) {
+            console.log('LockScreen: Reached max attempts, showing manual unlock');
+            setShowManualUnlock(true);
+          }
+        } else {
+          console.log('LockScreen: User cancelled, not incrementing attempts');
         }
         
         // Only show error alerts for certain types of failures
@@ -141,18 +163,24 @@ export default function LockScreen() {
             !result.message.includes('system_cancel') &&
             !result.message.includes('user_cancel') &&
             !result.userCancelled) {
+          console.log('LockScreen: Showing error alert:', result.message);
           Alert.alert('Authentication Failed', result.message);
         }
       }
     } catch (error) {
       console.error('LockScreen: Authentication error:', error);
-      setAuthAttempts(prev => prev + 1);
+      setAuthAttempts(prev => {
+        const newAttempts = prev + 1;
+        console.log('LockScreen: Error occurred, incrementing attempts to:', newAttempts);
+        return newAttempts;
+      });
       setShowManualUnlock(true);
       Alert.alert('Error', 'An unexpected error occurred during authentication');
     } finally {
       setIsAuthenticating(false);
+      console.log('LockScreen: Authentication attempt completed');
     }
-  }, [authenticate, isAuthenticating, lastAuthAttempt, authAttempts]);
+  }, [authenticate, isAuthenticating, lastAuthAttempt, authAttempts, capabilities, isBiometricConfigured]);
 
   const handleManualUnlock = useCallback(async () => {
     console.log('LockScreen: Manual unlock - marking as unlocked');
@@ -317,6 +345,96 @@ export default function LockScreen() {
             </TouchableOpacity>
           )}
 
+          {/* Force Authenticate Button - debug only */}
+          {__DEV__ && biometricsConfigured && !isAuthenticating && (
+            <TouchableOpacity
+              style={[
+                themedStyles.card,
+                {
+                  backgroundColor: 'transparent',
+                  borderColor: currentColors.primary,
+                  borderWidth: 1,
+                  marginBottom: 8,
+                  minHeight: 40,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                },
+              ]}
+              onPress={() => {
+                console.log('LockScreen: Force authenticate button pressed');
+                handleAuthenticate();
+              }}
+            >
+              <Text style={[themedStyles.text, { color: currentColors.primary, fontSize: 14, fontWeight: '500' }]}>
+                Force Authenticate (Debug)
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Test Biometric Button - debug only */}
+          {__DEV__ && biometricsConfigured && !isAuthenticating && (
+            <TouchableOpacity
+              style={[
+                themedStyles.card,
+                {
+                  backgroundColor: 'transparent',
+                  borderColor: currentColors.secondary,
+                  borderWidth: 1,
+                  marginBottom: 8,
+                  minHeight: 40,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                },
+              ]}
+              onPress={async () => {
+                console.log('LockScreen: Test biometric button pressed');
+                const result = await testBiometricAuth();
+                Alert.alert(
+                  'Test Result',
+                  `Success: ${result.success}\nMessage: ${result.message}\n\nDetails: ${JSON.stringify(result.details, null, 2)}`
+                );
+              }}
+            >
+              <Text style={[themedStyles.text, { color: currentColors.secondary, fontSize: 14, fontWeight: '500' }]}>
+                Test Biometric (Debug)
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Simple Authenticate Button - debug only */}
+          {__DEV__ && biometricsConfigured && !isAuthenticating && (
+            <TouchableOpacity
+              style={[
+                themedStyles.card,
+                {
+                  backgroundColor: 'transparent',
+                  borderColor: currentColors.success || '#4CAF50',
+                  borderWidth: 1,
+                  marginBottom: 16,
+                  minHeight: 40,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                },
+              ]}
+              onPress={async () => {
+                console.log('LockScreen: Simple authenticate button pressed');
+                const result = await simpleAuthenticate();
+                if (result.success) {
+                  router.replace('/');
+                } else {
+                  Alert.alert('Simple Auth Failed', result.message);
+                }
+              }}
+            >
+              <Text style={[themedStyles.text, { color: currentColors.success || '#4CAF50', fontSize: 14, fontWeight: '500' }]}>
+                Simple Auth (Debug)
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {/* Manual Unlock Button - show if biometrics failed or not configured */}
           {(showManualUnlock || !biometricsConfigured) && (
             <TouchableOpacity
@@ -366,6 +484,42 @@ export default function LockScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Debug Info */}
+        {__DEV__ && (
+          <View style={{ marginTop: 24, alignItems: 'center' }}>
+            <TouchableOpacity
+              style={[
+                themedStyles.card,
+                {
+                  backgroundColor: 'transparent',
+                  borderColor: currentColors.textSecondary,
+                  borderWidth: 1,
+                  padding: 8,
+                  marginBottom: 16,
+                },
+              ]}
+              onPress={() => {
+                Alert.alert(
+                  'Debug Info',
+                  `Capabilities:
+- Available: ${capabilities.isAvailable}
+- Enrolled: ${capabilities.isEnrolled}
+- Type: ${capabilities.biometricType}
+- Supported: ${capabilities.supportedTypes.join(', ')}
+
+State:
+- Auth Attempts: ${authAttempts}
+- Show Manual: ${showManualUnlock}
+- Is Authenticating: ${isAuthenticating}
+- Configured: ${biometricsConfigured}`
+                );
+              }}
+            >
+              <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>Debug Info</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Help Text */}
         {(authAttempts >= 3 || !biometricsConfigured) && (

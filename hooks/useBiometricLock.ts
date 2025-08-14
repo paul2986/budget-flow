@@ -50,8 +50,17 @@ export function useBiometricLock() {
       console.log('useBiometricLock: Checking biometric capabilities');
       
       const isAvailable = await LocalAuthentication.hasHardwareAsync();
+      console.log('useBiometricLock: Hardware available:', isAvailable);
+      
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      console.log('useBiometricLock: Biometrics enrolled:', isEnrolled);
+      
       const supportedTypes = await LocalAuthentication.supportedAuthenticationTypesAsync();
+      console.log('useBiometricLock: Supported types:', supportedTypes);
+      
+      // Get security level
+      const securityLevel = await LocalAuthentication.getEnrolledLevelAsync();
+      console.log('useBiometricLock: Security level:', securityLevel);
       
       // Determine biometric type label
       let biometricType = 'Biometrics';
@@ -59,6 +68,8 @@ export function useBiometricLock() {
         biometricType = 'Face ID';
       } else if (supportedTypes.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
         biometricType = 'Touch ID';
+      } else if (supportedTypes.includes(LocalAuthentication.AuthenticationType.IRIS)) {
+        biometricType = 'Iris';
       }
 
       const caps = {
@@ -68,18 +79,20 @@ export function useBiometricLock() {
         biometricType,
       };
 
-      console.log('useBiometricLock: Capabilities:', caps);
+      console.log('useBiometricLock: Final capabilities:', JSON.stringify(caps, null, 2));
       setCapabilities(caps);
       
       return caps;
     } catch (error) {
       console.error('useBiometricLock: Error checking capabilities:', error);
-      return {
+      const fallbackCaps = {
         isAvailable: false,
         isEnrolled: false,
         supportedTypes: [],
         biometricType: 'Biometrics',
       };
+      setCapabilities(fallbackCaps);
+      return fallbackCaps;
     }
   }, []);
 
@@ -306,10 +319,95 @@ export function useBiometricLock() {
     return capabilities.isAvailable && capabilities.isEnrolled;
   }, [capabilities]);
 
+  // Test biometric authentication (for debugging)
+  const testBiometricAuth = useCallback(async (): Promise<{ success: boolean; message: string; details?: any }> => {
+    try {
+      console.log('useBiometricLock: Testing biometric authentication...');
+      
+      // Check current capabilities
+      const currentlyAvailable = await LocalAuthentication.hasHardwareAsync();
+      const currentlyEnrolled = await LocalAuthentication.isEnrolledAsync();
+      const currentSupportedTypes = await LocalAuthentication.supportedAuthenticationTypesAsync();
+      const securityLevel = await LocalAuthentication.getEnrolledLevelAsync();
+      
+      console.log('useBiometricLock: Test - Current capabilities:', {
+        currentlyAvailable,
+        currentlyEnrolled,
+        currentSupportedTypes,
+        securityLevel
+      });
+
+      if (!currentlyAvailable) {
+        return { 
+          success: false, 
+          message: 'Biometric hardware not available',
+          details: { currentlyAvailable, currentlyEnrolled, currentSupportedTypes, securityLevel }
+        };
+      }
+
+      if (!currentlyEnrolled) {
+        return { 
+          success: false, 
+          message: 'No biometric data enrolled',
+          details: { currentlyAvailable, currentlyEnrolled, currentSupportedTypes, securityLevel }
+        };
+      }
+
+      // Try a simple authentication test with minimal options
+      console.log('useBiometricLock: Starting simple authentication test...');
+      const testResult = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Test Face ID',
+        cancelLabel: 'Cancel',
+      });
+
+      console.log('useBiometricLock: Simple test result:', testResult);
+
+      // Try another test with different options
+      console.log('useBiometricLock: Starting biometric-only test...');
+      const biometricOnlyResult = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Test Biometric Only',
+        cancelLabel: 'Cancel',
+        disableDeviceFallback: true,
+      });
+
+      console.log('useBiometricLock: Biometric-only test result:', biometricOnlyResult);
+
+      return {
+        success: testResult.success || biometricOnlyResult.success,
+        message: testResult.success 
+          ? 'Simple test successful' 
+          : biometricOnlyResult.success 
+            ? 'Biometric-only test successful'
+            : `Both tests failed: ${testResult.error}, ${biometricOnlyResult.error}`,
+        details: { 
+          testResult, 
+          biometricOnlyResult,
+          currentlyAvailable, 
+          currentlyEnrolled, 
+          currentSupportedTypes,
+          securityLevel
+        }
+      };
+    } catch (error) {
+      console.error('useBiometricLock: Test error:', error);
+      return {
+        success: false,
+        message: 'Test failed with error: ' + (error as Error).message,
+        details: { error }
+      };
+    }
+  }, []);
+
   // Authenticate with biometrics
   const authenticate = useCallback(async (): Promise<{ success: boolean; message: string; userCancelled?: boolean }> => {
     try {
       console.log('useBiometricLock: Starting biometric authentication');
+      console.log('useBiometricLock: Capabilities check:', {
+        isAvailable: capabilities.isAvailable,
+        isEnrolled: capabilities.isEnrolled,
+        supportedTypes: capabilities.supportedTypes,
+        biometricType: capabilities.biometricType
+      });
       
       if (!capabilities.isAvailable) {
         console.log('useBiometricLock: Biometric hardware not available');
@@ -321,27 +419,57 @@ export function useBiometricLock() {
         return { success: false, message: 'No biometric data is enrolled on this device' };
       }
 
-      const result = await LocalAuthentication.authenticateAsync({
+      // Re-check capabilities right before authentication to ensure they're still valid
+      const currentlyAvailable = await LocalAuthentication.hasHardwareAsync();
+      const currentlyEnrolled = await LocalAuthentication.isEnrolledAsync();
+      
+      console.log('useBiometricLock: Real-time capability check:', {
+        currentlyAvailable,
+        currentlyEnrolled
+      });
+
+      if (!currentlyAvailable || !currentlyEnrolled) {
+        console.log('useBiometricLock: Real-time check failed - biometrics not available or enrolled');
+        return { 
+          success: false, 
+          message: !currentlyAvailable 
+            ? 'Biometric hardware is not available' 
+            : 'No biometric data is enrolled on this device' 
+        };
+      }
+
+      console.log('useBiometricLock: Calling LocalAuthentication.authenticateAsync...');
+      
+      // Try authentication with proper configuration for Face ID
+      const authOptions = {
         promptMessage: 'Unlock Budget Flow',
         cancelLabel: 'Cancel',
         fallbackLabel: 'Use Passcode',
-        disableDeviceFallback: false,
-      });
+        disableDeviceFallback: false, // Allow fallback but prefer biometric
+        requireConfirmation: false,
+      };
 
-      console.log('useBiometricLock: Authentication result:', result);
+      console.log('useBiometricLock: Authentication options:', authOptions);
+      
+      const result = await LocalAuthentication.authenticateAsync(authOptions);
+
+      console.log('useBiometricLock: Authentication result:', JSON.stringify(result, null, 2));
 
       if (result.success) {
+        console.log('useBiometricLock: Authentication successful');
         await markUnlocked();
         return { success: true, message: 'Authentication successful' };
       } else {
+        console.log('useBiometricLock: Authentication failed with error:', result.error);
+        
         // Handle specific error cases
         if (result.error === 'user_cancel') {
           return { success: false, message: 'Authentication was cancelled', userCancelled: true };
         } else if (result.error === 'system_cancel') {
           return { success: false, message: 'Authentication was cancelled by the system', userCancelled: true };
         } else if (result.error === 'user_fallback') {
-          // User chose to use device passcode - this should be treated as a successful authentication
-          console.log('useBiometricLock: User chose device passcode fallback');
+          // This should not happen with disableDeviceFallback: false, but handle it
+          console.log('useBiometricLock: User chose fallback (unexpected)');
           await markUnlocked();
           return { success: true, message: 'Authentication successful with device passcode' };
         } else if (result.error === 'biometric_unknown_error') {
@@ -352,6 +480,10 @@ export function useBiometricLock() {
           return { success: false, message: 'No biometric data is enrolled' };
         } else if (result.error === 'not_available') {
           return { success: false, message: 'Biometric authentication is not available' };
+        } else if (result.error === 'lockout') {
+          return { success: false, message: 'Biometric authentication is temporarily locked out' };
+        } else if (result.error === 'lockout_permanent') {
+          return { success: false, message: 'Biometric authentication is permanently locked out' };
         } else {
           return { success: false, message: result.error || 'Authentication failed' };
         }
@@ -402,6 +534,29 @@ export function useBiometricLock() {
     }
   }, []);
 
+  // Simple authentication for debugging
+  const simpleAuthenticate = useCallback(async (): Promise<{ success: boolean; message: string }> => {
+    try {
+      console.log('useBiometricLock: Simple authenticate - starting...');
+      
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Unlock with Face ID',
+      });
+      
+      console.log('useBiometricLock: Simple authenticate result:', result);
+      
+      if (result.success) {
+        await markUnlocked();
+        return { success: true, message: 'Simple authentication successful' };
+      } else {
+        return { success: false, message: result.error || 'Simple authentication failed' };
+      }
+    } catch (error) {
+      console.error('useBiometricLock: Simple authenticate error:', error);
+      return { success: false, message: 'Simple authentication error: ' + (error as Error).message };
+    }
+  }, [markUnlocked]);
+
   return {
     capabilities,
     settings,
@@ -418,5 +573,7 @@ export function useBiometricLock() {
     checkCapabilities,
     loadSettings,
     isBiometricConfigured,
+    testBiometricAuth,
+    simpleAuthenticate,
   };
 }
