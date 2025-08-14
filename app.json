@@ -18,7 +18,8 @@
       "bundleIdentifier": "com.anonymous.Natively",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSFaceIDUsageDescription": "This app uses Face ID to securely unlock your budget data and protect your financial information."
+        "NSFaceIDUsageDescription": "This app uses Face ID to securely unlock your budget data and protect your financial information.",
+        "NSCameraUsageDescription": "This app uses Face ID to securely unlock your budget data and protect your financial information."
       }
     },
     "android": {

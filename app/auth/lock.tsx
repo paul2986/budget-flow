@@ -19,6 +19,7 @@ export default function LockScreen() {
   const [lastAuthAttempt, setLastAuthAttempt] = useState<number>(0);
   const [showManualUnlock, setShowManualUnlock] = useState(false);
   const [hasTriggeredInitialAuth, setHasTriggeredInitialAuth] = useState(false);
+  const [faceIdConfigurationError, setFaceIdConfigurationError] = useState(false);
   const authTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Clear timeout on unmount
@@ -61,7 +62,7 @@ export default function LockScreen() {
       // Longer delay to ensure Face ID is ready
       authTimeoutRef.current = setTimeout(() => {
         handleAuthenticate();
-      }, 2500);
+      }, 1500); // Reduced delay for better UX
     };
 
     triggerInitialAuth();
@@ -77,11 +78,11 @@ export default function LockScreen() {
         const now = Date.now();
         
         // Only trigger if enough time has passed since last attempt
-        if (now - lastAuthAttempt > 5000 && !isAuthenticating && authAttempts < 3) {
+        if (now - lastAuthAttempt > 3000 && !isAuthenticating && authAttempts < 3) {
           console.log('LockScreen: App became active, triggering authentication');
           authTimeoutRef.current = setTimeout(() => {
             handleAuthenticate();
-          }, 1000); // Longer delay for app state changes
+          }, 500); // Shorter delay for app state changes
         }
       }
     };
@@ -103,8 +104,8 @@ export default function LockScreen() {
 
     const now = Date.now();
     
-    // Prevent rapid-fire attempts with longer cooldown
-    if (now - lastAuthAttempt < 3000) {
+    // Prevent rapid-fire attempts with cooldown
+    if (now - lastAuthAttempt < 2000) {
       console.log('LockScreen: Skipping auth - too soon since last attempt');
       return;
     }
@@ -137,10 +138,18 @@ export default function LockScreen() {
         // Reset attempts on success
         setAuthAttempts(0);
         setShowManualUnlock(false);
+        setFaceIdConfigurationError(false);
         // Navigate back to the app
         router.replace('/');
       } else {
         console.log('LockScreen: Authentication failed:', result.message, 'userCancelled:', result.userCancelled);
+        
+        // Check for Face ID configuration issues
+        if (result.message && result.message.includes('FaceID is available but has not been configured')) {
+          console.log('LockScreen: Face ID configuration error detected');
+          setFaceIdConfigurationError(true);
+          setShowManualUnlock(true);
+        }
         
         // Don't count user cancellations as failed attempts
         if (!result.userCancelled) {
@@ -162,7 +171,8 @@ export default function LockScreen() {
             !result.message.includes('cancelled') && 
             !result.message.includes('system_cancel') &&
             !result.message.includes('user_cancel') &&
-            !result.userCancelled) {
+            !result.userCancelled &&
+            !result.message.includes('FaceID is available but has not been configured')) {
           console.log('LockScreen: Showing error alert:', result.message);
           Alert.alert('Authentication Failed', result.message);
         }
@@ -188,6 +198,7 @@ export default function LockScreen() {
       await markUnlocked();
       setAuthAttempts(0);
       setShowManualUnlock(false);
+      setFaceIdConfigurationError(false);
       router.replace('/');
     } catch (error) {
       console.error('LockScreen: Manual unlock error:', error);
@@ -218,6 +229,7 @@ export default function LockScreen() {
     console.log('LockScreen: Retry button pressed');
     setAuthAttempts(0);
     setShowManualUnlock(false);
+    setFaceIdConfigurationError(false);
     setLastAuthAttempt(0);
     handleAuthenticate();
   }, [handleAuthenticate]);
@@ -260,33 +272,37 @@ export default function LockScreen() {
               width: 120,
               height: 120,
               borderRadius: 60,
-              backgroundColor: currentColors.primary + '20',
+              backgroundColor: faceIdConfigurationError ? currentColors.error + '20' : currentColors.primary + '20',
               borderWidth: 3,
-              borderColor: currentColors.primary,
+              borderColor: faceIdConfigurationError ? currentColors.error : currentColors.primary,
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 16,
             }}
           >
             {isAuthenticating ? (
-              <ActivityIndicator size="large" color={currentColors.primary} />
+              <ActivityIndicator size="large" color={faceIdConfigurationError ? currentColors.error : currentColors.primary} />
             ) : (
               <Icon
                 name={
-                  capabilities.biometricType === 'Face ID'
+                  faceIdConfigurationError
+                    ? 'warning-outline'
+                    : capabilities.biometricType === 'Face ID'
                     ? 'scan-outline'
                     : capabilities.biometricType === 'Touch ID'
                     ? 'finger-print-outline'
                     : 'shield-checkmark-outline'
                 }
                 size={48}
-                style={{ color: currentColors.primary }}
+                style={{ color: faceIdConfigurationError ? currentColors.error : currentColors.primary }}
               />
             )}
           </View>
 
           <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>
-            {!biometricsConfigured
+            {faceIdConfigurationError
+              ? 'Face ID Configuration Issue'
+              : !biometricsConfigured
               ? 'Biometric Authentication Unavailable'
               : isAuthenticating
               ? 'Authenticating...'
@@ -296,7 +312,9 @@ export default function LockScreen() {
           </Text>
 
           <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
-            {!biometricsConfigured
+            {faceIdConfigurationError
+              ? 'Face ID is available but not properly configured. Please rebuild the app or use manual unlock.'
+              : !biometricsConfigured
               ? 'Please set up biometric authentication in your device settings'
               : isAuthenticating
               ? 'Please complete the authentication'
@@ -310,8 +328,8 @@ export default function LockScreen() {
 
         {/* Action Buttons */}
         <View style={{ width: '100%', maxWidth: 320 }}>
-          {/* Authenticate Button - only show if biometrics are configured */}
-          {biometricsConfigured && !isAuthenticating && (
+          {/* Authenticate Button - only show if biometrics are configured and no Face ID error */}
+          {biometricsConfigured && !isAuthenticating && !faceIdConfigurationError && (
             <TouchableOpacity
               style={[
                 themedStyles.card,
@@ -436,7 +454,7 @@ export default function LockScreen() {
           )}
 
           {/* Manual Unlock Button - show if biometrics failed or not configured */}
-          {(showManualUnlock || !biometricsConfigured) && (
+          {(showManualUnlock || !biometricsConfigured || faceIdConfigurationError) && (
             <TouchableOpacity
               style={[
                 themedStyles.card,
@@ -512,7 +530,8 @@ State:
 - Auth Attempts: ${authAttempts}
 - Show Manual: ${showManualUnlock}
 - Is Authenticating: ${isAuthenticating}
-- Configured: ${biometricsConfigured}`
+- Configured: ${biometricsConfigured}
+- Face ID Error: ${faceIdConfigurationError}`
                 );
               }}
             >
@@ -522,10 +541,12 @@ State:
         )}
 
         {/* Help Text */}
-        {(authAttempts >= 3 || !biometricsConfigured) && (
+        {(authAttempts >= 3 || !biometricsConfigured || faceIdConfigurationError) && (
           <View style={{ marginTop: 24, alignItems: 'center' }}>
             <Text style={[themedStyles.textSecondary, { textAlign: 'center', fontSize: 14 }]}>
-              {!biometricsConfigured
+              {faceIdConfigurationError
+                ? 'Face ID configuration issue detected. This usually happens when the app needs to be rebuilt with proper Face ID permissions. You can use manual unlock or sign out and sign back in.'
+                : !biometricsConfigured
                 ? 'To use biometric authentication, please enable Face ID or Touch ID in your device settings and restart the app.'
                 : 'Having trouble? You can unlock manually, sign out and sign back in, or check your device\'s biometric settings.'}
             </Text>

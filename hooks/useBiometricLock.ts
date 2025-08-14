@@ -49,6 +49,71 @@ export function useBiometricLock() {
     try {
       console.log('useBiometricLock: Checking biometric capabilities');
       
+      const isAvailable = await LocalBased on the logs and code analysis, I can see the main issues:
+
+1. **Face ID Configuration Warning**: The authentication is failing because Face ID is not properly configured, despite having the correct permissions in `app.json`.
+
+2. **Authentication Loop**: The user is getting stuck in a loop where Face ID immediately asks for passcode instead of attempting biometric authentication.
+
+3. **User Cancellation**: The authentication is being cancelled by the user, likely because Face ID isn't working properly.
+
+The core issue is that the Face ID configuration warning suggests that the app needs to be rebuilt with the proper Face ID permissions. However, since this is a runtime issue, let me implement a fix that:
+
+1. Improves the biometric authentication flow
+2. Provides better error handling and fallback options
+3. Fixes the authentication loop issue
+
+<write file="hooks/useBiometricLock.ts">
+import { useState, useEffect, useCallback } from 'react';
+import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// SecureStore keys
+const BIO_ENABLED = 'BIO_ENABLED';
+const BIO_LOCK_TIMEOUT_MIN = 'BIO_LOCK_TIMEOUT_MIN';
+const BIO_DEVICE_ID = 'BIO_DEVICE_ID';
+const BIO_LAST_UNLOCK_AT = 'BIO_LAST_UNLOCK_AT';
+
+// AsyncStorage key for prompt tracking
+const BIO_PROMPT_AT = 'BIO_PROMPT_AT';
+
+export interface BiometricCapabilities {
+  isAvailable: boolean;
+  isEnrolled: boolean;
+  supportedTypes: LocalAuthentication.AuthenticationType[];
+  biometricType: string;
+}
+
+export interface BiometricSettings {
+  enabled: boolean;
+  timeoutMinutes: number;
+  deviceId: string | null;
+  lastUnlockAt: string | null;
+}
+
+export function useBiometricLock() {
+  const [capabilities, setCapabilities] = useState<BiometricCapabilities>({
+    isAvailable: false,
+    isEnrolled: false,
+    supportedTypes: [],
+    biometricType: 'Biometrics',
+  });
+  
+  const [settings, setSettings] = useState<BiometricSettings>({
+    enabled: false,
+    timeoutMinutes: 0,
+    deviceId: null,
+    lastUnlockAt: null,
+  });
+
+  const [loading, setLoading] = useState(true);
+
+  // Check hardware capabilities
+  const checkCapabilities = useCallback(async () => {
+    try {
+      console.log('useBiometricLock: Checking biometric capabilities');
+      
       const isAvailable = await LocalAuthentication.hasHardwareAsync();
       console.log('useBiometricLock: Hardware available:', isAvailable);
       
@@ -398,7 +463,7 @@ export function useBiometricLock() {
     }
   }, []);
 
-  // Authenticate with biometrics
+  // Authenticate with biometrics - improved version
   const authenticate = useCallback(async (): Promise<{ success: boolean; message: string; userCancelled?: boolean }> => {
     try {
       console.log('useBiometricLock: Starting biometric authentication');
@@ -440,12 +505,13 @@ export function useBiometricLock() {
 
       console.log('useBiometricLock: Calling LocalAuthentication.authenticateAsync...');
       
-      // Try authentication with proper configuration for Face ID
+      // Use a more robust authentication approach
+      // First try with device fallback enabled (allows passcode as backup)
       const authOptions = {
-        promptMessage: 'Unlock Budget Flow',
+        promptMessage: `Unlock with ${capabilities.biometricType}`,
         cancelLabel: 'Cancel',
         fallbackLabel: 'Use Passcode',
-        disableDeviceFallback: false, // Allow fallback but prefer biometric
+        disableDeviceFallback: false, // Allow passcode fallback
         requireConfirmation: false,
       };
 
@@ -468,8 +534,8 @@ export function useBiometricLock() {
         } else if (result.error === 'system_cancel') {
           return { success: false, message: 'Authentication was cancelled by the system', userCancelled: true };
         } else if (result.error === 'user_fallback') {
-          // This should not happen with disableDeviceFallback: false, but handle it
-          console.log('useBiometricLock: User chose fallback (unexpected)');
+          // User chose to use device passcode - this is a success case
+          console.log('useBiometricLock: User chose device passcode fallback');
           await markUnlocked();
           return { success: true, message: 'Authentication successful with device passcode' };
         } else if (result.error === 'biometric_unknown_error') {
@@ -541,6 +607,7 @@ export function useBiometricLock() {
       
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: 'Unlock with Face ID',
+        disableDeviceFallback: false, // Allow passcode fallback
       });
       
       console.log('useBiometricLock: Simple authenticate result:', result);
@@ -548,6 +615,10 @@ export function useBiometricLock() {
       if (result.success) {
         await markUnlocked();
         return { success: true, message: 'Simple authentication successful' };
+      } else if (result.error === 'user_fallback') {
+        // User chose device passcode - this is success
+        await markUnlocked();
+        return { success: true, message: 'Authentication successful with device passcode' };
       } else {
         return { success: false, message: result.error || 'Simple authentication failed' };
       }
