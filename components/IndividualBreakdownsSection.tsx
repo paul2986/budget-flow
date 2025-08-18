@@ -32,12 +32,7 @@ export default function IndividualBreakdownsSection({
 
   if (!people || people.length === 0) {
     return (
-      <View style={[themedStyles.card, { marginBottom: 24 }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-          <Icon name="people-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-          <Text style={[themedStyles.subtitle, { fontSize: 18 }]}>Individual Breakdowns</Text>
-        </View>
-        
+      <View style={[themedStyles.card, { marginBottom: 0 }]}>
         <View style={{ alignItems: 'center', paddingVertical: 20 }}>
           <Icon name="person-add-outline" size={48} style={{ color: currentColors.textSecondary, marginBottom: 12 }} />
           <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
@@ -49,12 +44,7 @@ export default function IndividualBreakdownsSection({
   }
 
   return (
-    <View style={[themedStyles.card, { marginBottom: 24 }]}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-        <Icon name="people-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-        <Text style={[themedStyles.subtitle, { fontSize: 18 }]}>Individual Breakdowns</Text>
-      </View>
-
+    <View style={[themedStyles.card, { marginBottom: 0 }]}>
       {people.map((person, index) => {
         const personIncome = calculatePersonIncome(person);
         const personPersonalExpenses = calculatePersonalExpenses(expenses, person.id);

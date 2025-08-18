@@ -324,13 +324,8 @@ export default function ExpiringSection({ expenses }: ExpiringSectionProps) {
   const list = activeTab === 'ending' ? endingSoonList : endedList;
 
   return (
-    <View style={[themedStyles.card, { marginBottom: 24 }]}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Icon name="time-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-          <Text style={[themedStyles.subtitle, { fontSize: 18 }]}>Ending & Expired</Text>
-        </View>
-        
+    <View style={[themedStyles.card, { marginBottom: 0 }]}>
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 20 }}>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <TabButton tab="ending" label="Ending Soon" count={endingSoonList.length} />
           <TabButton tab="ended" label="Expired" count={endedList.length} />

@@ -78,14 +78,9 @@ export default function OverviewSection({
   );
 
   return (
-    <View style={[themedStyles.card, { marginBottom: 24 }]}>
-      {/* Header with tabs */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Icon name="analytics-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-          <Text style={[themedStyles.subtitle, { fontSize: 18 }]}>Overview</Text>
-        </View>
-        
+    <View style={[themedStyles.card, { marginBottom: 0 }]}>
+      {/* Tabs */}
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 20 }}>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <TabButton mode="monthly" label="Monthly" />
           <TabButton mode="yearly" label="Yearly" />

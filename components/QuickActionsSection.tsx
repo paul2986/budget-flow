@@ -63,11 +63,6 @@ export default function QuickActionsSection() {
 
   return (
     <View style={[themedStyles.card, { marginBottom: 0 }]}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-        <Icon name="flash-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-        <Text style={[themedStyles.subtitle, { fontSize: 18 }]}>Quick Actions</Text>
-      </View>
-
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
         {actions.map((action) => (
           <TouchableOpacity

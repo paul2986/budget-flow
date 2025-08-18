@@ -320,26 +320,50 @@ export default function HomeScreen() {
         {calculations && (
           <>
             {/* 1. Overview Section */}
-            <OverviewSection 
-              calculations={calculations}
-              people={people}
-              expenses={expenses}
-              householdSettings={data.householdSettings}
-            />
+            <View style={{ marginBottom: 24 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                <Icon name="analytics-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                <Text style={[themedStyles.subtitle, { fontSize: 18 }]}>Overview</Text>
+              </View>
+              <OverviewSection 
+                calculations={calculations}
+                people={people}
+                expenses={expenses}
+                householdSettings={data.householdSettings}
+              />
+            </View>
 
             {/* 2. Individual Breakdowns Section */}
-            <IndividualBreakdownsSection 
-              people={people}
-              expenses={expenses}
-              householdSettings={data.householdSettings}
-              totalHouseholdExpenses={calculations.householdExpenses}
-            />
+            <View style={{ marginBottom: 24 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                <Icon name="people-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                <Text style={[themedStyles.subtitle, { fontSize: 18 }]}>Individual Breakdowns</Text>
+              </View>
+              <IndividualBreakdownsSection 
+                people={people}
+                expenses={expenses}
+                householdSettings={data.householdSettings}
+                totalHouseholdExpenses={calculations.householdExpenses}
+              />
+            </View>
 
             {/* 3. Ending/Expiring Section */}
-            <ExpiringSection expenses={expenses} />
+            <View style={{ marginBottom: 24 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                <Icon name="time-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                <Text style={[themedStyles.subtitle, { fontSize: 18 }]}>Ending & Expired</Text>
+              </View>
+              <ExpiringSection expenses={expenses} />
+            </View>
 
             {/* 4. Quick Actions Section */}
-            <QuickActionsSection />
+            <View style={{ marginBottom: 0 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                <Icon name="flash-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                <Text style={[themedStyles.subtitle, { fontSize: 18 }]}>Quick Actions</Text>
+              </View>
+              <QuickActionsSection />
+            </View>
           </>
         )}
       </ScrollView>
