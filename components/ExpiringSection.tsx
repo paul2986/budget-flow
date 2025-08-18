@@ -132,6 +132,7 @@ export default function ExpiringSection({ expenses }: ExpiringSectionProps) {
       onPress={() => setActiveTab(tab)}
       style={[
         {
+          flex: 1,
           paddingHorizontal: 12,
           paddingVertical: 8,
           borderRadius: 16,
@@ -140,6 +141,7 @@ export default function ExpiringSection({ expenses }: ExpiringSectionProps) {
           borderColor: activeTab === tab ? currentColors.primary : currentColors.border,
           flexDirection: 'row',
           alignItems: 'center',
+          justifyContent: 'center',
         },
       ]}
     >
@@ -325,11 +327,9 @@ export default function ExpiringSection({ expenses }: ExpiringSectionProps) {
 
   return (
     <View style={[themedStyles.card, { marginBottom: 0 }]}>
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 20 }}>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TabButton tab="ending" label="Ending Soon" count={endingSoonList.length} />
-          <TabButton tab="ended" label="Expired" count={endedList.length} />
-        </View>
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
+        <TabButton tab="ending" label="Ending Soon" count={endingSoonList.length} />
+        <TabButton tab="ended" label="Expired" count={endedList.length} />
       </View>
 
       {!list || !Array.isArray(list) || list.length === 0 ? (

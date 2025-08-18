@@ -44,8 +44,8 @@ export default function IndividualBreakdownsSection({
   }
 
   return (
-    <View style={[themedStyles.card, { marginBottom: 0 }]}>
-      {people.map((person, index) => {
+    <View style={{ gap: 16 }}>
+      {people.map((person) => {
         const personIncome = calculatePersonIncome(person);
         const personPersonalExpenses = calculatePersonalExpenses(expenses, person.id);
         const personHouseholdShare = calculateHouseholdShare(
@@ -70,7 +70,7 @@ export default function IndividualBreakdownsSection({
                 backgroundColor: currentColors.backgroundAlt,
                 borderColor: currentColors.border,
                 borderWidth: 1,
-                marginBottom: index === people.length - 1 ? 0 : 16,
+                marginBottom: 0,
               }
             ]}
           >
