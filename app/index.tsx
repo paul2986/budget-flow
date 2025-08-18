@@ -322,8 +322,8 @@ export default function HomeScreen() {
             {/* 1. Overview Section */}
             <View style={{ marginBottom: 24 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                <Icon name="analytics-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-                <Text style={[themedStyles.subtitle, { fontSize: 18 }]}>Overview</Text>
+                <Icon name="analytics-outline" size={24} style={{ color: currentColors.primary, marginRight: 12 }} />
+                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700' }]}>Overview</Text>
               </View>
               <OverviewSection 
                 calculations={calculations}
@@ -336,8 +336,8 @@ export default function HomeScreen() {
             {/* 2. Individual Breakdowns Section */}
             <View style={{ marginBottom: 24 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                <Icon name="people-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-                <Text style={[themedStyles.subtitle, { fontSize: 18 }]}>Individual Breakdowns</Text>
+                <Icon name="people-outline" size={24} style={{ color: currentColors.primary, marginRight: 12 }} />
+                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700' }]}>Individual Breakdowns</Text>
               </View>
               <IndividualBreakdownsSection 
                 people={people}
@@ -350,8 +350,8 @@ export default function HomeScreen() {
             {/* 3. Ending/Expiring Section */}
             <View style={{ marginBottom: 24 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                <Icon name="time-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-                <Text style={[themedStyles.subtitle, { fontSize: 18 }]}>Ending & Expired</Text>
+                <Icon name="time-outline" size={24} style={{ color: currentColors.primary, marginRight: 12 }} />
+                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700' }]}>Ending & Expired</Text>
               </View>
               <ExpiringSection expenses={expenses} />
             </View>
@@ -359,8 +359,8 @@ export default function HomeScreen() {
             {/* 4. Quick Actions Section */}
             <View style={{ marginBottom: 0 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                <Icon name="flash-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-                <Text style={[themedStyles.subtitle, { fontSize: 18 }]}>Quick Actions</Text>
+                <Icon name="flash-outline" size={24} style={{ color: currentColors.primary, marginRight: 12 }} />
+                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700' }]}>Quick Actions</Text>
               </View>
               <QuickActionsSection />
             </View>
