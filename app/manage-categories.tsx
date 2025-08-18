@@ -35,6 +35,7 @@ export default function ManageCategoriesScreen() {
   }, [refresh]);
 
   const isInUse = (category: string): boolean => {
+    if (!data?.expenses) return false;
     const normalized = normalizeCategoryName(category);
     return data.expenses.some((e) => normalizeCategoryName((e as any).categoryTag || 'Misc') === normalized);
   };
@@ -44,7 +45,7 @@ export default function ManageCategoriesScreen() {
       Alert.alert('Cannot delete', 'This category is currently in use by one or more expenses.');
       return;
     }
-    Alert.alert('Delete Category', `Are you sure you want to delete “${category}”?`, [
+    Alert.alert('Delete Category', `Are you sure you want to delete "${category}"?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',

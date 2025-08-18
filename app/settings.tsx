@@ -13,7 +13,7 @@ import StandardHeader from '../components/StandardHeader';
 export default function SettingsScreen() {
   const { currentColors, themeMode, setThemeMode } = useTheme();
   const { currency, setCurrency } = useCurrency();
-  const { data, clearAllData } = useBudgetData();
+  const { appData, data, clearAllData } = useBudgetData();
   const { themedStyles } = useThemedStyles();
   const { showToast } = useToast();
 
@@ -88,7 +88,7 @@ export default function SettingsScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[themedStyles.text, { fontWeight: '600' }]}>Manage Budgets</Text>
                 <Text style={themedStyles.textSecondary}>
-                  {data.budgets.length} budget{data.budgets.length !== 1 ? 's' : ''}
+                  {appData?.budgets?.length || 0} budget{(appData?.budgets?.length || 0) !== 1 ? 's' : ''}
                 </Text>
               </View>
             </View>
