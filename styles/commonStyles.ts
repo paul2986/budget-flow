@@ -17,6 +17,7 @@ export const colors = {
   success: '#4CAF50',      // Success green
   warning: '#FF9800',      // Warning orange
   error: '#F44336',        // Error red
+  info: '#2196F3',         // Info blue
 };
 
 export const darkColors = {
@@ -35,6 +36,7 @@ export const darkColors = {
   success: '#66BB6A',      // Success green
   warning: '#FFA726',      // Warning orange
   error: '#EF5350',        // Error red
+  info: '#42A5F5',         // Info blue for dark mode
 };
 
 export const buttonStyles = StyleSheet.create({

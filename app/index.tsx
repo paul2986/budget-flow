@@ -18,10 +18,12 @@ import { useBudgetData } from '../hooks/useBudgetData';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useToast } from '../hooks/useToast';
 import StandardHeader from '../components/StandardHeader';
-import PersonBreakdownChart from '../components/PersonBreakdownChart';
-import RecurringWidget from '../components/RecurringWidget';
 import { useBudgetLock } from '../hooks/useBudgetLock';
 import { BlurView } from 'expo-blur';
+import OverviewSection from '../components/OverviewSection';
+import IndividualBreakdownsSection from '../components/IndividualBreakdownsSection';
+import ExpiringSection from '../components/ExpiringSection';
+import QuickActionsSection from '../components/QuickActionsSection';
 
 export default function HomeScreen() {
   const { currentColors } = useTheme();
@@ -41,7 +43,6 @@ export default function HomeScreen() {
   // Check lock status when app becomes active
   const handleAppStateChange = useCallback((nextAppState: string) => {
     if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-      // App became active - the lock status will be re-evaluated by useMemo
       console.log('HomeScreen: App became active, checking lock status');
     }
     appState.current = nextAppState;
@@ -49,7 +50,6 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      // Refresh data when screen comes into focus to ensure latest budget is displayed
       console.log('HomeScreen: Screen focused, refreshing data');
       refreshData(true);
       
@@ -64,7 +64,6 @@ export default function HomeScreen() {
       return null;
     }
 
-    // Add comprehensive null checks for data arrays
     const people = data && data.people && Array.isArray(data.people) ? data.people : [];
     const expenses = data && data.expenses && Array.isArray(data.expenses) ? data.expenses : [];
 
@@ -165,11 +164,9 @@ export default function HomeScreen() {
       <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
         <StandardHeader title="Budget Flow" />
         
-        {/* Blurred background content */}
         <View style={{ flex: 1, position: 'relative' }}>
           <View style={{ flex: 1, opacity: 0.3 }}>
             <ScrollView style={themedStyles.content} contentContainerStyle={{ padding: 16 }}>
-              {/* Placeholder content that's blurred */}
               <View style={[themedStyles.card, { height: 120, marginBottom: 16 }]} />
               <View style={[themedStyles.card, { height: 80, marginBottom: 16 }]} />
               <View style={[themedStyles.card, { height: 200, marginBottom: 16 }]} />
@@ -177,7 +174,6 @@ export default function HomeScreen() {
             </ScrollView>
           </View>
 
-          {/* Lock overlay */}
           <BlurView
             intensity={20}
             style={{
@@ -205,7 +201,6 @@ export default function HomeScreen() {
                 },
               ]}
             >
-              {/* Lock Icon */}
               <View
                 style={{
                   width: 80,
@@ -222,19 +217,15 @@ export default function HomeScreen() {
                 <Icon name="lock-closed" size={32} style={{ color: currentColors.error }} />
               </View>
 
-              {/* Title */}
               <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>
                 This budget is locked
               </Text>
 
-              {/* Budget name */}
               <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 24 }]}>
                 "{activeBudget.name}" requires authentication to view
               </Text>
 
-              {/* Buttons */}
               <View style={{ width: '100%', gap: 12 }}>
-                {/* Unlock Button */}
                 <TouchableOpacity
                   style={[
                     themedStyles.card,
@@ -266,7 +257,6 @@ export default function HomeScreen() {
                   )}
                 </TouchableOpacity>
 
-                {/* Back to Budgets Button */}
                 <TouchableOpacity
                   style={[
                     themedStyles.card,
@@ -295,11 +285,9 @@ export default function HomeScreen() {
     );
   }
 
-  // Add comprehensive null checks for data arrays before rendering
   const people = data && data.people && Array.isArray(data.people) ? data.people : [];
   const expenses = data && data.expenses && Array.isArray(data.expenses) ? data.expenses : [];
 
-  // Normal unlocked budget view
   return (
     <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
       <StandardHeader 
@@ -308,9 +296,16 @@ export default function HomeScreen() {
         onRightPress={() => router.push('/budgets')}
       />
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={{ padding: 16 }}>
+      <ScrollView 
+        style={themedStyles.content} 
+        contentContainerStyle={{ 
+          padding: 16,
+          paddingBottom: 120 // Extra padding to ensure Quick Actions are visible above nav bar
+        }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Budget Header */}
-        <View style={[themedStyles.card, { marginBottom: 16 }]}>
+        <View style={[themedStyles.card, { marginBottom: 24 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <Text style={[themedStyles.subtitle, { flex: 1 }]}>{activeBudget.name}</Text>
             <TouchableOpacity onPress={() => router.push('/budgets')}>
@@ -324,128 +319,27 @@ export default function HomeScreen() {
 
         {calculations && (
           <>
-            {/* Summary Cards */}
-            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-              <View style={[themedStyles.card, { flex: 1 }]}>
-                <Text style={[themedStyles.textSecondary, { fontSize: 12, marginBottom: 4 }]}>INCOME</Text>
-                <Text style={[themedStyles.text, { fontSize: 18, fontWeight: '600', color: currentColors.success || '#4CAF50' }]}>
-                  {formatCurrency(calculations.totalIncome)}
-                </Text>
-              </View>
-              <View style={[themedStyles.card, { flex: 1 }]}>
-                <Text style={[themedStyles.textSecondary, { fontSize: 12, marginBottom: 4 }]}>EXPENSES</Text>
-                <Text style={[themedStyles.text, { fontSize: 18, fontWeight: '600', color: currentColors.error }]}>
-                  {formatCurrency(calculations.totalExpenses)}
-                </Text>
-              </View>
-            </View>
+            {/* 1. Overview Section */}
+            <OverviewSection 
+              calculations={calculations}
+              people={people}
+              expenses={expenses}
+              householdSettings={data.householdSettings}
+            />
 
-            {/* Remaining */}
-            <View style={[themedStyles.card, { marginBottom: 16 }]}>
-              <Text style={[themedStyles.textSecondary, { fontSize: 12, marginBottom: 4 }]}>REMAINING</Text>
-              <Text style={[
-                themedStyles.text, 
-                { 
-                  fontSize: 24, 
-                  fontWeight: '700',
-                  color: calculations.remaining >= 0 ? (currentColors.success || '#4CAF50') : currentColors.error
-                }
-              ]}>
-                {formatCurrency(calculations.remaining)}
-              </Text>
-              {calculations.remaining < 0 && (
-                <Text style={[themedStyles.textSecondary, { fontSize: 12, marginTop: 4 }]}>
-                  Over budget by {formatCurrency(Math.abs(calculations.remaining))}
-                </Text>
-              )}
-            </View>
+            {/* 2. Individual Breakdowns Section */}
+            <IndividualBreakdownsSection 
+              people={people}
+              expenses={expenses}
+              householdSettings={data.householdSettings}
+              totalHouseholdExpenses={calculations.householdExpenses}
+            />
 
-            {/* Expense Breakdown */}
-            <View style={[themedStyles.card, { marginBottom: 16 }]}>
-              <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Expense Breakdown</Text>
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[themedStyles.textSecondary, { fontSize: 12, marginBottom: 4 }]}>HOUSEHOLD</Text>
-                  <Text style={[themedStyles.text, { fontSize: 16, fontWeight: '600' }]}>
-                    {formatCurrency(calculations.householdExpenses)}
-                  </Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[themedStyles.textSecondary, { fontSize: 12, marginBottom: 4 }]}>PERSONAL</Text>
-                  <Text style={[themedStyles.text, { fontSize: 16, fontWeight: '600' }]}>
-                    {formatCurrency(calculations.personalExpenses)}
-                  </Text>
-                </View>
-              </View>
-            </View>
+            {/* 3. Ending/Expiring Section */}
+            <ExpiringSection expenses={expenses} />
 
-            {/* Person Breakdown Chart */}
-            {people.length > 0 && calculations && (
-              <View style={[themedStyles.card, { marginBottom: 16 }]}>
-                <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Budget Overview</Text>
-                <PersonBreakdownChart 
-                  income={calculations.totalIncome}
-                  personalExpenses={calculations.personalExpenses}
-                  householdShare={calculations.householdExpenses}
-                  remaining={calculations.remaining}
-                  people={people}
-                  expenses={expenses}
-                  householdSettings={data.householdSettings}
-                  showMonthlyBreakdown={true}
-                  showIndividualBreakdowns={true}
-                />
-              </View>
-            )}
-
-            {/* Recurring Widget */}
-            <RecurringWidget />
-
-            {/* Quick Actions */}
-            <View style={[themedStyles.card, { marginBottom: 16 }]}>
-              <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Quick Actions</Text>
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <TouchableOpacity
-                  style={[
-                    themedStyles.card,
-                    {
-                      flex: 1,
-                      backgroundColor: currentColors.primary,
-                      borderColor: currentColors.primary,
-                      borderWidth: 1,
-                      alignItems: 'center',
-                      paddingVertical: 16,
-                      marginBottom: 0,
-                    },
-                  ]}
-                  onPress={() => router.push('/add-expense')}
-                >
-                  <Icon name="add" size={20} style={{ color: '#fff', marginBottom: 4 }} />
-                  <Text style={[themedStyles.text, { color: '#fff', fontSize: 12, fontWeight: '600' }]}>
-                    Add Expense
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    themedStyles.card,
-                    {
-                      flex: 1,
-                      backgroundColor: currentColors.backgroundAlt,
-                      borderColor: currentColors.border,
-                      borderWidth: 1,
-                      alignItems: 'center',
-                      paddingVertical: 16,
-                      marginBottom: 0,
-                    },
-                  ]}
-                  onPress={() => router.push('/people')}
-                >
-                  <Icon name="people" size={20} style={{ color: currentColors.text, marginBottom: 4 }} />
-                  <Text style={[themedStyles.text, { fontSize: 12, fontWeight: '600' }]}>
-                    Manage People
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            {/* 4. Quick Actions Section */}
+            <QuickActionsSection />
           </>
         )}
       </ScrollView>
