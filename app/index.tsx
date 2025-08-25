@@ -24,6 +24,7 @@ import OverviewSection from '../components/OverviewSection';
 import IndividualBreakdownsSection from '../components/IndividualBreakdownsSection';
 import ExpiringSection from '../components/ExpiringSection';
 import QuickActionsSection from '../components/QuickActionsSection';
+import Button from '../components/Button';
 
 export default function HomeScreen() {
   const { currentColors } = useTheme();
@@ -39,6 +40,27 @@ export default function HomeScreen() {
   const budgetLocked = useMemo(() => {
     return activeBudget ? isLocked(activeBudget) : false;
   }, [activeBudget, isLocked]);
+
+  // Check if this is a first-time user or if they need guidance
+  const isFirstTimeUser = useMemo(() => {
+    if (!activeBudget || !data) return true;
+    
+    const people = data && data.people && Array.isArray(data.people) ? data.people : [];
+    const expenses = data && data.expenses && Array.isArray(data.expenses) ? data.expenses : [];
+    
+    // First time if no people and no expenses
+    return people.length === 0 && expenses.length === 0;
+  }, [activeBudget, data]);
+
+  const shouldShowFullDashboard = useMemo(() => {
+    if (!activeBudget || !data) return false;
+    
+    const people = data && data.people && Array.isArray(data.people) ? data.people : [];
+    const expenses = data && data.expenses && Array.isArray(data.expenses) ? data.expenses : [];
+    
+    // Show full dashboard only if both people and expenses exist
+    return people.length > 0 && expenses.length > 0;
+  }, [activeBudget, data]);
 
   // Check lock status when app becomes active
   const handleAppStateChange = useCallback((nextAppState: string) => {
@@ -124,6 +146,7 @@ export default function HomeScreen() {
     );
   }
 
+  // First-time user: No budget found - redirect to budget creation
   if (!activeBudget) {
     return (
       <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
@@ -131,28 +154,16 @@ export default function HomeScreen() {
         <View style={[themedStyles.content, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
           <Icon name="wallet-outline" size={64} style={{ color: currentColors.textSecondary, marginBottom: 16 }} />
           <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>
-            No Budget Found
+            Welcome to Budget Flow!
           </Text>
           <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 24 }]}>
-            Create your first budget to get started
+            Let's get started by creating your first budget
           </Text>
-          <TouchableOpacity
-            style={[
-              themedStyles.card,
-              {
-                backgroundColor: currentColors.primary,
-                borderColor: currentColors.primary,
-                borderWidth: 1,
-                paddingHorizontal: 24,
-                paddingVertical: 12,
-              },
-            ]}
+          <Button
+            text="Create Your First Budget"
             onPress={() => router.push('/budgets')}
-          >
-            <Text style={[themedStyles.text, { color: '#fff', fontWeight: '600' }]}>
-              Go to Budgets
-            </Text>
-          </TouchableOpacity>
+            variant="primary"
+          />
         </View>
       </View>
     );
@@ -288,6 +299,254 @@ export default function HomeScreen() {
   const people = data && data.people && Array.isArray(data.people) ? data.people : [];
   const expenses = data && data.expenses && Array.isArray(data.expenses) ? data.expenses : [];
 
+  // First-time user guidance: Budget exists but no people/expenses
+  if (isFirstTimeUser) {
+    return (
+      <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
+        <StandardHeader 
+          title={activeBudget.name}
+          rightIcon="wallet-outline"
+          onRightPress={() => router.push('/budgets')}
+        />
+
+        <ScrollView 
+          style={themedStyles.content} 
+          contentContainerStyle={[
+            themedStyles.scrollContent,
+            {
+              paddingHorizontal: 24,
+              paddingTop: 32,
+              justifyContent: 'center',
+              flex: 1,
+            }
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={{ alignItems: 'center', marginBottom: 32 }}>
+            <Icon name="rocket-outline" size={64} style={{ color: currentColors.primary, marginBottom: 16 }} />
+            <Text style={[themedStyles.title, { textAlign: 'center', marginBottom: 8 }]}>
+              Great! Your budget is ready
+            </Text>
+            <Text style={[themedStyles.textSecondary, { textAlign: 'center', fontSize: 16, lineHeight: 24 }]}>
+              Now let's add some people and expenses to get started with tracking your finances
+            </Text>
+          </View>
+
+          <View style={{ gap: 16, marginBottom: 32 }}>
+            <View style={[
+              themedStyles.card,
+              {
+                backgroundColor: currentColors.primary + '10',
+                borderColor: currentColors.primary + '30',
+                borderWidth: 1,
+                padding: 20,
+              }
+            ]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <Icon name="people" size={24} style={{ color: currentColors.primary, marginRight: 12 }} />
+                <Text style={[themedStyles.subtitle, { fontSize: 18, fontWeight: '700' }]}>
+                  Step 1: Add People
+                </Text>
+              </View>
+              <Text style={[themedStyles.textSecondary, { marginBottom: 16, lineHeight: 20 }]}>
+                Add yourself and anyone else who shares expenses. Each person can have their own income sources.
+              </Text>
+              <Button
+                text="Add People & Income"
+                onPress={() => router.push('/people')}
+                variant="primary"
+              />
+            </View>
+
+            <View style={[
+              themedStyles.card,
+              {
+                backgroundColor: currentColors.secondary + '10',
+                borderColor: currentColors.secondary + '30',
+                borderWidth: 1,
+                padding: 20,
+              }
+            ]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <Icon name="card" size={24} style={{ color: currentColors.secondary, marginRight: 12 }} />
+                <Text style={[themedStyles.subtitle, { fontSize: 18, fontWeight: '700' }]}>
+                  Step 2: Add Expenses
+                </Text>
+              </View>
+              <Text style={[themedStyles.textSecondary, { marginBottom: 16, lineHeight: 20 }]}>
+                Track your spending by adding household and personal expenses. Set frequencies and categories.
+              </Text>
+              <Button
+                text="Add Expenses"
+                onPress={() => router.push('/add-expense')}
+                variant="secondary"
+              />
+            </View>
+          </View>
+
+          <View style={[
+            themedStyles.card,
+            {
+              backgroundColor: currentColors.backgroundAlt,
+              borderColor: currentColors.border,
+              borderWidth: 1,
+              padding: 20,
+              alignItems: 'center',
+            }
+          ]}>
+            <Icon name="information-circle" size={20} style={{ color: currentColors.info, marginBottom: 8 }} />
+            <Text style={[themedStyles.textSecondary, { textAlign: 'center', fontSize: 14 }]}>
+              Once you add at least one person and one expense, you'll see detailed breakdowns and analytics
+            </Text>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // Partial setup: Show guidance if missing people OR expenses
+  if (!shouldShowFullDashboard) {
+    const hasPeople = people.length > 0;
+    const hasExpenses = expenses.length > 0;
+
+    return (
+      <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
+        <StandardHeader 
+          title={activeBudget.name}
+          rightIcon="wallet-outline"
+          onRightPress={() => router.push('/budgets')}
+        />
+
+        <ScrollView 
+          style={themedStyles.content} 
+          contentContainerStyle={[
+            themedStyles.scrollContent,
+            {
+              paddingHorizontal: 24,
+              paddingTop: 24,
+            }
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={{ alignItems: 'center', marginBottom: 24 }}>
+            <Icon name="checkmark-circle" size={48} style={{ color: currentColors.success, marginBottom: 12 }} />
+            <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>
+              You're almost ready!
+            </Text>
+            <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
+              Complete the setup to see your full dashboard
+            </Text>
+          </View>
+
+          <View style={{ gap: 16, marginBottom: 24 }}>
+            {/* People Status */}
+            <View style={[
+              themedStyles.card,
+              {
+                backgroundColor: hasPeople ? currentColors.success + '10' : currentColors.warning + '10',
+                borderColor: hasPeople ? currentColors.success + '30' : currentColors.warning + '30',
+                borderWidth: 1,
+                padding: 20,
+              }
+            ]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <Icon 
+                  name={hasPeople ? "checkmark-circle" : "people"} 
+                  size={24} 
+                  style={{ 
+                    color: hasPeople ? currentColors.success : currentColors.warning, 
+                    marginRight: 12 
+                  }} 
+                />
+                <Text style={[themedStyles.subtitle, { fontSize: 18, fontWeight: '700' }]}>
+                  People & Income {hasPeople ? '✓' : ''}
+                </Text>
+              </View>
+              <Text style={[themedStyles.textSecondary, { marginBottom: 16, lineHeight: 20 }]}>
+                {hasPeople 
+                  ? `Great! You have ${people.length} ${people.length === 1 ? 'person' : 'people'} added.`
+                  : 'Add people and their income sources to track individual spending.'
+                }
+              </Text>
+              {!hasPeople && (
+                <Button
+                  text="Add People & Income"
+                  onPress={() => router.push('/people')}
+                  variant="primary"
+                />
+              )}
+            </View>
+
+            {/* Expenses Status */}
+            <View style={[
+              themedStyles.card,
+              {
+                backgroundColor: hasExpenses ? currentColors.success + '10' : currentColors.warning + '10',
+                borderColor: hasExpenses ? currentColors.success + '30' : currentColors.warning + '30',
+                borderWidth: 1,
+                padding: 20,
+              }
+            ]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <Icon 
+                  name={hasExpenses ? "checkmark-circle" : "card"} 
+                  size={24} 
+                  style={{ 
+                    color: hasExpenses ? currentColors.success : currentColors.warning, 
+                    marginRight: 12 
+                  }} 
+                />
+                <Text style={[themedStyles.subtitle, { fontSize: 18, fontWeight: '700' }]}>
+                  Expenses {hasExpenses ? '✓' : ''}
+                </Text>
+              </View>
+              <Text style={[themedStyles.textSecondary, { marginBottom: 16, lineHeight: 20 }]}>
+                {hasExpenses 
+                  ? `Perfect! You have ${expenses.length} ${expenses.length === 1 ? 'expense' : 'expenses'} tracked.`
+                  : 'Add your household and personal expenses to see spending breakdowns.'
+                }
+              </Text>
+              {!hasExpenses && (
+                <Button
+                  text="Add Expenses"
+                  onPress={() => router.push('/add-expense')}
+                  variant="secondary"
+                />
+              )}
+            </View>
+          </View>
+
+          {/* Quick Actions for partial setup */}
+          <View style={{ marginBottom: 24 }}>
+            <Text style={[themedStyles.subtitle, { fontSize: 18, fontWeight: '700', marginBottom: 16 }]}>
+              Quick Actions
+            </Text>
+            <QuickActionsSection />
+          </View>
+
+          {hasPeople && hasExpenses && (
+            <View style={[
+              themedStyles.card,
+              {
+                backgroundColor: currentColors.info + '10',
+                borderColor: currentColors.info + '30',
+                borderWidth: 1,
+                padding: 20,
+                alignItems: 'center',
+              }
+            ]}>
+              <Icon name="analytics" size={24} style={{ color: currentColors.info, marginBottom: 8 }} />
+              <Text style={[themedStyles.textSecondary, { textAlign: 'center', fontSize: 14 }]}>
+                Refresh the page to see your complete dashboard with analytics and breakdowns!
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // Full dashboard: Show everything when both people and expenses exist
   return (
     <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
       <StandardHeader 
@@ -426,7 +685,6 @@ export default function HomeScreen() {
                   Quick Actions
                 </Text>
               </View>
-              {/* Remove the card wrapper - QuickActionsSection now handles its own styling */}
               <QuickActionsSection />
             </View>
           </>

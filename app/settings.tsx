@@ -41,6 +41,8 @@ export default function SettingsScreen() {
             try {
               await clearAllData();
               showToast('All data cleared successfully', 'success');
+              // Navigate back to home screen to show first-time user experience
+              router.replace('/');
             } catch (error) {
               console.error('Settings: Clear data error:', error);
               showToast('Failed to clear data', 'error');
