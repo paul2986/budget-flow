@@ -48,6 +48,22 @@ export default function ExpenseFilterModal({
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
 
+  // Local state for temporary filter values (not applied until "Apply Filters" is pressed)
+  const [tempFilter, setTempFilter] = useState<'all' | 'household' | 'personal'>('all');
+  const [tempPersonFilter, setTempPersonFilter] = useState<string | null>(null);
+  const [tempCategoryFilters, setTempCategoryFilters] = useState<string[]>([]);
+  const [tempSearchQuery, setTempSearchQuery] = useState<string>('');
+
+  // Initialize temp state when modal opens
+  useEffect(() => {
+    if (visible) {
+      setTempFilter(filter);
+      setTempPersonFilter(personFilter);
+      setTempCategoryFilters(categoryFilter ? [categoryFilter] : []);
+      setTempSearchQuery(searchQuery);
+    }
+  }, [visible, filter, personFilter, categoryFilter, searchQuery]);
+
   const availableCategories = (() => {
     // Union of defaults + custom + any tag appearing in expenses (normalized)
     const fromExpenses = new Set<string>();
@@ -59,17 +75,35 @@ export default function ExpenseFilterModal({
     return Array.from(combined);
   })().sort((a, b) => a.localeCompare(b));
 
-  const hasActiveFilters = !!categoryFilter || !!searchQuery.trim() || (filter !== 'all') || !!personFilter;
+  const hasActiveFilters = tempCategoryFilters.length > 0 || !!tempSearchQuery.trim() || (tempFilter !== 'all') || !!tempPersonFilter;
+
+  const handleCancel = () => {
+    // Reset temp state to original values and close without applying
+    setTempFilter(filter);
+    setTempPersonFilter(personFilter);
+    setTempCategoryFilters(categoryFilter ? [categoryFilter] : []);
+    setTempSearchQuery(searchQuery);
+    onClose();
+  };
 
   const handleApplyFilters = () => {
+    // Apply the temporary filter values to the actual state
+    setFilter(tempFilter);
+    setPersonFilter(tempPersonFilter);
+    
+    // For categories, if multiple selected, we'll apply the first one for now
+    // (since the current system only supports single category filter)
+    setCategoryFilter(tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null);
+    setSearchQuery(tempSearchQuery);
+
     let message = 'Filters applied';
     if (hasActiveFilters) {
       const activeFilters = [];
-      if (searchQuery.trim()) activeFilters.push(`search: "${searchQuery.trim()}"`);
-      if (categoryFilter) activeFilters.push(`category: ${categoryFilter}`);
-      if (filter !== 'all') activeFilters.push(`type: ${filter}`);
-      if (personFilter) {
-        const personName = people.find(p => p.id === personFilter)?.name || 'Unknown';
+      if (tempSearchQuery.trim()) activeFilters.push(`search: "${tempSearchQuery.trim()}"`);
+      if (tempCategoryFilters.length > 0) activeFilters.push(`categories: ${tempCategoryFilters.join(', ')}`);
+      if (tempFilter !== 'all') activeFilters.push(`type: ${tempFilter}`);
+      if (tempPersonFilter) {
+        const personName = people.find(p => p.id === tempPersonFilter)?.name || 'Unknown';
         activeFilters.push(`person: ${personName}`);
       }
       message = `Filters applied: ${activeFilters.join(', ')}`;
@@ -81,16 +115,28 @@ export default function ExpenseFilterModal({
   };
 
   const handleClearFilters = () => {
-    onClearFilters();
-    announceFilter('Filters cleared');
+    setTempFilter('all');
+    setTempPersonFilter(null);
+    setTempCategoryFilters([]);
+    setTempSearchQuery('');
   };
 
-  const FilterButton = ({ filterType, label }: { filterType: typeof filter; label: string }) => (
+  const handleCategoryToggle = (category: string) => {
+    setTempCategoryFilters(prev => {
+      if (prev.includes(category)) {
+        return prev.filter(c => c !== category);
+      } else {
+        return [...prev, category];
+      }
+    });
+  };
+
+  const FilterButton = ({ filterType, label }: { filterType: typeof tempFilter; label: string }) => (
     <TouchableOpacity
       style={[
         themedStyles.badge,
         {
-          backgroundColor: filter === filterType ? currentColors.primary : currentColors.border,
+          backgroundColor: tempFilter === filterType ? currentColors.primary : currentColors.border,
           flex: 1,
           marginHorizontal: 4,
           paddingHorizontal: 12,
@@ -101,15 +147,15 @@ export default function ExpenseFilterModal({
         },
       ]}
       onPress={() => {
-        setFilter(filterType);
-        if (filterType !== 'personal') setPersonFilter(null);
+        setTempFilter(filterType);
+        if (filterType !== 'personal') setTempPersonFilter(null);
       }}
     >
       <Text
         style={[
           themedStyles.badgeText,
           {
-            color: filter === filterType ? '#FFFFFF' : currentColors.text,
+            color: tempFilter === filterType ? '#FFFFFF' : currentColors.text,
             fontWeight: '600',
             textAlign: 'center',
             fontSize: 13,
@@ -126,14 +172,14 @@ export default function ExpenseFilterModal({
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
-      onRequestClose={onClose}
+      onRequestClose={handleCancel}
     >
       <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
         {/* Header */}
         <View style={[themedStyles.header, { height: 64, boxShadow: '0px 1px 2px rgba(0,0,0,0.10)' }]}>
           <View style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'flex-start' }}>
             <TouchableOpacity
-              onPress={onClose}
+              onPress={handleCancel}
               style={{
                 width: 44,
                 height: 44,
@@ -153,24 +199,8 @@ export default function ExpenseFilterModal({
             </Text>
           </View>
 
-          <View style={{ width: 80, height: 44, justifyContent: 'center', alignItems: 'flex-end' }}>
-            {hasActiveFilters && (
-              <TouchableOpacity
-                onPress={handleClearFilters}
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  borderRadius: 20,
-                  backgroundColor: currentColors.error + '15',
-                  minWidth: 70,
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={[themedStyles.text, { color: currentColors.error, fontSize: 13, fontWeight: '700' }]}>
-                  Clear All
-                </Text>
-              </TouchableOpacity>
-            )}
+          <View style={{ width: 44, height: 44 }}>
+            {/* Empty space for symmetry - no clear button here */}
           </View>
         </View>
 
@@ -182,8 +212,8 @@ export default function ExpenseFilterModal({
               style={[themedStyles.input, { marginBottom: 0 }]}
               placeholder="Search by description"
               placeholderTextColor={currentColors.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
+              value={tempSearchQuery}
+              onChangeText={setTempSearchQuery}
               accessibilityLabel="Search expenses"
             />
           </View>
@@ -199,7 +229,7 @@ export default function ExpenseFilterModal({
           </View>
 
           {/* Person filter for personal expenses */}
-          {filter === 'personal' && people.length > 0 && (
+          {tempFilter === 'personal' && people.length > 0 && (
             <View style={[themedStyles.section, { paddingBottom: 0 }]}>
               <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Person</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -208,19 +238,19 @@ export default function ExpenseFilterModal({
                     style={[
                       themedStyles.badge,
                       {
-                        backgroundColor: personFilter === null ? currentColors.secondary : currentColors.border,
+                        backgroundColor: tempPersonFilter === null ? currentColors.secondary : currentColors.border,
                         marginRight: 8,
                         paddingHorizontal: 12,
                         paddingVertical: 8,
                         borderRadius: 16,
                       },
                     ]}
-                    onPress={() => setPersonFilter(null)}
+                    onPress={() => setTempPersonFilter(null)}
                   >
                     <Text
                       style={[
                         themedStyles.badgeText,
-                        { color: personFilter === null ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13 },
+                        { color: tempPersonFilter === null ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13 },
                       ]}
                     >
                       All People
@@ -233,19 +263,19 @@ export default function ExpenseFilterModal({
                       style={[
                         themedStyles.badge,
                         {
-                          backgroundColor: personFilter === person.id ? currentColors.secondary : currentColors.border,
+                          backgroundColor: tempPersonFilter === person.id ? currentColors.secondary : currentColors.border,
                           marginRight: 8,
                           paddingHorizontal: 12,
                           paddingVertical: 8,
                           borderRadius: 16,
                         },
                       ]}
-                      onPress={() => setPersonFilter(person.id)}
+                      onPress={() => setTempPersonFilter(person.id)}
                     >
                       <Text
                         style={[
                           themedStyles.badgeText,
-                          { color: personFilter === person.id ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13 },
+                          { color: tempPersonFilter === person.id ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13 },
                         ]}
                       >
                         {person.name}
@@ -257,78 +287,80 @@ export default function ExpenseFilterModal({
             </View>
           )}
 
-          {/* Category chips */}
+          {/* Category selection - Grid layout for all categories */}
           <View style={[themedStyles.section, { paddingBottom: 0 }]}>
-            <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Category</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ paddingHorizontal: 4, flexDirection: 'row' }}>
+            <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>
+              Categories {tempCategoryFilters.length > 0 && `(${tempCategoryFilters.length} selected)`}
+            </Text>
+            
+            {/* All Categories button */}
+            <TouchableOpacity
+              style={[
+                themedStyles.badge,
+                {
+                  backgroundColor: tempCategoryFilters.length === 0 ? currentColors.secondary : currentColors.border,
+                  marginBottom: 12,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 16,
+                  alignSelf: 'flex-start',
+                },
+              ]}
+              onPress={() => setTempCategoryFilters([])}
+            >
+              <Text
+                style={[
+                  themedStyles.badgeText,
+                  { color: tempCategoryFilters.length === 0 ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13 },
+                ]}
+              >
+                All Categories
+              </Text>
+            </TouchableOpacity>
+
+            {/* Category grid */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 }}>
+              {availableCategories.map((cat) => (
                 <TouchableOpacity
-                  key="all"
+                  key={cat}
                   style={[
                     themedStyles.badge,
                     {
-                      backgroundColor: categoryFilter === null ? currentColors.secondary : currentColors.border,
-                      marginRight: 8,
+                      backgroundColor: tempCategoryFilters.includes(cat) ? currentColors.secondary : currentColors.border,
+                      margin: 4,
                       paddingHorizontal: 12,
                       paddingVertical: 8,
                       borderRadius: 16,
+                      flexDirection: 'row',
+                      alignItems: 'center',
                     },
                   ]}
-                  onPress={() => {
-                    setCategoryFilter(null);
-                    announceFilter('Filter applied: All categories');
-                  }}
+                  onPress={() => handleCategoryToggle(cat)}
+                  accessibilityLabel={`Toggle category ${cat}${tempCategoryFilters.includes(cat) ? ', selected' : ''}`}
                 >
+                  {tempCategoryFilters.includes(cat) && (
+                    <Icon name="checkmark" size={14} style={{ color: '#FFFFFF', marginRight: 4 }} />
+                  )}
                   <Text
                     style={[
                       themedStyles.badgeText,
-                      { color: categoryFilter === null ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13 },
+                      { color: tempCategoryFilters.includes(cat) ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13 },
                     ]}
                   >
-                    All Categories
+                    {cat}
                   </Text>
                 </TouchableOpacity>
-
-                {availableCategories.map((cat) => (
-                  <TouchableOpacity
-                    key={cat}
-                    style={[
-                      themedStyles.badge,
-                      {
-                        backgroundColor: categoryFilter === cat ? currentColors.secondary : currentColors.border,
-                        marginRight: 8,
-                        paddingHorizontal: 12,
-                        paddingVertical: 8,
-                        borderRadius: 16,
-                      },
-                    ]}
-                    onPress={() => {
-                      setCategoryFilter(cat);
-                      announceFilter(`Filter applied: ${cat}`);
-                    }}
-                    accessibilityLabel={`Filter by category ${cat}${categoryFilter === cat ? ', selected' : ''}`}
-                  >
-                    <Text
-                      style={[
-                        themedStyles.badgeText,
-                        { color: categoryFilter === cat ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13 },
-                      ]}
-                    >
-                      {cat}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
+              ))}
+            </View>
           </View>
 
           {/* Active filter summary */}
           {hasActiveFilters && (
             <View style={[themedStyles.section]}>
-              <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Active Filters</Text>
+              <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Preview Filters</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  {!!categoryFilter && (
+                  {tempCategoryFilters.length > 0 && (
                     <View
                       style={[
                         themedStyles.badge,
@@ -345,14 +377,13 @@ export default function ExpenseFilterModal({
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <Icon name="pricetag-outline" size={14} style={{ color: currentColors.secondary, marginRight: 6 }} />
-                        <Text style={[themedStyles.text, { color: currentColors.secondary, fontSize: 12 }]}>Category: {categoryFilter}</Text>
-                        <TouchableOpacity onPress={() => setCategoryFilter(null)} style={{ marginLeft: 8 }}>
-                          <Icon name="close-circle" size={16} style={{ color: currentColors.secondary }} />
-                        </TouchableOpacity>
+                        <Text style={[themedStyles.text, { color: currentColors.secondary, fontSize: 12 }]}>
+                          {tempCategoryFilters.length === 1 ? tempCategoryFilters[0] : `${tempCategoryFilters.length} categories`}
+                        </Text>
                       </View>
                     </View>
                   )}
-                  {!!searchQuery.trim() && (
+                  {!!tempSearchQuery.trim() && (
                     <View
                       style={[
                         themedStyles.badge,
@@ -369,14 +400,11 @@ export default function ExpenseFilterModal({
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <Icon name="search-outline" size={14} style={{ color: currentColors.primary, marginRight: 6 }} />
-                        <Text style={[themedStyles.text, { color: currentColors.primary, fontSize: 12 }]}>Search: "{searchQuery.trim()}"</Text>
-                        <TouchableOpacity onPress={() => setSearchQuery('')} style={{ marginLeft: 8 }}>
-                          <Icon name="close-circle" size={16} style={{ color: currentColors.primary }} />
-                        </TouchableOpacity>
+                        <Text style={[themedStyles.text, { color: currentColors.primary, fontSize: 12 }]}>Search: "{tempSearchQuery.trim()}"</Text>
                       </View>
                     </View>
                   )}
-                  {filter !== 'all' && (
+                  {tempFilter !== 'all' && (
                     <View
                       style={[
                         themedStyles.badge,
@@ -394,15 +422,12 @@ export default function ExpenseFilterModal({
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <Icon name="people-outline" size={14} style={{ color: currentColors.household, marginRight: 6 }} />
                         <Text style={[themedStyles.text, { color: currentColors.household, fontSize: 12 }]}>
-                          Type: {filter === 'household' ? 'Household' : 'Personal'}
+                          Type: {tempFilter === 'household' ? 'Household' : 'Personal'}
                         </Text>
-                        <TouchableOpacity onPress={() => setFilter('all')} style={{ marginLeft: 8 }}>
-                          <Icon name="close-circle" size={16} style={{ color: currentColors.household }} />
-                        </TouchableOpacity>
                       </View>
                     </View>
                   )}
-                  {personFilter && (
+                  {tempPersonFilter && (
                     <View
                       style={[
                         themedStyles.badge,
@@ -420,11 +445,8 @@ export default function ExpenseFilterModal({
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <Icon name="person-outline" size={14} style={{ color: currentColors.personal, marginRight: 6 }} />
                         <Text style={[themedStyles.text, { color: currentColors.personal, fontSize: 12 }]}>
-                          Person: {people.find(p => p.id === personFilter)?.name || 'Unknown'}
+                          Person: {people.find(p => p.id === tempPersonFilter)?.name || 'Unknown'}
                         </Text>
-                        <TouchableOpacity onPress={() => setPersonFilter(null)} style={{ marginLeft: 8 }}>
-                          <Icon name="close-circle" size={16} style={{ color: currentColors.personal }} />
-                        </TouchableOpacity>
                       </View>
                     </View>
                   )}
