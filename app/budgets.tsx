@@ -14,11 +14,12 @@ import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import Icon from '../components/Icon';
 import StandardHeader from '../components/StandardHeader';
+import Button from '../components/Button';
 
 export default function BudgetsScreen() {
   const { appData, activeBudget, addBudget, renameBudget, deleteBudget, setActiveBudget, loading, saving } = useBudgetData();
   const { currentColors } = useTheme();
-  const { themedStyles, themedButtonStyles } = useThemedStyles();
+  const { themedStyles } = useThemedStyles();
   const { showToast } = useToast();
   const { isLocked } = useBudgetLock();
   
@@ -220,23 +221,22 @@ export default function BudgetsScreen() {
             </Text>
 
             <View style={{ gap: 12 }}>
-              <TouchableOpacity
-                style={[themedButtonStyles.primary, { backgroundColor: currentColors.primary }]}
+              <Button
+                text="Copy QR Data"
                 onPress={handleCopyShareData}
-              >
-                <Text style={[themedButtonStyles.primaryText, { color: currentColors.backgroundAlt }]}>
-                  Copy QR Data
-                </Text>
-              </TouchableOpacity>
+                style={{ backgroundColor: currentColors.primary }}
+              />
 
-              <TouchableOpacity
-                style={[themedButtonStyles.outline, { borderColor: currentColors.primary }]}
+              <Button
+                text="Share via Apps"
                 onPress={handleNativeShare}
-              >
-                <Text style={[themedButtonStyles.outlineText, { color: currentColors.primary }]}>
-                  Share via Apps
-                </Text>
-              </TouchableOpacity>
+                style={{ 
+                  backgroundColor: 'transparent',
+                  borderWidth: 2,
+                  borderColor: currentColors.primary,
+                }}
+                textStyle={{ color: currentColors.primary }}
+              />
             </View>
           </ScrollView>
         ) : (
@@ -411,29 +411,28 @@ export default function BudgetsScreen() {
             
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <View style={{ flex: 1 }}>
-                <TouchableOpacity
-                  style={[themedButtonStyles.outline, { borderColor: currentColors.primary }]}
+                <Button
+                  text="Cancel"
                   onPress={() => {
                     setShowAddBudget(false);
                     setNewBudgetName('');
                   }}
                   disabled={saving}
-                >
-                  <Text style={[themedButtonStyles.outlineText, { color: currentColors.primary }]}>
-                    Cancel
-                  </Text>
-                </TouchableOpacity>
+                  style={{ 
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderColor: currentColors.primary,
+                  }}
+                  textStyle={{ color: currentColors.primary }}
+                />
               </View>
               <View style={{ flex: 1 }}>
-                <TouchableOpacity
-                  style={[themedButtonStyles.primary, { backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }]}
+                <Button
+                  text={saving ? 'Creating...' : 'Create Budget'}
                   onPress={handleAddBudget}
                   disabled={saving}
-                >
-                  <Text style={[themedButtonStyles.primaryText, { color: currentColors.backgroundAlt }]}>
-                    {saving ? 'Creating...' : 'Create Budget'}
-                  </Text>
-                </TouchableOpacity>
+                  style={{ backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }}
+                />
               </View>
             </View>
           </View>
@@ -450,15 +449,12 @@ export default function BudgetsScreen() {
               <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 16 }]}>
                 Create your first budget to get started
               </Text>
-              <TouchableOpacity
-                style={[themedButtonStyles.primary, { backgroundColor: currentColors.primary }]}
+              <Button
+                text="Create First Budget"
                 onPress={() => setShowAddBudget(true)}
                 disabled={saving}
-              >
-                <Text style={[themedButtonStyles.primaryText, { color: currentColors.backgroundAlt }]}>
-                  Create First Budget
-                </Text>
-              </TouchableOpacity>
+                style={{ backgroundColor: currentColors.primary }}
+              />
             </View>
           </View>
         ) : (
@@ -493,29 +489,28 @@ export default function BudgetsScreen() {
                     
                     <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
                       <View style={{ flex: 1 }}>
-                        <TouchableOpacity
-                          style={[themedButtonStyles.outline, { borderColor: currentColors.textSecondary }]}
+                        <Button
+                          text="Cancel"
                           onPress={() => {
                             setEditingBudgetId(null);
                             setEditingBudgetName('');
                           }}
                           disabled={saving}
-                        >
-                          <Text style={[themedButtonStyles.outlineText, { color: currentColors.textSecondary }]}>
-                            Cancel
-                          </Text>
-                        </TouchableOpacity>
+                          style={{ 
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderColor: currentColors.textSecondary,
+                          }}
+                          textStyle={{ color: currentColors.textSecondary }}
+                        />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <TouchableOpacity
-                          style={[themedButtonStyles.primary, { backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }]}
+                        <Button
+                          text={saving ? 'Saving...' : 'Save'}
                           onPress={() => handleRenameBudget(budget.id)}
                           disabled={saving}
-                        >
-                          <Text style={[themedButtonStyles.primaryText, { color: currentColors.backgroundAlt }]}>
-                            {saving ? 'Saving...' : 'Save'}
-                          </Text>
-                        </TouchableOpacity>
+                          style={{ backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }}
+                        />
                       </View>
                     </View>
                   </View>
@@ -548,15 +543,18 @@ export default function BudgetsScreen() {
                     </View>
 
                     {!isActive && (
-                      <TouchableOpacity
-                        style={[themedButtonStyles.outline, { borderColor: currentColors.primary, marginTop: 8 }]}
+                      <Button
+                        text="Switch to This Budget"
                         onPress={() => handleSetActiveBudget(budget.id)}
                         disabled={saving}
-                      >
-                        <Text style={[themedButtonStyles.outlineText, { color: currentColors.primary }]}>
-                          Switch to This Budget
-                        </Text>
-                      </TouchableOpacity>
+                        style={{ 
+                          backgroundColor: 'transparent',
+                          borderWidth: 2,
+                          borderColor: currentColors.primary,
+                          marginTop: 8,
+                        }}
+                        textStyle={{ color: currentColors.primary }}
+                      />
                     )}
                   </>
                 )}

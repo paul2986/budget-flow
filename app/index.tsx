@@ -434,19 +434,8 @@ export default function HomeScreen() {
                   Quick Actions
                 </Text>
               </View>
-              <View style={{
-                backgroundColor: currentColors.backgroundAlt,
-                borderRadius: 16,
-                padding: 16, // Reduced from 24 to 16
-                marginBottom: 0,
-                boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
-                elevation: 4,
-                borderWidth: 1,
-                borderColor: currentColors.border,
-                width: '100%',
-              }}>
-                <QuickActionsSection />
-              </View>
+              {/* Remove the card wrapper - QuickActionsSection now handles its own styling */}
+              <QuickActionsSection />
             </View>
           </>
         )}

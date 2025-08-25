@@ -62,55 +62,56 @@ export default function QuickActionsSection() {
   ];
 
   return (
-    <View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-        {actions.map((action) => (
-          <TouchableOpacity
-            key={action.id}
-            onPress={action.onPress}
-            style={[
-              themedStyles.card,
-              {
-                backgroundColor: action.color + '10',
-                borderColor: action.color + '30',
-                borderWidth: 1,
-                width: '48%',
-                minHeight: 80,
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginBottom: 0,
-                padding: 16, // Reduced from 24 to 16
-              },
-            ]}
-          >
-            <Icon 
-              name={action.icon} 
-              size={24} 
-              style={{ color: action.color, marginBottom: 8 }} 
-            />
-            <Text style={[
-              themedStyles.text, 
-              { 
-                fontWeight: '700', 
-                fontSize: 14, 
-                textAlign: 'center',
-                marginBottom: 2,
-              }
-            ]}>
-              {action.title}
-            </Text>
-            <Text style={[
-              themedStyles.textSecondary, 
-              { 
-                fontSize: 11, 
-                textAlign: 'center',
-              }
-            ]}>
-              {action.subtitle}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+      {actions.map((action) => (
+        <TouchableOpacity
+          key={action.id}
+          onPress={action.onPress}
+          style={{
+            backgroundColor: action.color + '10',
+            borderColor: action.color + '30',
+            borderWidth: 1,
+            borderRadius: 16,
+            width: '48%',
+            minHeight: 80,
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 16,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.05,
+            shadowRadius: 4,
+            elevation: 2,
+          }}
+        >
+          <Icon 
+            name={action.icon} 
+            size={24} 
+            style={{ color: action.color, marginBottom: 8 }} 
+          />
+          <Text style={[
+            themedStyles.text, 
+            { 
+              fontWeight: '700', 
+              fontSize: 14, 
+              textAlign: 'center',
+              marginBottom: 2,
+              color: currentColors.text,
+            }
+          ]}>
+            {action.title}
+          </Text>
+          <Text style={[
+            themedStyles.textSecondary, 
+            { 
+              fontSize: 11, 
+              textAlign: 'center',
+            }
+          ]}>
+            {action.subtitle}
+          </Text>
+        </TouchableOpacity>
+      ))}
     </View>
   );
 }
