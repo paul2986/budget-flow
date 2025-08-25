@@ -12,6 +12,7 @@ import { loadAppData, saveAppData } from '../utils/storage';
 import * as Clipboard from 'expo-clipboard';
 import Icon from '../components/Icon';
 import StandardHeader from '../components/StandardHeader';
+import Button from '../components/Button';
 
 // Dynamic import for barcode scanner (only available on mobile)
 type ScannerModule = {
@@ -164,14 +165,19 @@ export default function ImportLinkScreen() {
           <Text style={[themedStyles.text, { textAlign: 'center', color: currentColors.error, marginBottom: 16 }]}>
             Camera permission is required to scan QR codes.
           </Text>
-          <TouchableOpacity
-            style={[themedButtonStyles.outline, { borderColor: currentColors.primary }]}
+          <Button
+            text="Use Manual Input"
             onPress={() => setScanMode(false)}
-          >
-            <Text style={[themedButtonStyles.outlineText, { color: currentColors.primary }]}>
-              Use Manual Input
-            </Text>
-          </TouchableOpacity>
+            style={[
+              themedButtonStyles.outline,
+              { 
+                borderColor: currentColors.primary,
+                backgroundColor: 'transparent',
+                marginTop: 0,
+              }
+            ]}
+            textStyle={{ color: currentColors.primary }}
+          />
         </View>
       );
     }
@@ -208,14 +214,19 @@ export default function ImportLinkScreen() {
           <Text style={[themedStyles.text, { textAlign: 'center', marginBottom: 12 }]}>
             Point your camera at a QR code to scan
           </Text>
-          <TouchableOpacity
-            style={[themedButtonStyles.outline, { borderColor: currentColors.primary }]}
+          <Button
+            text="Cancel Scanning"
             onPress={() => setScanMode(false)}
-          >
-            <Text style={[themedButtonStyles.outlineText, { color: currentColors.primary }]}>
-              Cancel Scanning
-            </Text>
-          </TouchableOpacity>
+            style={[
+              themedButtonStyles.outline,
+              { 
+                borderColor: currentColors.primary,
+                backgroundColor: 'transparent',
+                marginTop: 0,
+              }
+            ]}
+            textStyle={{ color: currentColors.primary }}
+          />
         </View>
       </View>
     );
@@ -268,47 +279,55 @@ export default function ImportLinkScreen() {
 
           <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
             <View style={{ flex: 1 }}>
-              <TouchableOpacity
-                style={[themedButtonStyles.outline, { borderColor: currentColors.primary }]}
+              <Button
+                text="Paste from Clipboard"
                 onPress={handlePasteFromClipboard}
                 disabled={isImporting}
-              >
-                <Text style={[themedButtonStyles.outlineText, { color: currentColors.primary }]}>
-                  Paste from Clipboard
-                </Text>
-              </TouchableOpacity>
+                style={[
+                  themedButtonStyles.outline,
+                  { 
+                    borderColor: currentColors.primary,
+                    backgroundColor: 'transparent',
+                    marginTop: 0,
+                  }
+                ]}
+                textStyle={{ color: currentColors.primary }}
+              />
             </View>
             
             {Platform.OS !== 'web' && (
               <View style={{ flex: 1 }}>
-                <TouchableOpacity
-                  style={[themedButtonStyles.outline, { borderColor: currentColors.primary }]}
+                <Button
+                  text="Scan QR Code"
                   onPress={() => setScanMode(true)}
                   disabled={isImporting}
-                >
-                  <Text style={[themedButtonStyles.outlineText, { color: currentColors.primary }]}>
-                    Scan QR Code
-                  </Text>
-                </TouchableOpacity>
+                  style={[
+                    themedButtonStyles.outline,
+                    { 
+                      borderColor: currentColors.primary,
+                      backgroundColor: 'transparent',
+                      marginTop: 0,
+                    }
+                  ]}
+                  textStyle={{ color: currentColors.primary }}
+                />
               </View>
             )}
           </View>
 
-          <TouchableOpacity
+          <Button
+            text={isImporting ? 'Importing...' : 'Import Budget'}
+            onPress={() => handleImport(inputValue)}
+            disabled={!inputValue.trim() || isImporting}
             style={[
               themedButtonStyles.primary,
               { 
                 backgroundColor: isImporting ? currentColors.textSecondary : currentColors.primary,
-                opacity: (!inputValue.trim() || isImporting) ? 0.6 : 1
+                opacity: (!inputValue.trim() || isImporting) ? 0.6 : 1,
+                marginTop: 0,
               }
             ]}
-            onPress={() => handleImport(inputValue)}
-            disabled={!inputValue.trim() || isImporting}
-          >
-            <Text style={[themedButtonStyles.primaryText, { color: currentColors.backgroundAlt }]}>
-              {isImporting ? 'Importing...' : 'Import Budget'}
-            </Text>
-          </TouchableOpacity>
+          />
         </View>
 
         <View style={themedStyles.card}>

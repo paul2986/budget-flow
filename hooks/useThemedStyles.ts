@@ -61,12 +61,13 @@ export const useThemedStyles = () => {
     card: {
       backgroundColor: currentColors.backgroundAlt,
       borderRadius: 16,
-      padding: 20,
+      padding: 24, // Standardized padding to match all other cards
       marginBottom: 16,
       boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
       elevation: 4,
       borderWidth: 1,
       borderColor: currentColors.border,
+      width: '100%', // Standardized full width for all cards
     },
     row: {
       flexDirection: 'row',
