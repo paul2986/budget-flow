@@ -80,6 +80,11 @@ export default function ExpenseFilterModal({
     onClose();
   };
 
+  const handleClearFilters = () => {
+    onClearFilters();
+    announceFilter('Filters cleared');
+  };
+
   const FilterButton = ({ filterType, label }: { filterType: typeof filter; label: string }) => (
     <TouchableOpacity
       style={[
@@ -151,10 +156,7 @@ export default function ExpenseFilterModal({
           <View style={{ width: 80, height: 44, justifyContent: 'center', alignItems: 'flex-end' }}>
             {hasActiveFilters && (
               <TouchableOpacity
-                onPress={() => {
-                  onClearFilters();
-                  announceFilter('Filters cleared');
-                }}
+                onPress={handleClearFilters}
                 style={{
                   paddingHorizontal: 16,
                   paddingVertical: 8,
@@ -432,8 +434,33 @@ export default function ExpenseFilterModal({
           )}
         </ScrollView>
 
-        {/* Bottom action button */}
+        {/* Bottom action buttons */}
         <View style={[themedStyles.section, { paddingTop: 16, paddingBottom: 32, paddingHorizontal: 16 }]}>
+          {/* Clear Filters button - only show when filters are active and position above Apply button */}
+          {hasActiveFilters && (
+            <TouchableOpacity
+              onPress={handleClearFilters}
+              style={{
+                backgroundColor: currentColors.error + '15',
+                borderWidth: 1,
+                borderColor: currentColors.error,
+                paddingVertical: 14,
+                paddingHorizontal: 24,
+                borderRadius: 24,
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'row',
+                marginBottom: 12,
+              }}
+            >
+              <Icon name="refresh-outline" size={20} style={{ color: currentColors.error, marginRight: 8 }} />
+              <Text style={[themedStyles.text, { color: currentColors.error, fontWeight: '700', fontSize: 16 }]}>
+                Clear Filters
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Apply Filters button */}
           <TouchableOpacity
             onPress={handleApplyFilters}
             style={{
