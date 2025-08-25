@@ -148,7 +148,7 @@ export default function OverviewSection({
         </View>
       </View>
 
-      {/* Remaining Balance - Taller card */}
+      {/* Remaining Balance - Optimized card */}
       <View style={[
         themedStyles.card,
         {
@@ -160,10 +160,9 @@ export default function OverviewSection({
             : currentColors.error + '40',
           borderWidth: 2,
           marginBottom: 16,
-          minHeight: 120, // Ensure minimum height to prevent text cutoff
         }
       ]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
           <Icon 
             name={displayValues.remaining >= 0 ? "checkmark-circle" : "alert-circle"} 
             size={20} 
@@ -179,16 +178,17 @@ export default function OverviewSection({
         <Text style={[
           themedStyles.text, 
           { 
-            fontSize: 32, // Increased font size
+            fontSize: 32,
             fontWeight: '800',
             color: displayValues.remaining >= 0 ? currentColors.success : currentColors.error,
-            lineHeight: 38, // Ensure proper line height
+            lineHeight: 36,
+            marginBottom: displayValues.remaining < 0 ? 4 : 0,
           }
         ]}>
           {formatCurrency(displayValues.remaining)}
         </Text>
         {displayValues.remaining < 0 && (
-          <Text style={[themedStyles.textSecondary, { fontSize: 12, marginTop: 8 }]}>
+          <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
             Over budget by {formatCurrency(Math.abs(displayValues.remaining))}
           </Text>
         )}
