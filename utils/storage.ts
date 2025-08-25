@@ -625,6 +625,39 @@ export const clearActiveBudgetData = async (): Promise<void> => {
   await performAppSave({ ...appData, budgets });
 };
 
+// Clear ALL app data - delete all budgets, people, and expenses
+export const clearAllAppData = async (): Promise<{ success: boolean; error?: Error }> => {
+  try {
+    console.log('storage: Clearing all app data - deleting all budgets, people, and expenses');
+    
+    // Create a fresh app with a single empty budget
+    const initialBudget = createEmptyBudget('My Budget');
+    const freshAppData: AppDataV2 = { 
+      version: 2, 
+      budgets: [initialBudget], 
+      activeBudgetId: initialBudget.id 
+    };
+    
+    // Also clear custom categories and filters
+    await AsyncStorage.removeItem(STORAGE_KEYS.CUSTOM_EXPENSE_CATEGORIES);
+    await AsyncStorage.removeItem(STORAGE_KEYS.EXPENSES_FILTERS);
+    
+    // Save the fresh app data
+    const result = await saveAppData(freshAppData);
+    
+    if (result.success) {
+      console.log('storage: All app data cleared successfully');
+    } else {
+      console.error('storage: Failed to clear all app data:', result.error);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('storage: Error clearing all app data:', error);
+    return { success: false, error: error as Error };
+  }
+};
+
 // Utility function to get storage info (for debugging)
 export const getStorageInfo = async (): Promise<{ hasData: boolean; dataSize: number; version: 'v2' | 'v1' | 'none' }> => {
   try {

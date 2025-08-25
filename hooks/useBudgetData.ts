@@ -9,6 +9,7 @@ import {
   deleteBudget as storageDeleteBudget,
   duplicateBudget as storageDuplicateBudget,
   updateBudget as storageUpdateBudget,
+  clearAllAppData as storageClearAllAppData,
 } from '../utils/storage';
 import { Person, Expense, Income, HouseholdSettings, AppDataV2, Budget } from '../types/budget';
 
@@ -667,18 +668,23 @@ export const useBudgetData = () => {
     [refreshFromStorage, saving, loading] // Remove dependencies that could cause loops
   );
 
+  // Clear ALL app data - delete all budgets, people, and expenses
   const clearAllData = useCallback(async (): Promise<{ success: boolean; error?: Error }> => {
-    console.log('useBudgetData: Clearing all data for active budget...');
-    return queueSave(async () => {
-      const emptyData: BudgetSlice = {
-        people: [],
-        expenses: [],
-        householdSettings: { distributionMethod: 'even' },
-      };
-      console.log('useBudgetData: Saving empty data structure');
-      return await saveData(emptyData);
-    });
-  }, [queueSave, saveData]);
+    console.log('useBudgetData: Clearing ALL app data - deleting all budgets, people, and expenses...');
+    try {
+      const result = await storageClearAllAppData();
+      if (result.success) {
+        console.log('useBudgetData: All app data cleared successfully, refreshing from storage');
+        await refreshFromStorage();
+        // Trigger a refresh to ensure components re-render with new data
+        setRefreshTrigger(prev => prev + 1);
+      }
+      return result;
+    } catch (error) {
+      console.error('useBudgetData: Error clearing all app data:', error);
+      return { success: false, error: error as Error };
+    }
+  }, [refreshFromStorage]);
 
   return {
     appData,
