@@ -59,6 +59,7 @@ export interface Budget {
   expenses: Expense[];
   householdSettings: HouseholdSettings;
   createdAt: number; // epoch millis
+  modifiedAt: number; // epoch millis
   lock?: BudgetLockSettings; // Default: { locked: false, autoLockMinutes: 0 }
 }
 

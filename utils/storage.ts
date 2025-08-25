@@ -120,15 +120,19 @@ export const saveExpensesFilters = async (filters: ExpensesFilters): Promise<voi
 };
 
 // Create an empty budget entity
-const createEmptyBudget = (name: string): Budget => ({
-  id: `budget_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-  name,
-  people: [],
-  expenses: [],
-  householdSettings: { distributionMethod: 'even' },
-  createdAt: Date.now(),
-  lock: getDefaultLockSettings(),
-});
+const createEmptyBudget = (name: string): Budget => {
+  const now = Date.now();
+  return {
+    id: `budget_${now}_${Math.random().toString(36).substr(2, 9)}`,
+    name,
+    people: [],
+    expenses: [],
+    householdSettings: { distributionMethod: 'even' },
+    createdAt: now,
+    modifiedAt: now,
+    lock: getDefaultLockSettings(),
+  };
+};
 
 // Validate/sanitize legacy single-budget data (v1) contents
 type LegacyBudgetData = {
@@ -223,13 +227,18 @@ const validateAppData = (data: any): AppDataV2 => {
       lastUnlockAt: typeof b?.lock?.lastUnlockAt === 'string' ? b.lock.lastUnlockAt : undefined,
     };
 
+    const now = Date.now();
+    const createdAt = typeof b?.createdAt === 'number' ? b.createdAt : now;
+    const modifiedAt = typeof b?.modifiedAt === 'number' ? b.modifiedAt : createdAt;
+
     return {
       id: typeof b?.id === 'string' ? b.id : `budget_${Math.random().toString(36).slice(2)}`,
       name: typeof b?.name === 'string' ? b.name : 'My Budget',
       people: legacyShape.people,
       expenses: sanitizedExpenses,
       householdSettings: legacyShape.householdSettings,
-      createdAt: typeof b?.createdAt === 'number' ? b.createdAt : Date.now(),
+      createdAt,
+      modifiedAt,
       lock: lockSettings,
     };
   };
@@ -273,13 +282,15 @@ export const loadAppData = async (): Promise<AppDataV2> => {
         legacyParsed = { people: [], expenses: [], householdSettings: { distributionMethod: 'even' } };
       }
       const legacy = validateLegacyBudgetData(legacyParsed);
+      const now = Date.now();
       const migratedBudget: Budget = {
-        id: `budget_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `budget_${now}_${Math.random().toString(36).substr(2, 9)}`,
         name: 'My Budget',
         people: legacy.people,
         expenses: legacy.expenses,
         householdSettings: legacy.householdSettings,
-        createdAt: Date.now(),
+        createdAt: now,
+        modifiedAt: now,
         lock: getDefaultLockSettings(),
       };
       const appData: AppDataV2 = { version: 2, budgets: [migratedBudget], activeBudgetId: migratedBudget.id };
@@ -395,7 +406,7 @@ export const renameBudget = async (budgetId: string, newName: string): Promise<{
   const idx = appData.budgets.findIndex((b) => b && b.id === budgetId);
   if (idx === -1) return { success: false, error: new Error('Budget not found') };
   const budgets = [...appData.budgets];
-  budgets[idx] = { ...budgets[idx], name: newName || budgets[idx].name };
+  budgets[idx] = { ...budgets[idx], name: newName || budgets[idx].name, modifiedAt: Date.now() };
   return await saveAppData({ ...appData, budgets });
 };
 
@@ -423,25 +434,27 @@ export const duplicateBudget = async (budgetId: string): Promise<{ success: bool
   }
   
   // Create a deep copy of the budget with new IDs
+  const now = Date.now();
   const duplicatedBudget: Budget = {
     ...originalBudget,
-    id: `budget_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: `budget_${now}_${Math.random().toString(36).substr(2, 9)}`,
     name: `${originalBudget.name} (Copy)`,
-    createdAt: Date.now(),
+    createdAt: now,
+    modifiedAt: now,
     // Deep copy people with new IDs
     people: originalBudget.people.map(person => ({
       ...person,
-      id: `person_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `person_${now}_${Math.random().toString(36).substr(2, 9)}`,
       income: person.income.map(income => ({
         ...income,
-        id: `income_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `income_${now}_${Math.random().toString(36).substr(2, 9)}`,
       })),
     })),
     // Deep copy expenses with new IDs and update personId references
     expenses: originalBudget.expenses.map(expense => {
       const newExpense = {
         ...expense,
-        id: `expense_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `expense_${now}_${Math.random().toString(36).substr(2, 9)}`,
       };
       // If it's a personal expense, we need to update the personId to match the new person ID
       if (expense.category === 'personal' && expense.personId) {
@@ -473,6 +486,7 @@ export const updateBudget = async (budget: Budget): Promise<{ success: boolean; 
   // Ensure expenses have valid categoryTag and endDate before saving
   const sanitized = {
     ...budget,
+    modifiedAt: Date.now(), // Update modified timestamp
     expenses: (budget.expenses || []).map((e: Expense) => ({
       ...e,
       categoryTag: sanitizeCategoryTag((e as any).categoryTag || 'Misc'),
@@ -503,7 +517,7 @@ export const setBudgetLock = async (budgetId: string, patch: Partial<BudgetLockS
   const currentLock = budget.lock || getDefaultLockSettings();
   const updatedLock = { ...currentLock, ...patch };
   
-  const updatedBudget = { ...budget, lock: updatedLock };
+  const updatedBudget = { ...budget, lock: updatedLock, modifiedAt: Date.now() };
   const budgets = [...appData.budgets];
   budgets[budgetIndex] = updatedBudget;
   
@@ -523,6 +537,7 @@ export const clearActiveBudgetData = async (): Promise<void> => {
     people: [], 
     expenses: [], 
     householdSettings: { distributionMethod: 'even' },
+    modifiedAt: Date.now(),
     lock: active.lock || getDefaultLockSettings(),
   };
   const budgets = appData.budgets && Array.isArray(appData.budgets) 
@@ -593,13 +608,15 @@ export const restoreData = async (backup: string): Promise<{ success: boolean; e
 
     // Assume legacy shape and wrap into v2
     const legacy = validateLegacyBudgetData(parsed);
+    const now = Date.now();
     const migratedBudget: Budget = {
-      id: `budget_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `budget_${now}_${Math.random().toString(36).substr(2, 9)}`,
       name: 'My Budget',
       people: legacy.people,
       expenses: legacy.expenses,
       householdSettings: legacy.householdSettings,
-      createdAt: Date.now(),
+      createdAt: now,
+      modifiedAt: now,
       lock: getDefaultLockSettings(),
     };
     const appData: AppDataV2 = { version: 2, budgets: [migratedBudget], activeBudgetId: migratedBudget.id };
