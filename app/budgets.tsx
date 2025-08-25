@@ -174,6 +174,7 @@ export default function BudgetsScreen() {
     try {
       // Duplicate with the custom name directly
       const result = await duplicateBudget(duplicateBudgetId, duplicateBudgetName.trim());
+      
       if (result.success) {
         setShowDuplicateModal(false);
         setDuplicateBudgetId(null);

@@ -148,7 +148,7 @@ export default function OverviewSection({
         </View>
       </View>
 
-      {/* Remaining Balance - Optimized card */}
+      {/* Remaining Balance - Reduced gap */}
       <View style={[
         themedStyles.card,
         {
@@ -159,7 +159,8 @@ export default function OverviewSection({
             ? currentColors.success + '40' 
             : currentColors.error + '40',
           borderWidth: 2,
-          marginBottom: 16,
+          marginBottom: 15,
+          paddingBottom: 12, // Reduced from default card padding
         }
       ]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
