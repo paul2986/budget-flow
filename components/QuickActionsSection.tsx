@@ -62,7 +62,7 @@ export default function QuickActionsSection() {
   ];
 
   return (
-    <View style={[themedStyles.card, { marginBottom: 0 }]}>
+    <View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
         {actions.map((action) => (
           <TouchableOpacity

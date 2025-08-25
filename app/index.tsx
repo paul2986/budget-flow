@@ -308,23 +308,70 @@ export default function HomeScreen() {
           <>
             {/* 1. Overview Section */}
             <View style={{ marginBottom: 24 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                <Icon name="analytics-outline" size={24} style={{ color: currentColors.primary, marginRight: 12 }} />
-                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700' }]}>Overview</Text>
+              <View style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                marginBottom: 16,
+                // Fix icon alignment by ensuring proper vertical centering
+                minHeight: 32, // Ensure consistent height for alignment
+              }}>
+                <Icon 
+                  name="analytics-outline" 
+                  size={24} 
+                  style={{ 
+                    color: currentColors.primary, 
+                    marginRight: 12,
+                    // Align icon with text baseline
+                    marginTop: -2, // Slight adjustment to align with text
+                  }} 
+                />
+                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0 }]}>
+                  Overview
+                </Text>
               </View>
-              <OverviewSection 
-                calculations={calculations}
-                people={people}
-                expenses={expenses}
-                householdSettings={data.householdSettings}
-              />
+              <View style={{
+                // Use wider card styling to match people screen
+                backgroundColor: currentColors.backgroundAlt,
+                borderRadius: 16,
+                padding: 24, // Increased padding for more space
+                marginBottom: 0,
+                boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
+                elevation: 4,
+                borderWidth: 1,
+                borderColor: currentColors.border,
+                width: '100%', // Ensure full width usage
+              }}>
+                <OverviewSection 
+                  calculations={calculations}
+                  people={people}
+                  expenses={expenses}
+                  householdSettings={data.householdSettings}
+                />
+              </View>
             </View>
 
             {/* 2. Individual Breakdowns Section */}
             <View style={{ marginBottom: 24 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                <Icon name="people-outline" size={24} style={{ color: currentColors.primary, marginRight: 12 }} />
-                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700' }]}>Individual Breakdowns</Text>
+              <View style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                marginBottom: 16,
+                // Fix icon alignment by ensuring proper vertical centering
+                minHeight: 32, // Ensure consistent height for alignment
+              }}>
+                <Icon 
+                  name="people-outline" 
+                  size={24} 
+                  style={{ 
+                    color: currentColors.primary, 
+                    marginRight: 12,
+                    // Align icon with text baseline
+                    marginTop: -2, // Slight adjustment to align with text
+                  }} 
+                />
+                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0 }]}>
+                  Individual Breakdowns
+                </Text>
               </View>
               <IndividualBreakdownsSection 
                 people={people}
@@ -336,20 +383,80 @@ export default function HomeScreen() {
 
             {/* 3. Ending/Expiring Section */}
             <View style={{ marginBottom: 24 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                <Icon name="time-outline" size={24} style={{ color: currentColors.primary, marginRight: 12 }} />
-                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700' }]}>Ending & Expired</Text>
+              <View style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                marginBottom: 16,
+                // Fix icon alignment by ensuring proper vertical centering
+                minHeight: 32, // Ensure consistent height for alignment
+              }}>
+                <Icon 
+                  name="time-outline" 
+                  size={24} 
+                  style={{ 
+                    color: currentColors.primary, 
+                    marginRight: 12,
+                    // Align icon with text baseline
+                    marginTop: -2, // Slight adjustment to align with text
+                  }} 
+                />
+                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0 }]}>
+                  Ending & Expired
+                </Text>
               </View>
-              <ExpiringSection expenses={expenses} />
+              <View style={{
+                // Use wider card styling to match people screen
+                backgroundColor: currentColors.backgroundAlt,
+                borderRadius: 16,
+                padding: 24, // Increased padding for more space
+                marginBottom: 0,
+                boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
+                elevation: 4,
+                borderWidth: 1,
+                borderColor: currentColors.border,
+                width: '100%', // Ensure full width usage
+              }}>
+                <ExpiringSection expenses={expenses} />
+              </View>
             </View>
 
             {/* 4. Quick Actions Section */}
             <View style={{ marginBottom: 0 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                <Icon name="flash-outline" size={24} style={{ color: currentColors.primary, marginRight: 12 }} />
-                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700' }]}>Quick Actions</Text>
+              <View style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                marginBottom: 16,
+                // Fix icon alignment by ensuring proper vertical centering
+                minHeight: 32, // Ensure consistent height for alignment
+              }}>
+                <Icon 
+                  name="flash-outline" 
+                  size={24} 
+                  style={{ 
+                    color: currentColors.primary, 
+                    marginRight: 12,
+                    // Align icon with text baseline
+                    marginTop: -2, // Slight adjustment to align with text
+                  }} 
+                />
+                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0 }]}>
+                  Quick Actions
+                </Text>
               </View>
-              <QuickActionsSection />
+              <View style={{
+                // Use wider card styling to match people screen
+                backgroundColor: currentColors.backgroundAlt,
+                borderRadius: 16,
+                padding: 24, // Increased padding for more space
+                marginBottom: 0,
+                boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
+                elevation: 4,
+                borderWidth: 1,
+                borderColor: currentColors.border,
+                width: '100%', // Ensure full width usage
+              }}>
+                <QuickActionsSection />
+              </View>
             </View>
           </>
         )}

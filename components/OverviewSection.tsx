@@ -80,7 +80,7 @@ export default function OverviewSection({
   );
 
   return (
-    <View style={[themedStyles.card, { marginBottom: 0 }]}>
+    <View>
       {/* Tabs - Full Width */}
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
         <TabButton mode="monthly" label="Monthly" />

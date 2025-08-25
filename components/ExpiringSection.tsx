@@ -155,7 +155,7 @@ export default function ExpiringSection({ expenses }: ExpiringSectionProps) {
   const currentExpenses = activeTab === 'expiring' ? expiringSoon : ended;
 
   return (
-    <View style={[themedStyles.card, { marginBottom: 0 }]}>
+    <View>
       {/* Tabs - Full Width */}
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
         <TabButton tab="expiring" label="Expiring Soon" count={expiringSoon.length} />
