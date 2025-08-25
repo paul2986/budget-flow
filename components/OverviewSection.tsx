@@ -55,11 +55,9 @@ export default function OverviewSection({
         {
           flex: 1,
           paddingHorizontal: 16,
-          paddingVertical: 12,
-          borderRadius: 12,
-          backgroundColor: viewMode === mode ? currentColors.primary : 'transparent',
-          borderWidth: 1,
-          borderColor: viewMode === mode ? currentColors.primary : currentColors.border,
+          paddingVertical: 10,
+          borderRadius: 8,
+          backgroundColor: viewMode === mode ? currentColors.border : 'transparent',
           alignItems: 'center',
         },
       ]}
@@ -68,9 +66,9 @@ export default function OverviewSection({
         style={[
           themedStyles.text,
           {
-            color: viewMode === mode ? '#fff' : currentColors.text,
-            fontWeight: '600',
-            fontSize: 16,
+            color: viewMode === mode ? currentColors.text : currentColors.textSecondary,
+            fontWeight: viewMode === mode ? '600' : '500',
+            fontSize: 14,
           },
         ]}
       >
@@ -81,22 +79,28 @@ export default function OverviewSection({
 
   return (
     <View>
-      {/* Tabs - Full Width */}
-      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+      {/* Tabs - Full Width with subtle styling */}
+      <View style={{ 
+        flexDirection: 'row', 
+        backgroundColor: currentColors.background,
+        borderRadius: 10,
+        padding: 4,
+        marginBottom: 20 
+      }}>
         <TabButton mode="monthly" label="Monthly" />
         <TabButton mode="yearly" label="Yearly" />
       </View>
 
-      {/* Income and Expenses Cards */}
-      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+      {/* Income and Expenses Cards - Full Width */}
+      <View style={{ marginBottom: 16 }}>
         <View style={[
           themedStyles.card, 
           { 
-            flex: 1, 
             backgroundColor: currentColors.success + '10',
             borderColor: currentColors.success + '30',
             borderWidth: 1,
-            marginBottom: 0,
+            marginBottom: 12,
+            padding: 20,
           }
         ]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
@@ -108,7 +112,7 @@ export default function OverviewSection({
           <Text style={[
             themedStyles.text, 
             { 
-              fontSize: 20, 
+              fontSize: 24, 
               fontWeight: '700', 
               color: currentColors.success 
             }
@@ -120,11 +124,11 @@ export default function OverviewSection({
         <View style={[
           themedStyles.card, 
           { 
-            flex: 1, 
             backgroundColor: currentColors.error + '10',
             borderColor: currentColors.error + '30',
             borderWidth: 1,
             marginBottom: 0,
+            padding: 20,
           }
         ]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
@@ -136,7 +140,7 @@ export default function OverviewSection({
           <Text style={[
             themedStyles.text, 
             { 
-              fontSize: 20, 
+              fontSize: 24, 
               fontWeight: '700', 
               color: currentColors.error 
             }
@@ -146,7 +150,7 @@ export default function OverviewSection({
         </View>
       </View>
 
-      {/* Remaining Balance */}
+      {/* Remaining Balance - Taller card */}
       <View style={[
         themedStyles.card,
         {
@@ -158,9 +162,11 @@ export default function OverviewSection({
             : currentColors.error + '40',
           borderWidth: 2,
           marginBottom: 16,
+          padding: 24, // Increased padding
+          minHeight: 120, // Ensure minimum height to prevent text cutoff
         }
       ]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
           <Icon 
             name={displayValues.remaining >= 0 ? "checkmark-circle" : "alert-circle"} 
             size={20} 
@@ -176,15 +182,16 @@ export default function OverviewSection({
         <Text style={[
           themedStyles.text, 
           { 
-            fontSize: 28, 
+            fontSize: 32, // Increased font size
             fontWeight: '800',
-            color: displayValues.remaining >= 0 ? currentColors.success : currentColors.error
+            color: displayValues.remaining >= 0 ? currentColors.success : currentColors.error,
+            lineHeight: 38, // Ensure proper line height
           }
         ]}>
           {formatCurrency(displayValues.remaining)}
         </Text>
         {displayValues.remaining < 0 && (
-          <Text style={[themedStyles.textSecondary, { fontSize: 12, marginTop: 4 }]}>
+          <Text style={[themedStyles.textSecondary, { fontSize: 12, marginTop: 8 }]}>
             Over budget by {formatCurrency(Math.abs(displayValues.remaining))}
           </Text>
         )}

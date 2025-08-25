@@ -65,11 +65,9 @@ export default function ExpiringSection({ expenses }: ExpiringSectionProps) {
         {
           flex: 1,
           paddingHorizontal: 16,
-          paddingVertical: 12,
-          borderRadius: 12,
-          backgroundColor: activeTab === tab ? currentColors.primary : 'transparent',
-          borderWidth: 1,
-          borderColor: activeTab === tab ? currentColors.primary : currentColors.border,
+          paddingVertical: 10,
+          borderRadius: 8,
+          backgroundColor: activeTab === tab ? currentColors.border : 'transparent',
           alignItems: 'center',
         },
       ]}
@@ -78,9 +76,9 @@ export default function ExpiringSection({ expenses }: ExpiringSectionProps) {
         style={[
           themedStyles.text,
           {
-            color: activeTab === tab ? '#fff' : currentColors.text,
-            fontWeight: '600',
-            fontSize: 16,
+            color: activeTab === tab ? currentColors.text : currentColors.textSecondary,
+            fontWeight: activeTab === tab ? '600' : '500',
+            fontSize: 14,
           },
         ]}
       >
@@ -156,8 +154,14 @@ export default function ExpiringSection({ expenses }: ExpiringSectionProps) {
 
   return (
     <View>
-      {/* Tabs - Full Width */}
-      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+      {/* Tabs - Full Width with subtle styling */}
+      <View style={{ 
+        flexDirection: 'row', 
+        backgroundColor: currentColors.background,
+        borderRadius: 10,
+        padding: 4,
+        marginBottom: 20 
+      }}>
         <TabButton tab="expiring" label="Expiring Soon" count={expiringSoon.length} />
         <TabButton tab="ended" label="Ended" count={ended.length} />
       </View>

@@ -299,7 +299,8 @@ export default function HomeScreen() {
       <ScrollView 
         style={themedStyles.content} 
         contentContainerStyle={{ 
-          padding: 16,
+          paddingHorizontal: 20, // Match nav bar padding
+          paddingTop: 16,
           paddingBottom: 120 // Extra padding to ensure Quick Actions are visible above nav bar
         }}
         showsVerticalScrollIndicator={false}
@@ -312,8 +313,7 @@ export default function HomeScreen() {
                 flexDirection: 'row', 
                 alignItems: 'center', 
                 marginBottom: 16,
-                // Fix icon alignment by ensuring proper vertical centering
-                minHeight: 32, // Ensure consistent height for alignment
+                minHeight: 32,
               }}>
                 <Icon 
                   name="analytics-outline" 
@@ -321,8 +321,7 @@ export default function HomeScreen() {
                   style={{ 
                     color: currentColors.primary, 
                     marginRight: 12,
-                    // Align icon with text baseline
-                    marginTop: -2, // Slight adjustment to align with text
+                    marginTop: -2,
                   }} 
                 />
                 <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0 }]}>
@@ -330,16 +329,15 @@ export default function HomeScreen() {
                 </Text>
               </View>
               <View style={{
-                // Use wider card styling to match people screen
                 backgroundColor: currentColors.backgroundAlt,
                 borderRadius: 16,
-                padding: 24, // Increased padding for more space
+                padding: 24,
                 marginBottom: 0,
                 boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
                 elevation: 4,
                 borderWidth: 1,
                 borderColor: currentColors.border,
-                width: '100%', // Ensure full width usage
+                width: '100%',
               }}>
                 <OverviewSection 
                   calculations={calculations}
@@ -356,8 +354,7 @@ export default function HomeScreen() {
                 flexDirection: 'row', 
                 alignItems: 'center', 
                 marginBottom: 16,
-                // Fix icon alignment by ensuring proper vertical centering
-                minHeight: 32, // Ensure consistent height for alignment
+                minHeight: 32,
               }}>
                 <Icon 
                   name="people-outline" 
@@ -365,8 +362,7 @@ export default function HomeScreen() {
                   style={{ 
                     color: currentColors.primary, 
                     marginRight: 12,
-                    // Align icon with text baseline
-                    marginTop: -2, // Slight adjustment to align with text
+                    marginTop: -2,
                   }} 
                 />
                 <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0 }]}>
@@ -387,8 +383,7 @@ export default function HomeScreen() {
                 flexDirection: 'row', 
                 alignItems: 'center', 
                 marginBottom: 16,
-                // Fix icon alignment by ensuring proper vertical centering
-                minHeight: 32, // Ensure consistent height for alignment
+                minHeight: 32,
               }}>
                 <Icon 
                   name="time-outline" 
@@ -396,8 +391,7 @@ export default function HomeScreen() {
                   style={{ 
                     color: currentColors.primary, 
                     marginRight: 12,
-                    // Align icon with text baseline
-                    marginTop: -2, // Slight adjustment to align with text
+                    marginTop: -2,
                   }} 
                 />
                 <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0 }]}>
@@ -405,16 +399,15 @@ export default function HomeScreen() {
                 </Text>
               </View>
               <View style={{
-                // Use wider card styling to match people screen
                 backgroundColor: currentColors.backgroundAlt,
                 borderRadius: 16,
-                padding: 24, // Increased padding for more space
+                padding: 24,
                 marginBottom: 0,
                 boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
                 elevation: 4,
                 borderWidth: 1,
                 borderColor: currentColors.border,
-                width: '100%', // Ensure full width usage
+                width: '100%',
               }}>
                 <ExpiringSection expenses={expenses} />
               </View>
@@ -426,8 +419,7 @@ export default function HomeScreen() {
                 flexDirection: 'row', 
                 alignItems: 'center', 
                 marginBottom: 16,
-                // Fix icon alignment by ensuring proper vertical centering
-                minHeight: 32, // Ensure consistent height for alignment
+                minHeight: 32,
               }}>
                 <Icon 
                   name="flash-outline" 
@@ -435,8 +427,7 @@ export default function HomeScreen() {
                   style={{ 
                     color: currentColors.primary, 
                     marginRight: 12,
-                    // Align icon with text baseline
-                    marginTop: -2, // Slight adjustment to align with text
+                    marginTop: -2,
                   }} 
                 />
                 <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0 }]}>
@@ -444,16 +435,15 @@ export default function HomeScreen() {
                 </Text>
               </View>
               <View style={{
-                // Use wider card styling to match people screen
                 backgroundColor: currentColors.backgroundAlt,
                 borderRadius: 16,
-                padding: 24, // Increased padding for more space
+                padding: 24,
                 marginBottom: 0,
                 boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
                 elevation: 4,
                 borderWidth: 1,
                 borderColor: currentColors.border,
-                width: '100%', // Ensure full width usage
+                width: '100%',
               }}>
                 <QuickActionsSection />
               </View>
