@@ -447,7 +447,7 @@ export default function BudgetsScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Button
-                  text={saving ? 'Creating...' : 'Create Budget'}
+                  text={saving ? 'Creating...' : 'Create'}
                   onPress={handleAddBudget}
                   disabled={saving}
                   style={{ backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }}
