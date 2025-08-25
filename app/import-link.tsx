@@ -168,8 +168,7 @@ export default function ImportLinkScreen() {
           <Button
             text="Use Manual Input"
             onPress={() => setScanMode(false)}
-            style={[themedButtonStyles.outline, { borderWidth: 0 }]}
-            textStyle={{ color: currentColors.primary }}
+            style={themedButtonStyles.outline}
           />
         </View>
       );
@@ -210,8 +209,7 @@ export default function ImportLinkScreen() {
           <Button
             text="Cancel Scanning"
             onPress={() => setScanMode(false)}
-            style={[themedButtonStyles.outline, { borderWidth: 0 }]}
-            textStyle={{ color: currentColors.primary }}
+            style={themedButtonStyles.outline}
           />
         </View>
       </View>
@@ -239,7 +237,7 @@ export default function ImportLinkScreen() {
         showRightIcon={false}
       />
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0, paddingTop: 16 }]}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
         <View style={themedStyles.card}>
           <Text style={[themedStyles.subtitle, { marginBottom: 8 }]}>
             Import from QR Code or Link
@@ -269,8 +267,7 @@ export default function ImportLinkScreen() {
                 text="Paste from Clipboard"
                 onPress={handlePasteFromClipboard}
                 disabled={isImporting}
-                style={[themedButtonStyles.outline, { borderWidth: 0 }]}
-                textStyle={{ color: currentColors.primary }}
+                style={themedButtonStyles.outline}
               />
             </View>
             
@@ -280,8 +277,7 @@ export default function ImportLinkScreen() {
                   text="Scan QR Code"
                   onPress={() => setScanMode(true)}
                   disabled={isImporting}
-                  style={[themedButtonStyles.outline, { borderWidth: 0 }]}
-                  textStyle={{ color: currentColors.primary }}
+                  style={themedButtonStyles.outline}
                 />
               </View>
             )}
@@ -291,7 +287,7 @@ export default function ImportLinkScreen() {
             text={isImporting ? 'Importing...' : 'Import Budget'}
             onPress={() => handleImport(inputValue)}
             disabled={!inputValue.trim() || isImporting}
-            style={[themedButtonStyles.primary, { borderWidth: 0 }]}
+            style={themedButtonStyles.primary}
           />
         </View>
 
