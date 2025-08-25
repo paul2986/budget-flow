@@ -298,11 +298,13 @@ export default function HomeScreen() {
 
       <ScrollView 
         style={themedStyles.content} 
-        contentContainerStyle={{ 
-          paddingHorizontal: 16, // Match the people screen padding
-          paddingTop: 16,
-          paddingBottom: 120 // Extra padding to ensure Quick Actions are visible above nav bar
-        }}
+        contentContainerStyle={[
+          themedStyles.scrollContent,
+          {
+            paddingHorizontal: 16, // Standardized padding to match other screens
+            paddingTop: 16,
+          }
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {calculations && (

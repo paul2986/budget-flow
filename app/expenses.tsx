@@ -264,7 +264,7 @@ export default function ExpensesScreen() {
       <StandardHeader title="Expenses" showLeftIcon={false} onRightPress={handleNavigateToAddExpense} loading={saving || deletingExpenseId !== null} />
 
       {/* Filter block */}
-      <View style={[themedStyles.section, { paddingBottom: 0, paddingTop: 12, paddingHorizontal: 12 }]}>
+      <View style={[themedStyles.section, { paddingBottom: 0, paddingTop: 12, paddingHorizontal: 16 }]}>
         {/* Search input */}
         <View style={{ marginBottom: 12 }}>
           <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Search</Text>
@@ -454,7 +454,7 @@ export default function ExpensesScreen() {
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                       <Icon name="search-outline" size={14} style={{ color: currentColors.primary, marginRight: 6 }} />
-                      <Text style={[themedStyles.text, { color: currentColors.primary, fontSize: 12 }]}>Search: “{searchTerm}”</Text>
+                      <Text style={[themedStyles.text, { color: currentColors.primary, fontSize: 12 }]}>Search: "{searchTerm}"</Text>
                       <TouchableOpacity onPress={() => setSearchQuery('')} style={{ marginLeft: 8 }}>
                         <Icon name="close-circle" size={16} style={{ color: currentColors.primary }} />
                       </TouchableOpacity>
@@ -492,7 +492,7 @@ export default function ExpensesScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 12 }]}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16 }]}>
         {filteredExpenses.length === 0 ? (
           <View style={themedStyles.card}>
             <View style={themedStyles.centerContent}>
