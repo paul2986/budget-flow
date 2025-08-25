@@ -88,18 +88,14 @@ export default function EditPersonScreen() {
     }, [personId, data.people, loading, refreshData])
   );
 
-  const navigateToOrigin = useCallback(() => {
-    console.log('EditPersonScreen: Navigating back to origin:', origin);
+  const navigateBackToPeople = useCallback(() => {
+    console.log('EditPersonScreen: Navigating back to people screen');
     
     // Small delay to ensure state is updated before navigation
     setTimeout(() => {
-      if (origin === 'home') {
-        router.replace('/');
-      } else {
-        router.replace('/people');
-      }
+      router.replace('/people');
     }, 100);
-  }, [origin]);
+  }, []);
 
   const handleSavePerson = useCallback(async () => {
     if (!person) return;
@@ -108,8 +104,8 @@ export default function EditPersonScreen() {
       console.log('EditPersonScreen: Saving person:', person);
       const result = await updatePerson(person);
       if (result.success) {
-        console.log('EditPersonScreen: Person saved successfully, navigating back to origin');
-        navigateToOrigin();
+        console.log('EditPersonScreen: Person saved successfully, navigating back to people');
+        navigateBackToPeople();
       } else {
         Alert.alert('Error', 'Failed to update person. Please try again.');
       }
@@ -117,7 +113,7 @@ export default function EditPersonScreen() {
       console.error('EditPersonScreen: Error updating person:', error);
       Alert.alert('Error', 'Failed to update person. Please try again.');
     }
-  }, [person, updatePerson, navigateToOrigin]);
+  }, [person, updatePerson, navigateBackToPeople]);
 
   const handleDeletePerson = useCallback(() => {
     if (!person) return;
@@ -144,7 +140,7 @@ export default function EditPersonScreen() {
               const result = await removePerson(person.id);
               if (result.success) {
                 console.log('EditPersonScreen: Person deleted successfully, navigating back');
-                navigateToOrigin();
+                navigateBackToPeople();
               } else {
                 Alert.alert('Error', 'Failed to delete person. Please try again.');
               }
@@ -158,11 +154,12 @@ export default function EditPersonScreen() {
         },
       ]
     );
-  }, [person, isDeletingPerson, saving, removePerson, navigateToOrigin]);
+  }, [person, isDeletingPerson, saving, removePerson, navigateBackToPeople]);
 
   const handleGoBack = useCallback(() => {
-    router.back();
-  }, []);
+    console.log('EditPersonScreen: Back button pressed, navigating to people screen');
+    navigateBackToPeople();
+  }, [navigateBackToPeople]);
 
   const handleAddIncome = useCallback(async () => {
     if (!person || !newIncome.amount || !newIncome.label.trim()) {
@@ -341,7 +338,7 @@ export default function EditPersonScreen() {
             />
             <Button
               text="Go Back"
-              onPress={navigateToOrigin}
+              onPress={navigateBackToPeople}
               style={[themedButtonStyles.primary, { backgroundColor: currentColors.primary }]}
             />
           </View>
@@ -491,9 +488,6 @@ export default function EditPersonScreen() {
             </Text>
           ) : (
             <View>
-              <Text style={[themedStyles.textSecondary, { fontSize: 12, marginBottom: 8 }]}>
-                Tap any income source to edit it
-              </Text>
               {person.income.map((income) => {
                 const isDeletingIncome = deletingIncomeId === income.id;
                 

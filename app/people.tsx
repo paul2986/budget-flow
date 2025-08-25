@@ -412,9 +412,6 @@ export default function PeopleScreen() {
                     <Text style={themedStyles.textSecondary}>No income sources added</Text>
                   ) : (
                     <View>
-                      <Text style={[themedStyles.textSecondary, { fontSize: 12, marginBottom: 8 }]}>
-                        Tap any income source to edit it
-                      </Text>
                       {person.income.map((income) => {
                         const isDeletingIncome = deletingIncomeId === income.id;
                       
