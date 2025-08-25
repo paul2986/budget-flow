@@ -61,7 +61,7 @@ export const useThemedStyles = () => {
     card: {
       backgroundColor: currentColors.backgroundAlt,
       borderRadius: 16,
-      padding: 24, // Standardized padding to match all other cards
+      padding: 10, // Standardized padding to match all other cards
       marginBottom: 16,
       boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
       elevation: 4,
