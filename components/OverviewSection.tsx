@@ -55,8 +55,8 @@ export default function OverviewSection({
         {
           flex: 1,
           paddingHorizontal: 16,
-          paddingVertical: 8,
-          borderRadius: 20,
+          paddingVertical: 12,
+          borderRadius: 12,
           backgroundColor: viewMode === mode ? currentColors.primary : 'transparent',
           borderWidth: 1,
           borderColor: viewMode === mode ? currentColors.primary : currentColors.border,
@@ -70,7 +70,7 @@ export default function OverviewSection({
           {
             color: viewMode === mode ? '#fff' : currentColors.text,
             fontWeight: '600',
-            fontSize: 14,
+            fontSize: 16,
           },
         ]}
       >
@@ -81,8 +81,8 @@ export default function OverviewSection({
 
   return (
     <View style={[themedStyles.card, { marginBottom: 0 }]}>
-      {/* Tabs */}
-      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
+      {/* Tabs - Full Width */}
+      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
         <TabButton mode="monthly" label="Monthly" />
         <TabButton mode="yearly" label="Yearly" />
       </View>

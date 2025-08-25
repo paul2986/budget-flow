@@ -121,12 +121,13 @@ export const commonStyles = StyleSheet.create({
   card: {
     backgroundColor: colors.backgroundAlt,
     borderRadius: 16,
-    padding: 20,
+    padding: 24, // Increased from 20 to 24 for more space
     marginBottom: 16,
     boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
     elevation: 4,
     borderWidth: 1,
     borderColor: colors.border,
+    width: '100%', // Ensure full width usage
   },
   row: {
     flexDirection: 'row',

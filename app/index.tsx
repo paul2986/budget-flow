@@ -116,7 +116,7 @@ export default function HomeScreen() {
   if (loading) {
     return (
       <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
-        <StandardHeader title="Budget Flow" />
+        <StandardHeader title="Loading..." />
         <View style={[themedStyles.content, { justifyContent: 'center', alignItems: 'center' }]}>
           <Text style={themedStyles.textSecondary}>Loading...</Text>
         </View>
@@ -162,7 +162,7 @@ export default function HomeScreen() {
   if (budgetLocked) {
     return (
       <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
-        <StandardHeader title="Budget Flow" />
+        <StandardHeader title={activeBudget.name} />
         
         <View style={{ flex: 1, position: 'relative' }}>
           <View style={{ flex: 1, opacity: 0.3 }}>
@@ -291,7 +291,7 @@ export default function HomeScreen() {
   return (
     <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
       <StandardHeader 
-        title="Budget Flow" 
+        title={activeBudget.name}
         rightIcon="wallet-outline"
         onRightPress={() => router.push('/budgets')}
       />
@@ -304,19 +304,6 @@ export default function HomeScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Budget Header */}
-        <View style={[themedStyles.card, { marginBottom: 24 }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <Text style={[themedStyles.subtitle, { flex: 1 }]}>{activeBudget.name}</Text>
-            <TouchableOpacity onPress={() => router.push('/budgets')}>
-              <Icon name="chevron-forward" size={20} style={{ color: currentColors.textSecondary }} />
-            </TouchableOpacity>
-          </View>
-          <Text style={themedStyles.textSecondary}>
-            {people.length} people • {expenses.length} expenses
-          </Text>
-        </View>
-
         {calculations && (
           <>
             {/* 1. Overview Section */}
