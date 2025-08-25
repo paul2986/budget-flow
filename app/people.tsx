@@ -17,6 +17,7 @@ import {
 import Button from '../components/Button';
 import Icon from '../components/Icon';
 import StandardHeader from '../components/StandardHeader';
+import IncomeModal from '../components/IncomeModal';
 
 export default function PeopleScreen() {
   const { data, addPerson, removePerson, addIncome, removeIncome, saving, refreshData } = useBudgetData();
@@ -26,14 +27,9 @@ export default function PeopleScreen() {
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [newPersonName, setNewPersonName] = useState('');
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
-  const [showAddIncome, setShowAddIncome] = useState(false);
+  const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [deletingPersonId, setDeletingPersonId] = useState<string | null>(null);
   const [deletingIncomeId, setDeletingIncomeId] = useState<string | null>(null);
-  const [newIncome, setNewIncome] = useState({
-    amount: '',
-    label: '',
-    frequency: 'monthly' as const,
-  });
 
   // Refresh data when screen becomes focused (e.g., after editing a person)
   useFocusEffect(
@@ -137,47 +133,37 @@ export default function PeopleScreen() {
     });
   }, [data.people, refreshData]);
 
-  const handleAddIncome = useCallback(async () => {
-    console.log('PeopleScreen: Add income button pressed');
-    console.log('PeopleScreen: New income data:', newIncome);
-    
-    if (!selectedPersonId || !newIncome.amount || !newIncome.label.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
-    const amount = parseFloat(newIncome.amount);
-    if (isNaN(amount) || amount <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
-      return;
-    }
+  const handleAddIncomeFromModal = useCallback(async (personId: string, incomeData: Omit<Income, 'id' | 'personId'>) => {
+    console.log('PeopleScreen: Add income from modal');
+    console.log('PeopleScreen: Income data:', incomeData);
+    console.log('PeopleScreen: Person ID:', personId);
 
     try {
       const income: Income = {
         id: `income_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        amount: amount,
-        label: newIncome.label.trim(),
-        frequency: newIncome.frequency,
-        personId: selectedPersonId,
+        amount: incomeData.amount,
+        label: incomeData.label,
+        frequency: incomeData.frequency,
+        personId: personId,
       };
 
       console.log('PeopleScreen: Adding new income:', income);
-      const result = await addIncome(selectedPersonId, income);
+      const result = await addIncome(personId, income);
       console.log('PeopleScreen: Income added result:', result);
       
       if (result.success) {
-        setNewIncome({ amount: '', label: '', frequency: 'monthly' });
-        setShowAddIncome(false);
-        setSelectedPersonId(null);
         console.log('PeopleScreen: Income added successfully');
+        return { success: true };
       } else {
         Alert.alert('Error', 'Failed to add income. Please try again.');
+        return { success: false, error: result.error };
       }
     } catch (error) {
       console.error('PeopleScreen: Error adding income:', error);
       Alert.alert('Error', 'Failed to add income. Please try again.');
+      return { success: false, error };
     }
-  }, [selectedPersonId, newIncome, addIncome]);
+  }, [addIncome]);
 
   const handleRemoveIncome = useCallback((personId: string, incomeId: string, incomeLabel: string) => {
     console.log('PeopleScreen: Attempting to remove income:', { personId, incomeId, incomeLabel });
@@ -240,41 +226,30 @@ export default function PeopleScreen() {
     setShowAddPerson(true);
   }, []);
 
-  const FrequencyPicker = ({ value, onChange }: { value: string, onChange: (value: string) => void }) => (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
-      {['daily', 'weekly', 'monthly', 'yearly'].map((freq) => (
-        <TouchableOpacity
-          key={freq}
-          style={[
-            themedStyles.badge,
-            { 
-              backgroundColor: value === freq ? currentColors.primary : currentColors.border,
-              marginRight: 8,
-              marginBottom: 8,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-            }
-          ]}
-          onPress={() => onChange(freq)}
-          disabled={saving}
-        >
-          <Text style={[
-            themedStyles.badgeText,
-            { color: value === freq ? currentColors.backgroundAlt : currentColors.text }
-          ]}>
-            {freq.charAt(0).toUpperCase() + freq.slice(1)}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
+
 
   return (
     <View style={themedStyles.container}>
       <StandardHeader
         title="People"
         showLeftIcon={false}
-        onRightPress={handleNavigateToAddPerson}
+        rightButtons={[
+          ...(data.people.length > 0 ? [{
+            icon: 'cash-outline' as const,
+            onPress: () => {
+              setSelectedPersonId(null);
+              setShowIncomeModal(true);
+            },
+            backgroundColor: currentColors.income,
+            iconColor: '#FFFFFF',
+          }] : []),
+          {
+            icon: 'add' as const,
+            onPress: handleNavigateToAddPerson,
+            backgroundColor: currentColors.primary,
+            iconColor: '#FFFFFF',
+          }
+        ]}
         loading={saving}
       />
 
@@ -297,6 +272,23 @@ export default function PeopleScreen() {
                 disabled={saving}
               />
             </View>
+          </View>
+        )}
+
+        {/* Quick Actions Info - Show when people exist */}
+        {data.people.length > 0 && (
+          <View style={[themedStyles.card, { backgroundColor: currentColors.backgroundAlt }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <Icon name="information-circle-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+              <Text style={[themedStyles.text, { fontWeight: '600', color: currentColors.primary }]}>
+                Quick Actions
+              </Text>
+            </View>
+            <Text style={[themedStyles.textSecondary, { fontSize: 12, lineHeight: 16 }]}>
+              • Tap the <Icon name="cash-outline" size={12} style={{ color: currentColors.income }} /> button in the header to add income for any person{'\n'}
+              • Tap the <Icon name="add-circle-outline" size={12} style={{ color: currentColors.income }} /> icon next to "Income Sources" to add income for that specific person{'\n'}
+              • Tap any person card to edit their details
+            </Text>
           </View>
         )}
 
@@ -343,71 +335,7 @@ export default function PeopleScreen() {
           </View>
         )}
 
-        {/* Add Income Form */}
-        {showAddIncome && selectedPersonId && (
-          <View style={[themedStyles.card, { backgroundColor: currentColors.income + '10' }]}>
-            <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>
-              Add Income for {data.people.find(p => p.id === selectedPersonId)?.name}
-            </Text>
-            
-            <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
-              Income Source:
-            </Text>
-            <TextInput
-              style={themedStyles.input}
-              placeholder="e.g., Salary, Freelance, Side Job"
-              placeholderTextColor={currentColors.textSecondary}
-              value={newIncome.label}
-              onChangeText={(text) => setNewIncome({ ...newIncome, label: text })}
-              editable={!saving}
-            />
-            
-            <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
-              Amount:
-            </Text>
-            <TextInput
-              style={themedStyles.input}
-              placeholder="0.00"
-              placeholderTextColor={currentColors.textSecondary}
-              value={newIncome.amount}
-              onChangeText={(text) => setNewIncome({ ...newIncome, amount: text })}
-              keyboardType="numeric"
-              editable={!saving}
-            />
-            
-            <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
-              Frequency:
-            </Text>
-            <FrequencyPicker
-              value={newIncome.frequency}
-              onChange={(freq) => setNewIncome({ ...newIncome, frequency: freq as any })}
-            />
-            
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                <Button
-                  text="Cancel"
-                  onPress={() => {
-                    setShowAddIncome(false);
-                    setSelectedPersonId(null);
-                    setNewIncome({ amount: '', label: '', frequency: 'monthly' });
-                  }}
-                  style={[themedButtonStyles.outline, { marginTop: 0, borderColor: currentColors.income }]}
-                  textStyle={{ color: currentColors.income }}
-                  disabled={saving}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Button
-                  text={saving ? 'Adding...' : 'Add Income'}
-                  onPress={handleAddIncome}
-                  style={[themedButtonStyles.primary, { marginTop: 0, backgroundColor: saving ? currentColors.textSecondary : currentColors.income }]}
-                  disabled={saving}
-                />
-              </View>
-            </View>
-          </View>
-        )}
+
 
         {/* People List */}
         {data.people.length > 0 && (
@@ -489,7 +417,7 @@ export default function PeopleScreen() {
                       onPress={(e) => {
                         e.stopPropagation(); // Prevent triggering the edit action
                         setSelectedPersonId(person.id);
-                        setShowAddIncome(true);
+                        setShowIncomeModal(true);
                       }}
                       disabled={saving || isDeleting}
                     >
@@ -576,6 +504,21 @@ export default function PeopleScreen() {
           })
         )}
       </ScrollView>
+
+
+
+      {/* Income Modal */}
+      <IncomeModal
+        visible={showIncomeModal}
+        onClose={() => {
+          setShowIncomeModal(false);
+          setSelectedPersonId(null);
+        }}
+        onAddIncome={handleAddIncomeFromModal}
+        people={data.people}
+        selectedPersonId={selectedPersonId}
+        saving={saving}
+      />
     </View>
   );
 }
