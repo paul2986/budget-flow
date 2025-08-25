@@ -193,17 +193,16 @@ export default function BudgetsScreen() {
     if (budgetId === activeBudget?.id) return;
 
     try {
-      setOpenBudgetId(null); // Close menu
       const result = await setActiveBudget(budgetId);
       if (result.success) {
-        showToast('Budget switched successfully', 'success');
-        router.replace('/');
+        showToast('Budget activated successfully', 'success');
+        // Stay on the budget screen instead of navigating away
       } else {
-        Alert.alert('Error', 'Failed to switch budget. Please try again.');
+        Alert.alert('Error', 'Failed to activate budget. Please try again.');
       }
     } catch (error) {
-      console.error('Error switching budget:', error);
-      Alert.alert('Error', 'Failed to switch budget. Please try again.');
+      console.error('Error activating budget:', error);
+      Alert.alert('Error', 'Failed to activate budget. Please try again.');
     }
   }, [activeBudget?.id, setActiveBudget, showToast]);
 
@@ -251,6 +250,14 @@ export default function BudgetsScreen() {
       showToast('Failed to share', 'error');
     }
   }, [shareData, shareModalBudget, showToast]);
+
+  // Handle budget card tap - activate if not already active
+  const handleBudgetCardPress = useCallback((budget: Budget) => {
+    console.log('Budget card pressed:', budget.name, 'isActive:', budget.id === activeBudget?.id);
+    if (budget.id !== activeBudget?.id) {
+      handleSetActiveBudget(budget.id);
+    }
+  }, [activeBudget?.id, handleSetActiveBudget]);
 
   const renderShareModalContent = () => {
     if (!shareModalBudget) return null;
@@ -337,12 +344,22 @@ export default function BudgetsScreen() {
     const isActive = budget.id === activeBudget?.id;
     const isMenuOpen = openBudgetId === budget.id;
 
-    const handleMenuToggle = () => {
+    const handleMenuToggle = (event: any) => {
+      event.stopPropagation(); // Prevent event bubbling to parent
+      console.log('Menu toggle pressed for budget:', budget.name);
       if (isMenuOpen) {
         setOpenBudgetId(null);
       } else {
         setOpenBudgetId(budget.id);
       }
+    };
+
+    const handleMenuItemPress = (action: () => void) => {
+      return (event: any) => {
+        event.stopPropagation(); // Prevent event bubbling
+        console.log('Menu item pressed');
+        action();
+      };
     };
 
     return (
@@ -385,7 +402,7 @@ export default function BudgetsScreen() {
                   borderBottomWidth: 1,
                   borderBottomColor: currentColors.border,
                 }}
-                onPress={() => handleSetActiveBudget(budget.id)}
+                onPress={handleMenuItemPress(() => handleSetActiveBudget(budget.id))}
                 disabled={saving}
               >
                 <Text style={[themedStyles.text, { fontSize: 14 }]}>Set as Active</Text>
@@ -398,11 +415,11 @@ export default function BudgetsScreen() {
                 borderBottomWidth: 1,
                 borderBottomColor: currentColors.border,
               }}
-              onPress={() => {
+              onPress={handleMenuItemPress(() => {
                 setOpenBudgetId(null);
                 setEditingBudgetId(budget.id);
                 setEditingBudgetName(budget.name);
-              }}
+              })}
               disabled={saving}
             >
               <Text style={[themedStyles.text, { fontSize: 14 }]}>Rename</Text>
@@ -414,7 +431,7 @@ export default function BudgetsScreen() {
                 borderBottomWidth: 1,
                 borderBottomColor: currentColors.border,
               }}
-              onPress={() => handleDuplicateBudget(budget)}
+              onPress={handleMenuItemPress(() => handleDuplicateBudget(budget))}
               disabled={saving}
             >
               <Text style={[themedStyles.text, { fontSize: 14 }]}>Duplicate</Text>
@@ -426,7 +443,7 @@ export default function BudgetsScreen() {
                 borderBottomWidth: 1,
                 borderBottomColor: currentColors.border,
               }}
-              onPress={() => handleShareBudget(budget)}
+              onPress={handleMenuItemPress(() => handleShareBudget(budget))}
               disabled={saving}
             >
               <Text style={[themedStyles.text, { fontSize: 14 }]}>Share</Text>
@@ -435,7 +452,7 @@ export default function BudgetsScreen() {
             {sortedBudgets.length > 1 && (
               <TouchableOpacity
                 style={{ padding: 12 }}
-                onPress={() => handleDeleteBudget(budget)}
+                onPress={handleMenuItemPress(() => handleDeleteBudget(budget))}
                 disabled={saving}
               >
                 <Text style={[themedStyles.text, { fontSize: 14, color: currentColors.error }]}>
@@ -544,7 +561,7 @@ export default function BudgetsScreen() {
             const isEditing = editingBudgetId === budget.id;
 
             return (
-              <View
+              <TouchableOpacity
                 key={budget.id}
                 style={[
                   themedStyles.card,
@@ -554,6 +571,9 @@ export default function BudgetsScreen() {
                     backgroundColor: currentColors.primary + '10',
                   },
                 ]}
+                onPress={() => handleBudgetCardPress(budget)}
+                disabled={saving || isEditing}
+                activeOpacity={isActive ? 1 : 0.7}
               >
                 {isEditing ? (
                   <View>
@@ -635,23 +655,15 @@ export default function BudgetsScreen() {
                       </View>
                     </View>
 
+                    {/* Tap to activate hint for non-active budgets */}
                     {!isActive && (
-                      <Button
-                        text="Activate"
-                        onPress={() => handleSetActiveBudget(budget.id)}
-                        disabled={saving}
-                        style={{ 
-                          backgroundColor: 'transparent',
-                          borderWidth: 2,
-                          borderColor: currentColors.primary,
-                          marginTop: 8,
-                        }}
-                        textStyle={{ color: currentColors.primary }}
-                      />
+                      <Text style={[themedStyles.textSecondary, { fontSize: 12, textAlign: 'center', fontStyle: 'italic' }]}>
+                        Tap to activate this budget
+                      </Text>
                     )}
                   </>
                 )}
-              </View>
+              </TouchableOpacity>
             );
           })
         )}
