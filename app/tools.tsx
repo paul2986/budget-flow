@@ -12,6 +12,43 @@ import { computeCreditCardPayoff, computeInterestOnlyMinimum } from '../utils/ca
 import { CreditCardPayoffResult } from '../types/budget';
 import { useToast } from '../hooks/useToast';
 
+const styles = StyleSheet.create({
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  labelText: {
+    fontWeight: '700',
+  },
+  resultsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+  },
+  th: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  td: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+});
+
 export default function ToolsScreen() {
   const { themedStyles } = useThemedStyles();
   const { currentColors } = useTheme();
@@ -505,7 +542,7 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
   return (
     <View style={themedStyles.container}>
       <StandardHeader title="Tools" showLeftIcon={false} showRightIcon={false} />
-      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16, paddingTop: 16 }]}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0, paddingTop: 16 }]}>
         <View style={themedStyles.section}>
           <View
             style={[
@@ -531,40 +568,3 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  labelText: {
-    fontWeight: '700',
-  },
-  resultsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-  },
-  th: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  tableRow: {
-    flexDirection: 'row',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-  },
-  td: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-});

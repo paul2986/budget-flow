@@ -60,7 +60,7 @@ export default function SettingsScreen() {
     <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
       <StandardHeader title="Settings" />
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16, paddingTop: 16 }]}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0, paddingTop: 16 }]}>
         {/* App Info */}
         <View style={[themedStyles.card, { marginBottom: 24 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>

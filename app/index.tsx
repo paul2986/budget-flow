@@ -301,7 +301,7 @@ export default function HomeScreen() {
         contentContainerStyle={[
           themedStyles.scrollContent,
           {
-            paddingHorizontal: 16,
+            paddingHorizontal: 0,
             paddingTop: 16,
           }
         ]}

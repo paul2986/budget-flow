@@ -492,7 +492,7 @@ export default function ExpensesScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16 }]}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0 }]}>
         {filteredExpenses.length === 0 ? (
           <View style={themedStyles.card}>
             <View style={themedStyles.centerContent}>

@@ -278,7 +278,7 @@ export default function PeopleScreen() {
         loading={saving}
       />
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16, paddingTop: 16 }]}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0, paddingTop: 16 }]}>
         {/* Prominent Add Person Button - Only show when no people exist */}
         {data.people.length === 0 && !showAddPerson && (
           <View style={themedStyles.card}>

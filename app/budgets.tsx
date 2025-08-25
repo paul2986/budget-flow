@@ -390,7 +390,7 @@ export default function BudgetsScreen() {
         loading={saving}
       />
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16, paddingTop: 16 }]}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0, paddingTop: 16 }]}>
         {/* Add Budget Form */}
         {showAddBudget && (
           <View style={[themedStyles.card, { backgroundColor: currentColors.primary + '10' }]}>
