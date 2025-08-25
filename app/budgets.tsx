@@ -1,6 +1,6 @@
 
 import { useCallback, useMemo, useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Pressable, Modal, Share } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Pressable, Modal, Share, KeyboardAvoidingView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
@@ -170,8 +170,12 @@ export default function BudgetsScreen() {
     }
 
     try {
+      console.log('Duplicating budget with ID:', duplicateBudgetId, 'and name:', duplicateBudgetName.trim());
+      
       // Duplicate with the custom name directly
       const result = await duplicateBudget(duplicateBudgetId, duplicateBudgetName.trim());
+      
+      console.log('Duplicate result:', result);
       
       if (result.success) {
         setShowDuplicateModal(false);
@@ -179,11 +183,12 @@ export default function BudgetsScreen() {
         setDuplicateBudgetName('');
         showToast('Budget duplicated successfully', 'success');
       } else {
-        Alert.alert('Error', 'Failed to duplicate budget. Please try again.');
+        console.error('Error duplicating budget:', result.error);
+        Alert.alert('Error', `Failed to duplicate budget: ${result.error?.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error duplicating budget:', error);
-      Alert.alert('Error', 'Failed to duplicate budget. Please try again.');
+      Alert.alert('Error', `Failed to duplicate budget: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }, [duplicateBudgetName, duplicateBudgetId, duplicateBudget, showToast]);
 
@@ -782,72 +787,78 @@ export default function BudgetsScreen() {
         animationType="fade"
         onRequestClose={() => setShowDuplicateModal(false)}
       >
-        <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}>
-          <View style={[themedStyles.card, { margin: 20, maxWidth: 350 }]}>
-            <View style={[themedStyles.row, { marginBottom: 16 }]}>
-              <Text style={[themedStyles.subtitle, { marginBottom: 0 }]}>
-                Duplicate Budget
-              </Text>
-              <TouchableOpacity onPress={() => {
-                setShowDuplicateModal(false);
-                setDuplicateBudgetId(null);
-                setDuplicateBudgetName('');
-              }}>
-                <Icon name="close" size={24} style={{ color: currentColors.text }} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={[themedStyles.textSecondary, { marginBottom: 16, textAlign: 'center' }]}>
-              Enter a name for the duplicated budget
-            </Text>
-
-            <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
-              Budget Name:
-            </Text>
-            <TextInput
-              style={themedStyles.input}
-              placeholder="Enter budget name"
-              placeholderTextColor={currentColors.textSecondary}
-              value={duplicateBudgetName}
-              onChangeText={setDuplicateBudgetName}
-              autoFocus
-              editable={!saving}
-            />
-
-            <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-              <View style={{ flex: 1 }}>
-                <Button
-                  text="Cancel"
-                  onPress={() => {
-                    setShowDuplicateModal(false);
-                    setDuplicateBudgetId(null);
-                    setDuplicateBudgetName('');
-                  }}
-                  disabled={saving}
-                  style={{ 
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    borderColor: currentColors.textSecondary,
-                  }}
-                  textStyle={{ color: currentColors.textSecondary }}
-                />
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }} 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+            paddingTop: 100, // Position modal higher up to avoid keyboard
+          }}>
+            <View style={[themedStyles.card, { margin: 20, maxWidth: 350, width: '90%' }]}>
+              <View style={[themedStyles.row, { marginBottom: 16 }]}>
+                <Text style={[themedStyles.subtitle, { marginBottom: 0 }]}>
+                  Duplicate Budget
+                </Text>
+                <TouchableOpacity onPress={() => {
+                  setShowDuplicateModal(false);
+                  setDuplicateBudgetId(null);
+                  setDuplicateBudgetName('');
+                }}>
+                  <Icon name="close" size={24} style={{ color: currentColors.text }} />
+                </TouchableOpacity>
               </View>
-              <View style={{ flex: 1 }}>
-                <Button
-                  text={saving ? 'Duplicating...' : 'Duplicate'}
-                  onPress={handleConfirmDuplicate}
-                  disabled={saving}
-                  style={{ backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }}
-                />
+
+              <Text style={[themedStyles.textSecondary, { marginBottom: 16, textAlign: 'center' }]}>
+                Enter a name for the duplicated budget
+              </Text>
+
+              <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
+                Budget Name:
+              </Text>
+              <TextInput
+                style={themedStyles.input}
+                placeholder="Enter budget name"
+                placeholderTextColor={currentColors.textSecondary}
+                value={duplicateBudgetName}
+                onChangeText={setDuplicateBudgetName}
+                autoFocus
+                editable={!saving}
+              />
+
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    text="Cancel"
+                    onPress={() => {
+                      setShowDuplicateModal(false);
+                      setDuplicateBudgetId(null);
+                      setDuplicateBudgetName('');
+                    }}
+                    disabled={saving}
+                    style={{ 
+                      backgroundColor: 'transparent',
+                      borderWidth: 2,
+                      borderColor: currentColors.textSecondary,
+                    }}
+                    textStyle={{ color: currentColors.textSecondary }}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    text={saving ? 'Duplicating...' : 'Duplicate'}
+                    onPress={handleConfirmDuplicate}
+                    disabled={saving}
+                    style={{ backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }}
+                  />
+                </View>
               </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Share Modal */}

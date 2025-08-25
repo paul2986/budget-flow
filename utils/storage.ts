@@ -424,55 +424,121 @@ export const deleteBudget = async (budgetId: string): Promise<{ success: boolean
 };
 
 export const duplicateBudget = async (budgetId: string, customName?: string): Promise<{ success: boolean; error?: Error; budget?: Budget }> => {
-  const appData = await loadAppData();
-  if (!appData.budgets || !Array.isArray(appData.budgets)) {
-    return { success: false, error: new Error('No budgets found') };
-  }
-  const originalBudget = appData.budgets.find((b) => b && b.id === budgetId);
-  if (!originalBudget) {
-    return { success: false, error: new Error('Budget not found') };
-  }
+  console.log('storage: duplicateBudget called with:', { budgetId, customName });
   
-  // Create a deep copy of the budget with new IDs
-  const now = Date.now();
-  const duplicatedBudget: Budget = {
-    ...originalBudget,
-    id: `budget_${now}_${Math.random().toString(36).substr(2, 9)}`,
-    name: customName || `${originalBudget.name} (Copy)`,
-    createdAt: now,
-    modifiedAt: now,
-    // Deep copy people with new IDs
-    people: originalBudget.people.map(person => ({
-      ...person,
-      id: `person_${now}_${Math.random().toString(36).substr(2, 9)}`,
-      income: person.income.map(income => ({
-        ...income,
-        id: `income_${now}_${Math.random().toString(36).substr(2, 9)}`,
-      })),
-    })),
-    // Deep copy expenses with new IDs and update personId references
-    expenses: originalBudget.expenses.map(expense => {
+  try {
+    const appData = await loadAppData();
+    if (!appData.budgets || !Array.isArray(appData.budgets)) {
+      console.error('storage: No budgets found in app data');
+      return { success: false, error: new Error('No budgets found') };
+    }
+    
+    const originalBudget = appData.budgets.find((b) => b && b.id === budgetId);
+    if (!originalBudget) {
+      console.error('storage: Budget not found:', budgetId);
+      return { success: false, error: new Error('Budget not found') };
+    }
+    
+    console.log('storage: Original budget found:', {
+      id: originalBudget.id,
+      name: originalBudget.name,
+      peopleCount: originalBudget.people?.length || 0,
+      expensesCount: originalBudget.expenses?.length || 0
+    });
+    
+    // Create a deep copy of the budget with new IDs
+    const now = Date.now();
+    
+    // Safely handle people array - ensure it exists and is an array
+    const originalPeople = Array.isArray(originalBudget.people) ? originalBudget.people : [];
+    const duplicatedPeople = originalPeople.map(person => {
+      // Ensure person exists and has required properties
+      if (!person || typeof person !== 'object') {
+        console.warn('storage: Invalid person object found, skipping:', person);
+        return null;
+      }
+      
+      // Safely handle income array
+      const originalIncome = Array.isArray(person.income) ? person.income : [];
+      const duplicatedIncome = originalIncome.map(income => {
+        if (!income || typeof income !== 'object') {
+          console.warn('storage: Invalid income object found, skipping:', income);
+          return null;
+        }
+        
+        return {
+          ...income,
+          id: `income_${now}_${Math.random().toString(36).substr(2, 9)}`,
+        };
+      }).filter(income => income !== null); // Remove any null entries
+      
+      return {
+        ...person,
+        id: `person_${now}_${Math.random().toString(36).substr(2, 9)}`,
+        income: duplicatedIncome,
+      };
+    }).filter(person => person !== null); // Remove any null entries
+    
+    // Safely handle expenses array - ensure it exists and is an array
+    const originalExpenses = Array.isArray(originalBudget.expenses) ? originalBudget.expenses : [];
+    const duplicatedExpenses = originalExpenses.map(expense => {
+      if (!expense || typeof expense !== 'object') {
+        console.warn('storage: Invalid expense object found, skipping:', expense);
+        return null;
+      }
+      
       const newExpense = {
         ...expense,
         id: `expense_${now}_${Math.random().toString(36).substr(2, 9)}`,
       };
+      
       // If it's a personal expense, we need to update the personId to match the new person ID
       if (expense.category === 'personal' && expense.personId) {
-        const originalPersonIndex = originalBudget.people.findIndex(p => p.id === expense.personId);
-        if (originalPersonIndex !== -1) {
-          newExpense.personId = duplicatedBudget.people[originalPersonIndex].id;
+        const originalPersonIndex = originalPeople.findIndex(p => p && p.id === expense.personId);
+        if (originalPersonIndex !== -1 && duplicatedPeople[originalPersonIndex]) {
+          newExpense.personId = duplicatedPeople[originalPersonIndex].id;
+        } else {
+          console.warn('storage: Could not find matching person for expense, removing personId:', expense);
+          newExpense.personId = undefined;
         }
       }
+      
       return newExpense;
-    }),
-    // Reset lock settings for the duplicate
-    lock: getDefaultLockSettings(),
-  };
-  
-  const budgets = [...appData.budgets, duplicatedBudget];
-  const newAppData: AppDataV2 = { ...appData, budgets };
-  const res = await saveAppData(newAppData);
-  return { ...res, budget: duplicatedBudget };
+    }).filter(expense => expense !== null); // Remove any null entries
+    
+    // Safely handle household settings
+    const originalHouseholdSettings = originalBudget.householdSettings || { distributionMethod: 'even' };
+    
+    const duplicatedBudget: Budget = {
+      ...originalBudget,
+      id: `budget_${now}_${Math.random().toString(36).substr(2, 9)}`,
+      name: customName || `${originalBudget.name} (Copy)`,
+      createdAt: now,
+      modifiedAt: now,
+      people: duplicatedPeople,
+      expenses: duplicatedExpenses,
+      householdSettings: originalHouseholdSettings,
+      // Reset lock settings for the duplicate
+      lock: getDefaultLockSettings(),
+    };
+    
+    console.log('storage: Duplicated budget created:', {
+      id: duplicatedBudget.id,
+      name: duplicatedBudget.name,
+      peopleCount: duplicatedBudget.people.length,
+      expensesCount: duplicatedBudget.expenses.length
+    });
+    
+    const budgets = [...appData.budgets, duplicatedBudget];
+    const newAppData: AppDataV2 = { ...appData, budgets };
+    const res = await saveAppData(newAppData);
+    
+    console.log('storage: Duplicate budget save result:', res);
+    return { ...res, budget: duplicatedBudget };
+  } catch (error) {
+    console.error('storage: Error in duplicateBudget:', error);
+    return { success: false, error: error as Error };
+  }
 };
 
 export const updateBudget = async (budget: Budget): Promise<{ success: boolean; error?: Error }> => {
