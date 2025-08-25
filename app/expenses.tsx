@@ -2,7 +2,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { Text, View, ScrollView, TouchableOpacity, Alert, ActivityIndicator, TextInput, AccessibilityInfo } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, Alert, ActivityIndicator, AccessibilityInfo } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { calculateMonthlyAmount } from '../utils/calculations';
 import { useThemedStyles } from '../hooks/useThemedStyles';
@@ -10,7 +10,7 @@ import { useCurrency } from '../hooks/useCurrency';
 import { useToast } from '../hooks/useToast';
 import Icon from '../components/Icon';
 import StandardHeader from '../components/StandardHeader';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import ExpenseFilterModal from '../components/ExpenseFilterModal';
 import { DEFAULT_CATEGORIES } from '../types/budget';
 import { getCustomExpenseCategories, getExpensesFilters, saveExpensesFilters, normalizeCategoryName } from '../utils/storage';
 
@@ -24,6 +24,9 @@ export default function ExpensesScreen() {
   const toast = useToast();
   const params = useLocalSearchParams<{ showRecurring?: string }>();
 
+  // Filter modal state
+  const [showFilterModal, setShowFilterModal] = useState(false);
+
   // Ownership filter (existing)
   const [filter, setFilter] = useState<'all' | 'household' | 'personal'>('all');
   const [personFilter, setPersonFilter] = useState<string | null>(null);
@@ -36,7 +39,6 @@ export default function ExpensesScreen() {
 
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('date');
-  const [extendTarget, setExtendTarget] = useState<{ id: string; endDate?: string } | null>(null);
 
   // Use ref to track if we've already refreshed on this focus
   const hasRefreshedOnFocus = useRef(false);
@@ -80,17 +82,6 @@ export default function ExpensesScreen() {
       };
     }, [refreshData])
   );
-
-  const availableCategories = (() => {
-    // Union of defaults + custom + any tag appearing in expenses (normalized)
-    const fromExpenses = new Set<string>();
-    data.expenses.forEach((e) => {
-      const tag = normalizeCategoryName((e as any).categoryTag || 'Misc');
-      if (tag) fromExpenses.add(tag);
-    });
-    const combined = new Set<string>([...DEFAULT_CATEGORIES, ...customCategories, ...Array.from(fromExpenses)]);
-    return Array.from(combined);
-  })().sort((a, b) => a.localeCompare(b));
 
   const announceFilter = (msg: string) => {
     try {
@@ -146,45 +137,12 @@ export default function ExpensesScreen() {
     router.push('/add-expense');
   }, []);
 
-  const FilterButton = useCallback(
-    ({ filterType, label }: { filterType: typeof filter; label: string }) => (
-      <TouchableOpacity
-        style={[
-          themedStyles.badge,
-          {
-            backgroundColor: filter === filterType ? currentColors.primary : currentColors.border,
-            flex: 1,
-            marginHorizontal: 4,
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            borderRadius: 20,
-            alignItems: 'center',
-            justifyContent: 'center',
-          },
-        ]}
-        onPress={() => {
-          setFilter(filterType);
-          if (filterType !== 'personal') setPersonFilter(null);
-        }}
-        disabled={saving || deletingExpenseId !== null}
-      >
-        <Text
-          style={[
-            themedStyles.badgeText,
-            {
-              color: filter === filterType ? '#FFFFFF' : currentColors.text,
-              fontWeight: '600',
-              textAlign: 'center',
-              fontSize: 13,
-            },
-          ]}
-        >
-          {label}
-        </Text>
-      </TouchableOpacity>
-    ),
-    [filter, currentColors, saving, deletingExpenseId, themedStyles]
-  );
+  const handleClearFilters = useCallback(() => {
+    setCategoryFilter(null);
+    setSearchQuery('');
+    setFilter('all');
+    setPersonFilter(null);
+  }, []);
 
   const SortButton = useCallback(
     ({ sortType, label, icon }: { sortType: SortOption; label: string; icon: string }) => (
@@ -259,230 +217,35 @@ export default function ExpensesScreen() {
 
   const hasActiveFilters = !!categoryFilter || !!searchTerm || (filter !== 'all') || !!personFilter;
 
+  // Header buttons - filter button on left, add button on right
+  const headerButtons = [
+    {
+      icon: 'funnel-outline',
+      onPress: () => setShowFilterModal(true),
+      backgroundColor: hasActiveFilters ? currentColors.secondary : currentColors.border + '80',
+      iconColor: hasActiveFilters ? '#FFFFFF' : currentColors.text,
+    },
+    {
+      icon: 'add',
+      onPress: handleNavigateToAddExpense,
+      backgroundColor: currentColors.primary,
+      iconColor: '#FFFFFF',
+    },
+  ];
+
   return (
     <View style={themedStyles.container}>
-      <StandardHeader title="Expenses" showLeftIcon={false} onRightPress={handleNavigateToAddExpense} loading={saving || deletingExpenseId !== null} />
+      <StandardHeader 
+        title="Expenses" 
+        showLeftIcon={false} 
+        showRightIcon={false}
+        rightButtons={headerButtons}
+        loading={saving || deletingExpenseId !== null} 
+      />
 
-      {/* Filter block */}
+      {/* Sort options - now more prominent */}
       <View style={[themedStyles.section, { paddingBottom: 0, paddingTop: 12, paddingHorizontal: 16 }]}>
-        {/* Search input */}
-        <View style={{ marginBottom: 12 }}>
-          <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Search</Text>
-          <TextInput
-            style={[themedStyles.input, { marginBottom: 0 }]}
-            placeholder="Search by description"
-            placeholderTextColor={currentColors.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            accessibilityLabel="Search expenses"
-          />
-        </View>
-
-        {/* Ownership filter buttons */}
-        <View style={{ flexDirection: 'row', marginBottom: 12 }}>
-          <FilterButton filterType="all" label="All Expenses" />
-          <FilterButton filterType="household" label="Household" />
-          <FilterButton filterType="personal" label="Personal" />
-        </View>
-
-        {/* Person filter for personal expenses */}
-        {filter === 'personal' && data.people.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-            <View style={{ paddingHorizontal: 4, flexDirection: 'row' }}>
-              <TouchableOpacity
-                style={[
-                  themedStyles.badge,
-                  {
-                    backgroundColor: personFilter === null ? currentColors.secondary : currentColors.border,
-                    marginRight: 8,
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: 16,
-                  },
-                ]}
-                onPress={() => setPersonFilter(null)}
-                disabled={saving || deletingExpenseId !== null}
-              >
-                <Text
-                  style={[
-                    themedStyles.badgeText,
-                    { color: personFilter === null ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 12 },
-                  ]}
-                >
-                  All People
-                </Text>
-              </TouchableOpacity>
-
-              {data.people.map((person) => (
-                <TouchableOpacity
-                  key={person.id}
-                  style={[
-                    themedStyles.badge,
-                    {
-                      backgroundColor: personFilter === person.id ? currentColors.secondary : currentColors.border,
-                      marginRight: 8,
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderRadius: 16,
-                    },
-                  ]}
-                  onPress={() => setPersonFilter(person.id)}
-                  disabled={saving || deletingExpenseId !== null}
-                >
-                  <Text
-                    style={[
-                      themedStyles.badgeText,
-                      { color: personFilter === person.id ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 12 },
-                    ]}
-                  >
-                    {person.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-        )}
-
-        {/* Category chips row */}
-        <View style={{ marginBottom: 12 }}>
-          <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Filter by category</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={{ paddingHorizontal: 4, flexDirection: 'row' }}>
-              <TouchableOpacity
-                key="all"
-                style={[
-                  themedStyles.badge,
-                  {
-                    backgroundColor: categoryFilter === null ? currentColors.secondary : currentColors.border,
-                    marginRight: 8,
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: 16,
-                  },
-                ]}
-                onPress={() => {
-                  setCategoryFilter(null);
-                  announceFilter('Filter applied: All categories');
-                }}
-              >
-                <Text
-                  style={[
-                    themedStyles.badgeText,
-                    { color: categoryFilter === null ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 12 },
-                  ]}
-                >
-                  All
-                </Text>
-              </TouchableOpacity>
-
-              {availableCategories.map((cat) => (
-                <TouchableOpacity
-                  key={cat}
-                  style={[
-                    themedStyles.badge,
-                    {
-                      backgroundColor: categoryFilter === cat ? currentColors.secondary : currentColors.border,
-                      marginRight: 8,
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderRadius: 16,
-                    },
-                  ]}
-                  onPress={() => {
-                    setCategoryFilter(cat);
-                    announceFilter(`Filter applied: ${cat}`);
-                  }}
-                  accessibilityLabel={`Filter by category ${cat}${categoryFilter === cat ? ', selected' : ''}`}
-                >
-                  <Text
-                    style={[
-                      themedStyles.badgeText,
-                      { color: categoryFilter === cat ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 12 },
-                    ]}
-                  >
-                    {cat}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-
-        {/* Active filter badges + Clear */}
-        {hasActiveFilters && (
-          <View style={{ marginBottom: 12 }}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {!!categoryFilter && (
-                  <View
-                    style={[
-                      themedStyles.badge,
-                      {
-                        backgroundColor: currentColors.secondary + '20',
-                        borderRadius: 16,
-                        paddingHorizontal: 10,
-                        paddingVertical: 6,
-                        marginRight: 8,
-                        borderWidth: 1,
-                        borderColor: currentColors.secondary,
-                      },
-                    ]}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Icon name="pricetag-outline" size={14} style={{ color: currentColors.secondary, marginRight: 6 }} />
-                      <Text style={[themedStyles.text, { color: currentColors.secondary, fontSize: 12 }]}>Category: {categoryFilter}</Text>
-                      <TouchableOpacity onPress={() => setCategoryFilter(null)} style={{ marginLeft: 8 }}>
-                        <Icon name="close-circle" size={16} style={{ color: currentColors.secondary }} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-                {!!searchTerm && (
-                  <View
-                    style={[
-                      themedStyles.badge,
-                      {
-                        backgroundColor: currentColors.primary + '20',
-                        borderRadius: 16,
-                        paddingHorizontal: 10,
-                        paddingVertical: 6,
-                        marginRight: 8,
-                        borderWidth: 1,
-                        borderColor: currentColors.primary,
-                      },
-                    ]}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Icon name="search-outline" size={14} style={{ color: currentColors.primary, marginRight: 6 }} />
-                      <Text style={[themedStyles.text, { color: currentColors.primary, fontSize: 12 }]}>Search: "{searchTerm}"</Text>
-                      <TouchableOpacity onPress={() => setSearchQuery('')} style={{ marginLeft: 8 }}>
-                        <Icon name="close-circle" size={16} style={{ color: currentColors.primary }} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-
-                <TouchableOpacity
-                  onPress={() => {
-                    setCategoryFilter(null);
-                    setSearchQuery('');
-                    setFilter('all');
-                    setPersonFilter(null);
-                    announceFilter('Filters cleared');
-                  }}
-                  style={[
-                    themedStyles.badge,
-                    { backgroundColor: currentColors.error + '15', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
-                  ]}
-                >
-                  <Text style={[themedStyles.badgeText, { color: currentColors.error, fontSize: 12, fontWeight: '700' }]}>Clear Filters</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Sort options */}
+        <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Sort by</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={{ paddingHorizontal: 4, flexDirection: 'row' }}>
             <SortButton sortType="date" label="Date" icon="calendar-outline" />
@@ -492,6 +255,93 @@ export default function ExpensesScreen() {
         </ScrollView>
       </View>
 
+      {/* Active filters summary - compact */}
+      {hasActiveFilters && (
+        <View style={[themedStyles.section, { paddingTop: 0, paddingHorizontal: 16 }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={[themedStyles.textSecondary, { marginRight: 8, fontSize: 12 }]}>Filtered:</Text>
+              {!!categoryFilter && (
+                <View
+                  style={[
+                    themedStyles.badge,
+                    {
+                      backgroundColor: currentColors.secondary + '20',
+                      borderRadius: 12,
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      marginRight: 6,
+                      borderWidth: 1,
+                      borderColor: currentColors.secondary,
+                    },
+                  ]}
+                >
+                  <Text style={[themedStyles.text, { color: currentColors.secondary, fontSize: 10 }]}>{categoryFilter}</Text>
+                </View>
+              )}
+              {!!searchTerm && (
+                <View
+                  style={[
+                    themedStyles.badge,
+                    {
+                      backgroundColor: currentColors.primary + '20',
+                      borderRadius: 12,
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      marginRight: 6,
+                      borderWidth: 1,
+                      borderColor: currentColors.primary,
+                    },
+                  ]}
+                >
+                  <Text style={[themedStyles.text, { color: currentColors.primary, fontSize: 10 }]}>"{searchTerm}"</Text>
+                </View>
+              )}
+              {filter !== 'all' && (
+                <View
+                  style={[
+                    themedStyles.badge,
+                    {
+                      backgroundColor: currentColors.household + '20',
+                      borderRadius: 12,
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      marginRight: 6,
+                      borderWidth: 1,
+                      borderColor: currentColors.household,
+                    },
+                  ]}
+                >
+                  <Text style={[themedStyles.text, { color: currentColors.household, fontSize: 10 }]}>
+                    {filter === 'household' ? 'Household' : 'Personal'}
+                  </Text>
+                </View>
+              )}
+              {personFilter && (
+                <View
+                  style={[
+                    themedStyles.badge,
+                    {
+                      backgroundColor: currentColors.personal + '20',
+                      borderRadius: 12,
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      marginRight: 6,
+                      borderWidth: 1,
+                      borderColor: currentColors.personal,
+                    },
+                  ]}
+                >
+                  <Text style={[themedStyles.text, { color: currentColors.personal, fontSize: 10 }]}>
+                    {data.people.find(p => p.id === personFilter)?.name || 'Unknown'}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </View>
+      )}
+
       <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0 }]}>
         {filteredExpenses.length === 0 ? (
           <View style={themedStyles.card}>
@@ -500,7 +350,7 @@ export default function ExpensesScreen() {
               <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 12 }]}>No Expenses Found</Text>
               <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
                 {hasActiveFilters
-                  ? 'No expenses match your filters. Try clearing filters.'
+                  ? 'No expenses match your filters. Try adjusting your filters.'
                   : 'Add your first expense to get started'}
               </Text>
             </View>
@@ -604,6 +454,25 @@ export default function ExpensesScreen() {
           })
         )}
       </ScrollView>
+
+      {/* Filter Modal */}
+      <ExpenseFilterModal
+        visible={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        filter={filter}
+        setFilter={setFilter}
+        personFilter={personFilter}
+        setPersonFilter={setPersonFilter}
+        categoryFilter={categoryFilter}
+        setCategoryFilter={setCategoryFilter}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        people={data.people}
+        expenses={data.expenses}
+        customCategories={customCategories}
+        onClearFilters={handleClearFilters}
+        announceFilter={announceFilter}
+      />
     </View>
   );
 }
