@@ -58,8 +58,24 @@ export default function BudgetsScreen() {
   const [shareModalBudget, setShareModalBudget] = useState<Budget | null>(null);
   const [shareData, setShareData] = useState<{ url: string; code?: string; expiresAt?: string } | null>(null);
   const [isGeneratingShare, setIsGeneratingShare] = useState(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicateBudgetId, setDuplicateBudgetId] = useState<string | null>(null);
+  const [duplicateBudgetName, setDuplicateBudgetName] = useState('');
 
-  const budgets = useMemo(() => appData.budgets || [], [appData.budgets]);
+  // Sort budgets: active budget first, then by creation date (newest first)
+  const sortedBudgets = useMemo(() => {
+    const budgets = appData.budgets || [];
+    const activeBudgetId = activeBudget?.id;
+    
+    return [...budgets].sort((a, b) => {
+      // Active budget always comes first
+      if (a.id === activeBudgetId) return -1;
+      if (b.id === activeBudgetId) return 1;
+      
+      // Then sort by creation date (newest first)
+      return b.createdAt - a.createdAt;
+    });
+  }, [appData.budgets, activeBudget?.id]);
 
   const handleAddBudget = useCallback(async () => {
     if (!newBudgetName.trim()) {
@@ -105,7 +121,7 @@ export default function BudgetsScreen() {
   }, [editingBudgetName, renameBudget, showToast]);
 
   const handleDeleteBudget = useCallback((budget: Budget) => {
-    if (budgets.length <= 1) {
+    if (sortedBudgets.length <= 1) {
       Alert.alert('Cannot Delete', 'You must have at least one budget.');
       return;
     }
@@ -135,13 +151,33 @@ export default function BudgetsScreen() {
         },
       ]
     );
-  }, [budgets.length, deleteBudget, showToast]);
+  }, [sortedBudgets.length, deleteBudget, showToast]);
 
-  const handleDuplicateBudget = useCallback(async (budget: Budget) => {
+  const handleDuplicateBudget = useCallback((budget: Budget) => {
+    setOpenBudgetId(null); // Close menu
+    setDuplicateBudgetId(budget.id);
+    setDuplicateBudgetName(`${budget.name} (Copy)`);
+    setShowDuplicateModal(true);
+  }, []);
+
+  const handleConfirmDuplicate = useCallback(async () => {
+    if (!duplicateBudgetName.trim()) {
+      Alert.alert('Error', 'Please enter a name for the duplicated budget');
+      return;
+    }
+
+    if (!duplicateBudgetId) {
+      Alert.alert('Error', 'No budget selected for duplication');
+      return;
+    }
+
     try {
-      setOpenBudgetId(null); // Close menu
-      const result = await duplicateBudget(budget.id);
+      // Duplicate with the custom name directly
+      const result = await duplicateBudget(duplicateBudgetId, duplicateBudgetName.trim());
       if (result.success) {
+        setShowDuplicateModal(false);
+        setDuplicateBudgetId(null);
+        setDuplicateBudgetName('');
         showToast('Budget duplicated successfully', 'success');
       } else {
         Alert.alert('Error', 'Failed to duplicate budget. Please try again.');
@@ -150,7 +186,7 @@ export default function BudgetsScreen() {
       console.error('Error duplicating budget:', error);
       Alert.alert('Error', 'Failed to duplicate budget. Please try again.');
     }
-  }, [duplicateBudget, showToast]);
+  }, [duplicateBudgetName, duplicateBudgetId, duplicateBudget, showToast]);
 
   const handleSetActiveBudget = useCallback(async (budgetId: string) => {
     if (budgetId === activeBudget?.id) return;
@@ -395,7 +431,7 @@ export default function BudgetsScreen() {
               <Text style={[themedStyles.text, { fontSize: 14 }]}>Share</Text>
             </TouchableOpacity>
 
-            {budgets.length > 1 && (
+            {sortedBudgets.length > 1 && (
               <TouchableOpacity
                 style={{ padding: 12 }}
                 onPress={() => handleDeleteBudget(budget)}
@@ -483,7 +519,7 @@ export default function BudgetsScreen() {
         )}
 
         {/* Budgets List */}
-        {budgets.length === 0 ? (
+        {sortedBudgets.length === 0 ? (
           <View style={themedStyles.card}>
             <View style={themedStyles.centerContent}>
               <Icon name="folder-outline" size={48} style={{ color: currentColors.primary, marginBottom: 12 }} />
@@ -502,7 +538,7 @@ export default function BudgetsScreen() {
             </View>
           </View>
         ) : (
-          budgets.map((budget) => {
+          sortedBudgets.map((budget) => {
             const isActive = budget.id === activeBudget?.id;
             const isEditing = editingBudgetId === budget.id;
 
@@ -586,8 +622,8 @@ export default function BudgetsScreen() {
                       <DropdownMenu budget={budget} />
                     </View>
 
-                    {/* Date Information */}
-                    <View style={{ marginBottom: 12 }}>
+                    {/* Date Information - Reduced gap for active budget */}
+                    <View style={{ marginBottom: isActive ? 6 : 12 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
                         <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
                           Created: {formatDate(budget.createdAt)}
@@ -688,6 +724,81 @@ export default function BudgetsScreen() {
                 }}
                 textStyle={{ color: currentColors.primary }}
               />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Duplicate Budget Modal */}
+      <Modal
+        visible={showDuplicateModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDuplicateModal(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}>
+          <View style={[themedStyles.card, { margin: 20, maxWidth: 350 }]}>
+            <View style={[themedStyles.row, { marginBottom: 16 }]}>
+              <Text style={[themedStyles.subtitle, { marginBottom: 0 }]}>
+                Duplicate Budget
+              </Text>
+              <TouchableOpacity onPress={() => {
+                setShowDuplicateModal(false);
+                setDuplicateBudgetId(null);
+                setDuplicateBudgetName('');
+              }}>
+                <Icon name="close" size={24} style={{ color: currentColors.text }} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[themedStyles.textSecondary, { marginBottom: 16, textAlign: 'center' }]}>
+              Enter a name for the duplicated budget
+            </Text>
+
+            <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
+              Budget Name:
+            </Text>
+            <TextInput
+              style={themedStyles.input}
+              placeholder="Enter budget name"
+              placeholderTextColor={currentColors.textSecondary}
+              value={duplicateBudgetName}
+              onChangeText={setDuplicateBudgetName}
+              autoFocus
+              editable={!saving}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+              <View style={{ flex: 1 }}>
+                <Button
+                  text="Cancel"
+                  onPress={() => {
+                    setShowDuplicateModal(false);
+                    setDuplicateBudgetId(null);
+                    setDuplicateBudgetName('');
+                  }}
+                  disabled={saving}
+                  style={{ 
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderColor: currentColors.textSecondary,
+                  }}
+                  textStyle={{ color: currentColors.textSecondary }}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Button
+                  text={saving ? 'Duplicating...' : 'Duplicate'}
+                  onPress={handleConfirmDuplicate}
+                  disabled={saving}
+                  style={{ backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }}
+                />
+              </View>
             </View>
           </View>
         </View>

@@ -423,7 +423,7 @@ export const deleteBudget = async (budgetId: string): Promise<{ success: boolean
   return await saveAppData({ ...appData, budgets, activeBudgetId });
 };
 
-export const duplicateBudget = async (budgetId: string): Promise<{ success: boolean; error?: Error; budget?: Budget }> => {
+export const duplicateBudget = async (budgetId: string, customName?: string): Promise<{ success: boolean; error?: Error; budget?: Budget }> => {
   const appData = await loadAppData();
   if (!appData.budgets || !Array.isArray(appData.budgets)) {
     return { success: false, error: new Error('No budgets found') };
@@ -438,7 +438,7 @@ export const duplicateBudget = async (budgetId: string): Promise<{ success: bool
   const duplicatedBudget: Budget = {
     ...originalBudget,
     id: `budget_${now}_${Math.random().toString(36).substr(2, 9)}`,
-    name: `${originalBudget.name} (Copy)`,
+    name: customName || `${originalBudget.name} (Copy)`,
     createdAt: now,
     modifiedAt: now,
     // Deep copy people with new IDs

@@ -268,8 +268,8 @@ export const useBudgetData = () => {
   );
 
   const duplicateBudget = useCallback(
-    async (budgetId: string) => {
-      const res = await storageDuplicateBudget(budgetId);
+    async (budgetId: string, customName?: string) => {
+      const res = await storageDuplicateBudget(budgetId, customName);
       if (res.success) await refreshFromStorage();
       return res;
     },
