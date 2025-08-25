@@ -299,7 +299,7 @@ export default function HomeScreen() {
       <ScrollView 
         style={themedStyles.content} 
         contentContainerStyle={{ 
-          paddingHorizontal: 12, // Reduced from 20 to 12 to make sections wider
+          paddingHorizontal: 16, // Match the people screen padding
           paddingTop: 16,
           paddingBottom: 120 // Extra padding to ensure Quick Actions are visible above nav bar
         }}
@@ -328,17 +328,12 @@ export default function HomeScreen() {
                   Overview
                 </Text>
               </View>
-              <View style={{
-                backgroundColor: currentColors.backgroundAlt,
-                borderRadius: 16,
-                padding: 16, // Reduced from 24 to 16
-                marginBottom: 0,
-                boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
-                elevation: 4,
-                borderWidth: 1,
-                borderColor: currentColors.border,
-                width: '100%',
-              }}>
+              <View style={[
+                themedStyles.card,
+                {
+                  marginBottom: 0,
+                }
+              ]}>
                 <OverviewSection 
                   calculations={calculations}
                   people={people}
@@ -398,17 +393,12 @@ export default function HomeScreen() {
                   Ending & Expired
                 </Text>
               </View>
-              <View style={{
-                backgroundColor: currentColors.backgroundAlt,
-                borderRadius: 16,
-                padding: 16, // Reduced from 24 to 16
-                marginBottom: 0,
-                boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
-                elevation: 4,
-                borderWidth: 1,
-                borderColor: currentColors.border,
-                width: '100%',
-              }}>
+              <View style={[
+                themedStyles.card,
+                {
+                  marginBottom: 0,
+                }
+              ]}>
                 <ExpiringSection expenses={expenses} />
               </View>
             </View>

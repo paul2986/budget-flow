@@ -100,7 +100,6 @@ export default function OverviewSection({
             borderColor: currentColors.success + '30',
             borderWidth: 1,
             marginBottom: 12,
-            padding: 16, // Reduced from 20 to 16
           }
         ]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
@@ -128,7 +127,6 @@ export default function OverviewSection({
             borderColor: currentColors.error + '30',
             borderWidth: 1,
             marginBottom: 0,
-            padding: 16, // Reduced from 20 to 16
           }
         ]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
@@ -162,7 +160,6 @@ export default function OverviewSection({
             : currentColors.error + '40',
           borderWidth: 2,
           marginBottom: 16,
-          padding: 20, // Reduced from 24 to 20
           minHeight: 120, // Ensure minimum height to prevent text cutoff
         }
       ]}>
@@ -207,7 +204,6 @@ export default function OverviewSection({
             borderColor: currentColors.household + '30',
             borderWidth: 1,
             marginBottom: 0,
-            padding: 16, // Reduced from default to 16
           }
         ]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
@@ -236,7 +232,6 @@ export default function OverviewSection({
             borderColor: currentColors.personal + '30',
             borderWidth: 1,
             marginBottom: 0,
-            padding: 16, // Reduced from default to 16
           }
         ]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>

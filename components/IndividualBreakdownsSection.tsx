@@ -36,7 +36,6 @@ export default function IndividualBreakdownsSection({
         themedStyles.card, 
         { 
           marginBottom: 0,
-          padding: 16, // Reduced from 24 to 16
         }
       ]}>
         <View style={{ alignItems: 'center', paddingVertical: 20 }}>
@@ -77,7 +76,6 @@ export default function IndividualBreakdownsSection({
                 borderColor: currentColors.border,
                 borderWidth: 1,
                 marginBottom: 0,
-                padding: 16, // Reduced from 24 to 16
               }
             ]}
           >
