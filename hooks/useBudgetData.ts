@@ -649,7 +649,7 @@ export const useBudgetData = () => {
       await refreshFromStorage();
       lastRefreshTimeRef.current = Date.now();
     },
-    [refreshFromStorage]
+    [refreshFromStorage, saving, loading] // Remove dependencies that could cause loops
   );
 
   const clearAllData = useCallback(async (): Promise<{ success: boolean; error?: Error }> => {

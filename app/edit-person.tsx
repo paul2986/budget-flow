@@ -29,6 +29,7 @@ export default function EditPersonScreen() {
   const [deletingIncomeId, setDeletingIncomeId] = useState<string | null>(null);
   const [isLoadingPerson, setIsLoadingPerson] = useState(true);
   const [isDeletingPerson, setIsDeletingPerson] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
   
   const { formatCurrency } = useCurrency();
   const { currentColors } = useTheme();
@@ -39,17 +40,26 @@ export default function EditPersonScreen() {
   
   const { data, updatePerson, addIncome, removeIncome, removePerson, saving, refreshData } = useBudgetData();
 
-  // Refresh data when screen becomes focused and find the person
+  // Load person data when screen becomes focused - but only once per mount
   useFocusEffect(
     useCallback(() => {
-      console.log('EditPersonScreen: Screen focused, refreshing data...');
+      if (hasInitialized) {
+        console.log('EditPersonScreen: Already initialized, skipping refresh');
+        return;
+      }
+
+      console.log('EditPersonScreen: Screen focused, loading person data...');
       setIsLoadingPerson(true);
       
       const loadPersonData = async () => {
         try {
-          await refreshData(true);
+          // Only refresh if we haven't found the person yet
+          if (!person && personId && data.people.length === 0) {
+            console.log('EditPersonScreen: No people in data, refreshing...');
+            await refreshData(true);
+          }
           
-          if (personId && data.people.length > 0) {
+          if (personId) {
             const foundPerson = data.people.find(p => p.id === personId);
             console.log('EditPersonScreen: Found person:', foundPerson);
             
@@ -62,7 +72,7 @@ export default function EditPersonScreen() {
               setPerson(null);
             }
           } else {
-            console.log('EditPersonScreen: No personId provided or no people in data');
+            console.log('EditPersonScreen: No personId provided');
             setPerson(null);
           }
         } catch (error) {
@@ -70,11 +80,32 @@ export default function EditPersonScreen() {
           setPerson(null);
         } finally {
           setIsLoadingPerson(false);
+          setHasInitialized(true);
         }
       };
       
       loadPersonData();
-    }, [personId, refreshData, data.people])
+    }, [personId, hasInitialized]) // Remove data.people from dependencies to prevent infinite loop
+  );
+
+  // Update person state when data changes (but only if we already have a person)
+  const updatePersonFromData = useCallback(() => {
+    if (person && personId && data.people.length > 0) {
+      const updatedPerson = data.people.find(p => p.id === personId);
+      if (updatedPerson && JSON.stringify(updatedPerson) !== JSON.stringify(person)) {
+        console.log('EditPersonScreen: Updating person from data changes');
+        setPerson(updatedPerson);
+      }
+    }
+  }, [person, personId, data.people]);
+
+  // Use a separate effect to update person when data changes
+  useFocusEffect(
+    useCallback(() => {
+      if (hasInitialized) {
+        updatePersonFromData();
+      }
+    }, [hasInitialized, updatePersonFromData])
   );
 
   const navigateToOrigin = useCallback(() => {
@@ -323,15 +354,16 @@ export default function EditPersonScreen() {
               text="Refresh Data"
               onPress={() => {
                 setIsLoadingPerson(true);
+                setHasInitialized(false);
                 refreshData(true);
               }}
-              style={[themedButtonStyles.outline, { borderColor: currentColors.primary, marginTop: 0 }]}
+              style={[themedButtonStyles.outline, { borderColor: currentColors.primary }]}
               textStyle={{ color: currentColors.primary }}
             />
             <Button
               text="Go Back"
               onPress={navigateToOrigin}
-              style={[themedButtonStyles.primary, { backgroundColor: currentColors.primary, marginTop: 0 }]}
+              style={[themedButtonStyles.primary, { backgroundColor: currentColors.primary }]}
             />
           </View>
         </View>
@@ -354,9 +386,9 @@ export default function EditPersonScreen() {
         loading={saving || isDeletingPerson}
       />
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16, paddingTop: 16 }]}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0, paddingTop: 16 }]}>
         {/* Person Details */}
-        <View style={themedStyles.section}>
+        <View style={themedStyles.card}>
           <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Person Details</Text>
           
           <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
@@ -373,29 +405,27 @@ export default function EditPersonScreen() {
         </View>
 
         {/* Income Summary */}
-        <View style={themedStyles.section}>
+        <View style={themedStyles.card}>
           <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Income Summary</Text>
           
-          <View style={themedStyles.card}>
-            <View style={[themedStyles.row, { marginBottom: 8 }]}>
-              <Text style={themedStyles.text}>Monthly Income:</Text>
-              <Text style={[themedStyles.text, { color: currentColors.income, fontWeight: '600' }]}>
-                {formatCurrency(monthlyIncome)}
-              </Text>
-            </View>
+          <View style={[themedStyles.row, { marginBottom: 8 }]}>
+            <Text style={themedStyles.text}>Monthly Income:</Text>
+            <Text style={[themedStyles.text, { color: currentColors.income, fontWeight: '600' }]}>
+              {formatCurrency(monthlyIncome)}
+            </Text>
+          </View>
 
-            <View style={themedStyles.row}>
-              <Text style={[themedStyles.text, { fontWeight: '600' }]}>Remaining Income:</Text>
-              <Text style={[
-                themedStyles.text, 
-                { 
-                  color: monthlyRemaining >= 0 ? currentColors.success : currentColors.error, 
-                  fontWeight: '700' 
-                }
-              ]}>
-                {formatCurrency(monthlyRemaining)}
-              </Text>
-            </View>
+          <View style={themedStyles.row}>
+            <Text style={[themedStyles.text, { fontWeight: '600' }]}>Remaining Income:</Text>
+            <Text style={[
+              themedStyles.text, 
+              { 
+                color: monthlyRemaining >= 0 ? currentColors.success : currentColors.error, 
+                fontWeight: '700' 
+              }
+            ]}>
+              {formatCurrency(monthlyRemaining)}
+            </Text>
           </View>
         </View>
 
@@ -447,7 +477,7 @@ export default function EditPersonScreen() {
                     setShowAddIncome(false);
                     setNewIncome({ amount: '', label: '', frequency: 'monthly' });
                   }}
-                  style={[themedButtonStyles.outline, { marginTop: 0, borderColor: currentColors.income }]}
+                  style={[themedButtonStyles.outline, { borderColor: currentColors.income }]}
                   textStyle={{ color: currentColors.income }}
                   disabled={saving || isDeletingPerson}
                 />
@@ -456,7 +486,7 @@ export default function EditPersonScreen() {
                 <Button
                   text={saving ? 'Adding...' : 'Add Income'}
                   onPress={handleAddIncome}
-                  style={[themedButtonStyles.primary, { marginTop: 0, backgroundColor: (saving || isDeletingPerson) ? currentColors.textSecondary : currentColors.income }]}
+                  style={[themedButtonStyles.primary, { backgroundColor: (saving || isDeletingPerson) ? currentColors.textSecondary : currentColors.income }]}
                   disabled={saving || isDeletingPerson}
                 />
               </View>
@@ -465,7 +495,7 @@ export default function EditPersonScreen() {
         )}
 
         {/* Income Sources */}
-        <View style={themedStyles.section}>
+        <View style={themedStyles.card}>
           <View style={[themedStyles.row, { marginBottom: 12 }]}>
             <Text style={[themedStyles.subtitle, { marginBottom: 0 }]}>Income Sources</Text>
             <TouchableOpacity 
@@ -477,11 +507,9 @@ export default function EditPersonScreen() {
           </View>
           
           {person.income.length === 0 ? (
-            <View style={themedStyles.card}>
-              <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
-                No income sources added
-              </Text>
-            </View>
+            <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
+              No income sources added
+            </Text>
           ) : (
             <View>
               <Text style={[themedStyles.textSecondary, { fontSize: 12, marginBottom: 8 }]}>
@@ -493,7 +521,7 @@ export default function EditPersonScreen() {
                 return (
                   <TouchableOpacity
                     key={income.id}
-                    style={themedStyles.card}
+                    style={[themedStyles.card, { marginBottom: 8 }]}
                     onPress={() => {
                       router.push({
                         pathname: '/edit-income',
@@ -544,7 +572,7 @@ export default function EditPersonScreen() {
         </View>
 
         {/* Delete Person Section */}
-        <View style={themedStyles.section}>
+        <View style={themedStyles.card}>
           <Text style={[themedStyles.subtitle, { marginBottom: 12, color: currentColors.error }]}>
             Danger Zone
           </Text>
@@ -565,7 +593,6 @@ export default function EditPersonScreen() {
                 { 
                   backgroundColor: (saving || isDeletingPerson) ? currentColors.textSecondary : currentColors.error,
                   borderColor: (saving || isDeletingPerson) ? currentColors.textSecondary : currentColors.error,
-                  marginTop: 0 
                 }
               ]}
               disabled={saving || isDeletingPerson}
