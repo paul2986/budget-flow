@@ -354,7 +354,7 @@ export default function EditPersonScreen() {
         loading={saving || isDeletingPerson}
       />
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16, paddingTop: 16 }]}>
         {/* Person Details */}
         <View style={themedStyles.section}>
           <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Person Details</Text>

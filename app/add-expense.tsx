@@ -498,7 +498,7 @@ export default function AddExpenseScreen() {
         })()}
       />
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16, paddingTop: 16 }]}>
         <View style={themedStyles.section}>
           <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Description</Text>
           <TextInput

@@ -122,7 +122,7 @@ export default function BudgetLockScreen() {
     <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
       <StandardHeader title="Budget Lock Settings" showBack />
       
-      <ScrollView style={themedStyles.content} contentContainerStyle={{ padding: 16 }}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16, paddingTop: 16 }]}>
         {/* Budget Info */}
         <View style={[themedStyles.card, { marginBottom: 24 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>

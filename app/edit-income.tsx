@@ -282,7 +282,7 @@ export default function EditIncomeScreen() {
         loading={saving}
       />
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16, paddingTop: 16 }]}>
         {/* Income Details */}
         <View style={themedStyles.section}>
           <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>

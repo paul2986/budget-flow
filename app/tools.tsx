@@ -505,7 +505,7 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
   return (
     <View style={themedStyles.container}>
       <StandardHeader title="Tools" showLeftIcon={false} showRightIcon={false} />
-      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16, paddingTop: 16 }]}>
         <View style={themedStyles.section}>
           <View
             style={[

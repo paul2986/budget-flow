@@ -171,12 +171,9 @@ export default function ImportLinkScreen() {
             style={[
               themedButtonStyles.outline,
               { 
-                borderColor: currentColors.primary,
-                backgroundColor: 'transparent',
                 marginTop: 0,
               }
             ]}
-            textStyle={{ color: currentColors.primary }}
           />
         </View>
       );
@@ -220,12 +217,9 @@ export default function ImportLinkScreen() {
             style={[
               themedButtonStyles.outline,
               { 
-                borderColor: currentColors.primary,
-                backgroundColor: 'transparent',
                 marginTop: 0,
               }
             ]}
-            textStyle={{ color: currentColors.primary }}
           />
         </View>
       </View>
@@ -253,7 +247,7 @@ export default function ImportLinkScreen() {
         showRightIcon={false}
       />
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16, paddingTop: 16 }]}>
         <View style={themedStyles.card}>
           <Text style={[themedStyles.subtitle, { marginBottom: 8 }]}>
             Import from QR Code or Link
@@ -286,12 +280,9 @@ export default function ImportLinkScreen() {
                 style={[
                   themedButtonStyles.outline,
                   { 
-                    borderColor: currentColors.primary,
-                    backgroundColor: 'transparent',
                     marginTop: 0,
                   }
                 ]}
-                textStyle={{ color: currentColors.primary }}
               />
             </View>
             
@@ -304,12 +295,9 @@ export default function ImportLinkScreen() {
                   style={[
                     themedButtonStyles.outline,
                     { 
-                      borderColor: currentColors.primary,
-                      backgroundColor: 'transparent',
                       marginTop: 0,
                     }
                   ]}
-                  textStyle={{ color: currentColors.primary }}
                 />
               </View>
             )}
@@ -322,8 +310,6 @@ export default function ImportLinkScreen() {
             style={[
               themedButtonStyles.primary,
               { 
-                backgroundColor: isImporting ? currentColors.textSecondary : currentColors.primary,
-                opacity: (!inputValue.trim() || isImporting) ? 0.6 : 1,
                 marginTop: 0,
               }
             ]}
