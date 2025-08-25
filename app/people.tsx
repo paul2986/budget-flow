@@ -275,23 +275,6 @@ export default function PeopleScreen() {
           </View>
         )}
 
-        {/* Quick Actions Info - Show when people exist */}
-        {data.people.length > 0 && (
-          <View style={[themedStyles.card, { backgroundColor: currentColors.backgroundAlt }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <Icon name="information-circle-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-              <Text style={[themedStyles.text, { fontWeight: '600', color: currentColors.primary }]}>
-                Quick Actions
-              </Text>
-            </View>
-            <Text style={[themedStyles.textSecondary, { fontSize: 12, lineHeight: 16 }]}>
-              • Tap the <Icon name="cash-outline" size={12} style={{ color: currentColors.income }} /> button in the header to add income for any person{'\n'}
-              • Tap the <Icon name="add-circle-outline" size={12} style={{ color: currentColors.income }} /> icon next to "Income Sources" to add income for that specific person{'\n'}
-              • Tap any person card to edit their details
-            </Text>
-          </View>
-        )}
-
         {/* Add Person Form */}
         {showAddPerson && (
           <View style={[themedStyles.card, { backgroundColor: currentColors.primary + '10' }]}>
@@ -410,7 +393,7 @@ export default function PeopleScreen() {
                 </View>
                 
                 {/* Income Sources */}
-                <View style={{ marginBottom: 12 }}>
+                <View>
                   <View style={[themedStyles.row, { marginBottom: 8 }]}>
                     <Text style={[themedStyles.text, { fontWeight: '600' }]}>Income Sources:</Text>
                     <TouchableOpacity 
@@ -486,17 +469,6 @@ export default function PeopleScreen() {
                         );
                       })}
                     </View>
-                  )}
-                </View>
-
-                <View style={[themedStyles.row, { borderTopWidth: 1, borderTopColor: currentColors.border, paddingTop: 8 }]}>
-                  <Text style={themedStyles.textSecondary}>
-                    {isDeleting ? 'Deleting...' : 'Tap to edit this person'}
-                  </Text>
-                  {isDeleting ? (
-                    <ActivityIndicator size="small" color={currentColors.textSecondary} />
-                  ) : (
-                    <Icon name="chevron-forward-outline" size={16} style={{ color: currentColors.textSecondary }} />
                   )}
                 </View>
               </TouchableOpacity>
