@@ -142,7 +142,8 @@ export default function ExpensesScreen() {
     setSearchQuery('');
     setFilter('all');
     setPersonFilter(null);
-  }, []);
+    announceFilter('All filters cleared');
+  }, [announceFilter]);
 
   const SortButton = useCallback(
     ({ sortType, label, icon }: { sortType: SortOption; label: string; icon: string }) => (
@@ -218,13 +219,16 @@ export default function ExpensesScreen() {
   const hasActiveFilters = !!categoryFilter || !!searchTerm || (filter !== 'all') || !!personFilter;
 
   // Header buttons - filter button on left, add button on right
-  const headerButtons = [
+  const leftButtons = [
     {
       icon: 'funnel-outline',
       onPress: () => setShowFilterModal(true),
       backgroundColor: hasActiveFilters ? currentColors.secondary : currentColors.border + '80',
       iconColor: hasActiveFilters ? '#FFFFFF' : currentColors.text,
     },
+  ];
+
+  const rightButtons = [
     {
       icon: 'add',
       onPress: handleNavigateToAddExpense,
@@ -239,12 +243,36 @@ export default function ExpensesScreen() {
         title="Expenses" 
         showLeftIcon={false} 
         showRightIcon={false}
-        rightButtons={headerButtons}
+        leftButtons={leftButtons}
+        rightButtons={rightButtons}
         loading={saving || deletingExpenseId !== null} 
       />
 
+      {/* Clear filters button - only show when filters are active */}
+      {hasActiveFilters && (
+        <View style={[themedStyles.section, { paddingTop: 8, paddingBottom: 0, paddingHorizontal: 16 }]}>
+          <TouchableOpacity
+            onPress={handleClearFilters}
+            style={{
+              backgroundColor: currentColors.error + '15',
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+              borderRadius: 20,
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            <Icon name="close-circle-outline" size={16} style={{ color: currentColors.error, marginRight: 6 }} />
+            <Text style={[themedStyles.text, { color: currentColors.error, fontSize: 13, fontWeight: '600' }]}>
+              Clear All Filters
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Sort options - now more prominent */}
-      <View style={[themedStyles.section, { paddingBottom: 0, paddingTop: 12, paddingHorizontal: 16 }]}>
+      <View style={[themedStyles.section, { paddingBottom: 0, paddingTop: hasActiveFilters ? 8 : 12, paddingHorizontal: 16 }]}>
         <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Sort by</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={{ paddingHorizontal: 4, flexDirection: 'row' }}>

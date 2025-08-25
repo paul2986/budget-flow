@@ -61,6 +61,25 @@ export default function ExpenseFilterModal({
 
   const hasActiveFilters = !!categoryFilter || !!searchQuery.trim() || (filter !== 'all') || !!personFilter;
 
+  const handleApplyFilters = () => {
+    let message = 'Filters applied';
+    if (hasActiveFilters) {
+      const activeFilters = [];
+      if (searchQuery.trim()) activeFilters.push(`search: "${searchQuery.trim()}"`);
+      if (categoryFilter) activeFilters.push(`category: ${categoryFilter}`);
+      if (filter !== 'all') activeFilters.push(`type: ${filter}`);
+      if (personFilter) {
+        const personName = people.find(p => p.id === personFilter)?.name || 'Unknown';
+        activeFilters.push(`person: ${personName}`);
+      }
+      message = `Filters applied: ${activeFilters.join(', ')}`;
+    } else {
+      message = 'No filters applied - showing all expenses';
+    }
+    announceFilter(message);
+    onClose();
+  };
+
   const FilterButton = ({ filterType, label }: { filterType: typeof filter; label: string }) => (
     <TouchableOpacity
       style={[
@@ -129,7 +148,7 @@ export default function ExpenseFilterModal({
             </Text>
           </View>
 
-          <View style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'flex-end' }}>
+          <View style={{ width: 80, height: 44, justifyContent: 'center', alignItems: 'flex-end' }}>
             {hasActiveFilters && (
               <TouchableOpacity
                 onPress={() => {
@@ -137,14 +156,16 @@ export default function ExpenseFilterModal({
                   announceFilter('Filters cleared');
                 }}
                 style={{
-                  paddingHorizontal: 12,
+                  paddingHorizontal: 16,
                   paddingVertical: 8,
-                  borderRadius: 16,
+                  borderRadius: 20,
                   backgroundColor: currentColors.error + '15',
+                  minWidth: 70,
+                  alignItems: 'center',
                 }}
               >
-                <Text style={[themedStyles.text, { color: currentColors.error, fontSize: 12, fontWeight: '700' }]}>
-                  Clear
+                <Text style={[themedStyles.text, { color: currentColors.error, fontSize: 13, fontWeight: '700' }]}>
+                  Clear All
                 </Text>
               </TouchableOpacity>
             )}
@@ -410,6 +431,28 @@ export default function ExpenseFilterModal({
             </View>
           )}
         </ScrollView>
+
+        {/* Bottom action button */}
+        <View style={[themedStyles.section, { paddingTop: 16, paddingBottom: 32, paddingHorizontal: 16 }]}>
+          <TouchableOpacity
+            onPress={handleApplyFilters}
+            style={{
+              backgroundColor: currentColors.primary,
+              paddingVertical: 16,
+              paddingHorizontal: 24,
+              borderRadius: 24,
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'row',
+              boxShadow: '0px 4px 8px rgba(0,0,0,0.15)',
+            }}
+          >
+            <Icon name="search-outline" size={20} style={{ color: '#FFFFFF', marginRight: 8 }} />
+            <Text style={[themedStyles.text, { color: '#FFFFFF', fontWeight: '700', fontSize: 16 }]}>
+              {hasActiveFilters ? 'Apply Filters' : 'Show All Expenses'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </Modal>
   );

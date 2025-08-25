@@ -25,6 +25,7 @@ interface StandardHeaderProps {
   showRightIcon?: boolean;
   showLeftIcon?: boolean;
   rightButtons?: HeaderButton[]; // Optional multiple right buttons
+  leftButtons?: HeaderButton[]; // Optional multiple left buttons
 }
 
 export default function StandardHeader({
@@ -40,6 +41,7 @@ export default function StandardHeader({
   showRightIcon = true,
   showLeftIcon = true,
   rightButtons,
+  leftButtons,
 }: StandardHeaderProps) {
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
@@ -49,9 +51,33 @@ export default function StandardHeader({
 
   return (
     <View style={[themedStyles.header, { height: subtitle ? 76 : 64, boxShadow: '0px 1px 2px rgba(0,0,0,0.10)' }]}>
-      {/* Left side */}
-      <View style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'flex-start' }}>
-        {showLeftIcon && onLeftPress ? (
+      {/* Left side - supports multiple left buttons */}
+      <View style={{ minWidth: 44, height: 44, justifyContent: 'center', alignItems: 'flex-start', flexDirection: 'row' }}>
+        {leftButtons && leftButtons.length > 0 ? (
+          leftButtons.map((btn, idx) => (
+            <TouchableOpacity
+              key={`hlb_${idx}`}
+              onPress={btn.onPress}
+              disabled={loading}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: btn.backgroundColor || currentColors.border + '40',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: idx < leftButtons.length - 1 ? 8 : 0,
+                boxShadow: '0px 2px 4px rgba(0,0,0,0.15)',
+              }}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color={btn.iconColor || currentColors.text} />
+              ) : (
+                <Icon name={btn.icon as any} size={22} style={{ color: btn.iconColor || currentColors.text }} />
+              )}
+            </TouchableOpacity>
+          ))
+        ) : showLeftIcon && onLeftPress ? (
           <TouchableOpacity
             onPress={onLeftPress}
             disabled={loading}
@@ -88,7 +114,7 @@ export default function StandardHeader({
         {rightButtons && rightButtons.length > 0 ? (
           rightButtons.map((btn, idx) => (
             <TouchableOpacity
-              key={`hb_${idx}`}
+              key={`hrb_${idx}`}
               onPress={btn.onPress}
               disabled={loading}
               style={{
