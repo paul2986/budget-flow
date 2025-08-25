@@ -32,7 +32,13 @@ export default function IndividualBreakdownsSection({
 
   if (!people || people.length === 0) {
     return (
-      <View style={[themedStyles.card, { marginBottom: 0 }]}>
+      <View style={[
+        themedStyles.card, 
+        { 
+          marginBottom: 0,
+          padding: 16, // Reduced from 24 to 16
+        }
+      ]}>
         <View style={{ alignItems: 'center', paddingVertical: 20 }}>
           <Icon name="person-add-outline" size={48} style={{ color: currentColors.textSecondary, marginBottom: 12 }} />
           <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
@@ -71,6 +77,7 @@ export default function IndividualBreakdownsSection({
                 borderColor: currentColors.border,
                 borderWidth: 1,
                 marginBottom: 0,
+                padding: 16, // Reduced from 24 to 16
               }
             ]}
           >

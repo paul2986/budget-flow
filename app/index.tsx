@@ -299,7 +299,7 @@ export default function HomeScreen() {
       <ScrollView 
         style={themedStyles.content} 
         contentContainerStyle={{ 
-          paddingHorizontal: 20, // Match nav bar padding
+          paddingHorizontal: 12, // Reduced from 20 to 12 to make sections wider
           paddingTop: 16,
           paddingBottom: 120 // Extra padding to ensure Quick Actions are visible above nav bar
         }}
@@ -331,7 +331,7 @@ export default function HomeScreen() {
               <View style={{
                 backgroundColor: currentColors.backgroundAlt,
                 borderRadius: 16,
-                padding: 24,
+                padding: 16, // Reduced from 24 to 16
                 marginBottom: 0,
                 boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
                 elevation: 4,
@@ -401,7 +401,7 @@ export default function HomeScreen() {
               <View style={{
                 backgroundColor: currentColors.backgroundAlt,
                 borderRadius: 16,
-                padding: 24,
+                padding: 16, // Reduced from 24 to 16
                 marginBottom: 0,
                 boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
                 elevation: 4,
@@ -437,7 +437,7 @@ export default function HomeScreen() {
               <View style={{
                 backgroundColor: currentColors.backgroundAlt,
                 borderRadius: 16,
-                padding: 24,
+                padding: 16, // Reduced from 24 to 16
                 marginBottom: 0,
                 boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
                 elevation: 4,

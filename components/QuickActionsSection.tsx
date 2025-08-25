@@ -79,6 +79,7 @@ export default function QuickActionsSection() {
                 justifyContent: 'center',
                 alignItems: 'center',
                 marginBottom: 0,
+                padding: 16, // Reduced from 24 to 16
               },
             ]}
           >

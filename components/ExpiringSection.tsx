@@ -103,6 +103,7 @@ export default function ExpiringSection({ expenses }: ExpiringSectionProps) {
             : currentColors.warning + '30',
           borderWidth: 1,
           marginBottom: 12,
+          padding: 16, // Reduced from 24 to 16
         }
       ]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
