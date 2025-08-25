@@ -1,7 +1,7 @@
 
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Platform } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
 import { useThemedStyles } from '../hooks/useThemedStyles';
@@ -27,12 +27,48 @@ export default function ImportLinkScreen() {
   const { showToast } = useToast();
   const params = useLocalSearchParams<{ link?: string }>();
   
-  const [inputValue, setInputValue] = useState(params.link || '');
+  const [inputValue, setInputValue] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [scanMode, setScanMode] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scannedData, setScannedData] = useState<string | null>(null);
   const scannerRef = useRef<ScannerModule | null>(null);
+  const hasInitialized = useRef(false);
+
+  // Reset function to clear all import screen state
+  const resetImportScreen = useCallback(() => {
+    console.log('ImportLinkScreen: Resetting screen state');
+    setInputValue('');
+    setScannedData(null);
+    setScanMode(false);
+    setIsImporting(false);
+  }, []);
+
+  // Initialize the screen with link parameter if provided
+  useEffect(() => {
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      if (params.link) {
+        console.log('ImportLinkScreen: Initializing with link parameter:', params.link);
+        setInputValue(params.link);
+      } else {
+        console.log('ImportLinkScreen: Initializing without link parameter');
+        resetImportScreen();
+      }
+    }
+  }, [params.link, resetImportScreen]);
+
+  // Reset the screen when it comes into focus (unless there's a link parameter)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('ImportLinkScreen: Screen focused');
+      // Only reset if there's no link parameter and we've already initialized
+      if (!params.link && hasInitialized.current) {
+        console.log('ImportLinkScreen: No link parameter, resetting screen');
+        resetImportScreen();
+      }
+    }, [params.link, resetImportScreen])
+  );
 
   // Load scanner module dynamically
   useEffect(() => {
@@ -68,41 +104,120 @@ export default function ImportLinkScreen() {
       
       // Create a new budget with the imported data
       const budgetName = result.budget.name || 'Imported Budget';
+      console.log('ImportLinkScreen: Creating budget with name:', budgetName);
+      
       const addResult = await addBudget(budgetName);
+      console.log('ImportLinkScreen: Add budget result:', addResult);
       
       if (!addResult.success) {
-        throw new Error('Failed to create budget');
+        throw new Error(`Failed to create budget: ${addResult.error?.message || 'Unknown error'}`);
       }
 
-      // Get the newly created budget ID and update it with the imported data
-      const appData = await loadAppData();
-      const newBudget = appData.budgets.find(b => b.name === budgetName);
+      // Get the newly created budget from the add result
+      const newBudget = addResult.budget;
       
       if (!newBudget) {
-        throw new Error('Failed to find newly created budget');
+        // Fallback: try to find the budget by name in the app data
+        console.log('ImportLinkScreen: Budget not in add result, trying to find by name');
+        const appData = await loadAppData();
+        const foundBudget = appData.budgets.find(b => b.name === budgetName);
+        if (!foundBudget) {
+          throw new Error('Failed to get newly created budget from add result or find by name');
+        }
+        console.log('ImportLinkScreen: Found budget by name:', foundBudget.id);
+        // Use the found budget
+        const updatedBudget: Budget = {
+          ...foundBudget,
+          people: result.budget.people || [],
+          expenses: result.budget.expenses || [],
+          householdSettings: result.budget.householdSettings || { distributionMethod: 'even' },
+          modifiedAt: Date.now(),
+        };
+
+        console.log('ImportLinkScreen: Updating found budget with imported data:', {
+          peopleCount: updatedBudget.people.length,
+          expensesCount: updatedBudget.expenses.length
+        });
+
+        // Save the updated budget using the storage API
+        const updateResult = await saveAppData({
+          version: 2,
+          budgets: appData.budgets.map(b => b.id === foundBudget.id ? updatedBudget : b),
+          activeBudgetId: foundBudget.id
+        });
+
+        if (!updateResult.success) {
+          throw new Error(`Failed to save imported budget data: ${updateResult.error?.message || 'Unknown error'}`);
+        }
+
+        // Set as active budget
+        const setActiveResult = await setActiveBudget(foundBudget.id);
+        console.log('ImportLinkScreen: Set active budget result:', setActiveResult);
+        
+        showToast(`Budget "${budgetName}" imported successfully!`, 'success');
+        
+        // Reset the import screen state
+        resetImportScreen();
+        
+        // Small delay to ensure the toast is shown before navigation
+        setTimeout(() => {
+          // Navigate to budgets screen to show the imported budget
+          router.replace('/budgets');
+        }, 100);
+        
+        return;
       }
+
+      console.log('ImportLinkScreen: New budget created:', {
+        id: newBudget.id,
+        name: newBudget.name
+      });
 
       // Update the budget with imported data
       const updatedBudget: Budget = {
         ...newBudget,
-        people: result.budget.people,
-        expenses: result.budget.expenses,
-        householdSettings: result.budget.householdSettings,
+        people: result.budget.people || [],
+        expenses: result.budget.expenses || [],
+        householdSettings: result.budget.householdSettings || { distributionMethod: 'even' },
+        modifiedAt: Date.now(),
       };
 
-      // Save the updated budget
-      const updatedAppData = {
-        ...appData,
-        budgets: appData.budgets.map(b => b.id === newBudget.id ? updatedBudget : b),
-      };
+      console.log('ImportLinkScreen: Updating budget with imported data:', {
+        peopleCount: updatedBudget.people.length,
+        expensesCount: updatedBudget.expenses.length
+      });
 
-      await saveAppData(updatedAppData);
+      // Save the updated budget using the storage API
+      const updateResult = await saveAppData({
+        version: 2,
+        budgets: (await loadAppData()).budgets.map(b => b.id === newBudget.id ? updatedBudget : b),
+        activeBudgetId: newBudget.id
+      });
+
+      if (!updateResult.success) {
+        throw new Error(`Failed to save imported budget data: ${updateResult.error?.message || 'Unknown error'}`);
+      }
+
+      console.log('ImportLinkScreen: Budget data saved successfully');
 
       // Set as active budget
-      await setActiveBudget(newBudget.id);
+      const setActiveResult = await setActiveBudget(newBudget.id);
+      console.log('ImportLinkScreen: Set active budget result:', setActiveResult);
+      
+      if (!setActiveResult.success) {
+        console.warn('ImportLinkScreen: Failed to set as active budget, but import was successful');
+      }
 
       showToast(`Budget "${budgetName}" imported successfully!`, 'success');
-      router.replace('/');
+      
+      // Reset the import screen state
+      resetImportScreen();
+      
+      // Small delay to ensure the toast is shown before navigation
+      setTimeout(() => {
+        // Navigate to budgets screen to show the imported budget
+        router.replace('/budgets');
+      }, 100);
       
     } catch (error) {
       console.error('Import error:', error);
@@ -113,7 +228,7 @@ export default function ImportLinkScreen() {
     } finally {
       setIsImporting(false);
     }
-  }, [addBudget, setActiveBudget, showToast]);
+  }, [addBudget, setActiveBudget, showToast, resetImportScreen]);
 
   const handlePasteFromClipboard = useCallback(async () => {
     try {
@@ -283,12 +398,24 @@ export default function ImportLinkScreen() {
             )}
           </View>
 
-          <Button
-            text={isImporting ? 'Importing...' : 'Import Budget'}
-            onPress={() => handleImport(inputValue)}
-            disabled={!inputValue.trim() || isImporting}
-            style={themedButtonStyles.primary}
-          />
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Button
+                text="Clear"
+                onPress={resetImportScreen}
+                disabled={isImporting}
+                style={themedButtonStyles.outline}
+              />
+            </View>
+            <View style={{ flex: 2 }}>
+              <Button
+                text={isImporting ? 'Importing...' : 'Import Budget'}
+                onPress={() => handleImport(inputValue)}
+                disabled={!inputValue.trim() || isImporting}
+                style={themedButtonStyles.primary}
+              />
+            </View>
+          </View>
         </View>
 
         <View style={themedStyles.card}>

@@ -1,7 +1,7 @@
 
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Pressable, Modal, Share, KeyboardAvoidingView, Platform } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
 import { useThemedStyles } from '../hooks/useThemedStyles';
@@ -42,7 +42,7 @@ const formatDate = (timestamp: number): string => {
 };
 
 export default function BudgetsScreen() {
-  const { appData, activeBudget, addBudget, renameBudget, deleteBudget, duplicateBudget, setActiveBudget, loading, saving } = useBudgetData();
+  const { appData, activeBudget, addBudget, renameBudget, deleteBudget, duplicateBudget, setActiveBudget, loading, saving, refreshData } = useBudgetData();
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
   const { showToast } = useToast();
@@ -62,16 +62,45 @@ export default function BudgetsScreen() {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [duplicateBudgetId, setDuplicateBudgetId] = useState<string | null>(null);
   const [duplicateBudgetName, setDuplicateBudgetName] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Refresh data when screen comes into focus to ensure we show any newly imported budgets
+  useFocusEffect(
+    useCallback(() => {
+      console.log('BudgetsScreen: Screen focused, refreshing data');
+      refreshData(true); // Force refresh when screen comes into focus
+    }, [refreshData])
+  );
+
+  // Manual refresh function
+  const handleManualRefresh = useCallback(async () => {
+    console.log('BudgetsScreen: Manual refresh triggered');
+    setIsRefreshing(true);
+    try {
+      await refreshData(true);
+      showToast('Budget list refreshed', 'success');
+    } catch (error) {
+      console.error('BudgetsScreen: Manual refresh error:', error);
+      showToast('Failed to refresh budget list', 'error');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refreshData, showToast]);
 
   // Sort budgets by creation date only (newest first) - no special ordering for active budget
   const sortedBudgets = useMemo(() => {
     const budgets = appData.budgets || [];
+    console.log('BudgetsScreen: Sorting budgets:', {
+      budgetsCount: budgets.length,
+      budgetNames: budgets.map(b => b.name),
+      activeBudgetId: appData.activeBudgetId
+    });
     
     return [...budgets].sort((a, b) => {
       // Sort by creation date (newest first)
       return b.createdAt - a.createdAt;
     });
-  }, [appData.budgets]);
+  }, [appData.budgets, appData.activeBudgetId]);
 
   const handleAddBudget = useCallback(async () => {
     if (!newBudgetName.trim()) {
@@ -545,7 +574,7 @@ export default function BudgetsScreen() {
         showLeftIcon={false}
         rightIcon="add"
         onRightPress={() => setShowAddBudgetOptions(true)}
-        loading={saving}
+        loading={saving || loading}
       />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0, paddingTop: 16 }]}>
@@ -593,6 +622,23 @@ export default function BudgetsScreen() {
                 />
               </View>
             </View>
+          </View>
+        )}
+
+        {/* Manual Refresh Button */}
+        {sortedBudgets.length > 0 && (
+          <View style={[themedStyles.card, { backgroundColor: currentColors.backgroundAlt }]}>
+            <Button
+              text={isRefreshing ? 'Refreshing...' : 'Refresh Budget List'}
+              onPress={handleManualRefresh}
+              disabled={isRefreshing || saving}
+              style={{ 
+                backgroundColor: 'transparent',
+                borderWidth: 1,
+                borderColor: currentColors.primary,
+              }}
+              textStyle={{ color: currentColors.primary, fontSize: 14 }}
+            />
           </View>
         )}
 

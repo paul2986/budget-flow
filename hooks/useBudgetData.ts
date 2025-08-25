@@ -240,9 +240,14 @@ export const useBudgetData = () => {
   // Budget management APIs
   const addBudget = useCallback(
     async (name: string) => {
+      console.log('useBudgetData: addBudget called with name:', name);
       const res = await storageAddBudget(name);
+      console.log('useBudgetData: addBudget storage result:', res);
       if (res.success) {
+        console.log('useBudgetData: addBudget success, refreshing from storage');
         await refreshFromStorage();
+        // Trigger a refresh to ensure components re-render with new data
+        setRefreshTrigger(prev => prev + 1);
       }
       return res;
     },
