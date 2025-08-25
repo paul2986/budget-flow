@@ -257,7 +257,6 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
         <Text style={[themedStyles.text, styles.labelText]}>Balance</Text>
         <TouchableOpacity
           onPress={() => balanceRef.current?.focus()}
-          style={{ display: 'contents' as any }}
           accessibilityLabel="Focus balance input"
         >
           <Icon name="create-outline" size={16} style={{ color: currentColors.textSecondary }} />
@@ -293,7 +292,6 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
         <Text style={[themedStyles.text, styles.labelText]}>APR %</Text>
         <TouchableOpacity
           onPress={() => aprRef.current?.focus()}
-          style={{ display: 'contents' as any }}
           accessibilityLabel="Focus APR input"
         >
           <Icon name="create-outline" size={16} style={{ color: currentColors.textSecondary }} />
@@ -326,7 +324,6 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
         <Text style={[themedStyles.text, styles.labelText]}>Monthly Payment</Text>
         <TouchableOpacity
           onPress={() => paymentRef.current?.focus()}
-          style={{ display: 'contents' as any }}
           accessibilityLabel="Focus monthly payment input"
         >
           <Icon name="create-outline" size={16} style={{ color: currentColors.textSecondary }} />
@@ -397,9 +394,7 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
           style={[styles.resultsHeader, { minHeight: 44 }]}
           accessibilityLabel="Toggle results panel"
         >
-          <View style={{ display: 'contents' as any }}>
-            <Text style={[themedStyles.text, { fontWeight: '700' }]}>Results</Text>
-          </View>
+          <Text style={[themedStyles.text, { fontWeight: '700' }]}>Results</Text>
           <Icon name={collapsed ? 'chevron-down' : 'chevron-up'} size={20} style={{ color: currentColors.textSecondary }} />
         </TouchableOpacity>
 
