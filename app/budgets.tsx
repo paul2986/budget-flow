@@ -62,20 +62,15 @@ export default function BudgetsScreen() {
   const [duplicateBudgetId, setDuplicateBudgetId] = useState<string | null>(null);
   const [duplicateBudgetName, setDuplicateBudgetName] = useState('');
 
-  // Sort budgets: active budget first, then by creation date (newest first)
+  // Sort budgets by creation date only (newest first) - no special ordering for active budget
   const sortedBudgets = useMemo(() => {
     const budgets = appData.budgets || [];
-    const activeBudgetId = activeBudget?.id;
     
     return [...budgets].sort((a, b) => {
-      // Active budget always comes first
-      if (a.id === activeBudgetId) return -1;
-      if (b.id === activeBudgetId) return 1;
-      
-      // Then sort by creation date (newest first)
+      // Sort by creation date (newest first)
       return b.createdAt - a.createdAt;
     });
-  }, [appData.budgets, activeBudget?.id]);
+  }, [appData.budgets]);
 
   const handleAddBudget = useCallback(async () => {
     if (!newBudgetName.trim()) {
@@ -195,8 +190,8 @@ export default function BudgetsScreen() {
     try {
       const result = await setActiveBudget(budgetId);
       if (result.success) {
-        showToast('Budget activated successfully', 'success');
-        // Stay on the budget screen instead of navigating away
+        // No toast notification when activating budgets
+        console.log('Budget activated successfully');
       } else {
         Alert.alert('Error', 'Failed to activate budget. Please try again.');
       }
@@ -204,7 +199,7 @@ export default function BudgetsScreen() {
       console.error('Error activating budget:', error);
       Alert.alert('Error', 'Failed to activate budget. Please try again.');
     }
-  }, [activeBudget?.id, setActiveBudget, showToast]);
+  }, [activeBudget?.id, setActiveBudget]);
 
   const handleShareBudget = useCallback(async (budget: Budget) => {
     setOpenBudgetId(null); // Close menu
@@ -363,7 +358,7 @@ export default function BudgetsScreen() {
     };
 
     return (
-      <View style={{ position: 'relative' }}>
+      <View style={{ position: 'relative', zIndex: 10 }}>
         <TouchableOpacity
           onPress={handleMenuToggle}
           style={{
@@ -387,34 +382,36 @@ export default function BudgetsScreen() {
               borderWidth: 1,
               borderColor: currentColors.border,
               shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 3,
-              zIndex: 2,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.25,
+              shadowRadius: 8,
+              elevation: 10,
+              zIndex: 1000,
               minWidth: 150,
             }}
           >
             {!isActive && (
-              <TouchableOpacity
-                style={{
+              <Pressable
+                style={({ pressed }) => ({
                   padding: 12,
                   borderBottomWidth: 1,
                   borderBottomColor: currentColors.border,
-                }}
+                  backgroundColor: pressed ? currentColors.border + '20' : 'transparent',
+                })}
                 onPress={handleMenuItemPress(() => handleSetActiveBudget(budget.id))}
                 disabled={saving}
               >
                 <Text style={[themedStyles.text, { fontSize: 14 }]}>Set as Active</Text>
-              </TouchableOpacity>
+              </Pressable>
             )}
 
-            <TouchableOpacity
-              style={{
+            <Pressable
+              style={({ pressed }) => ({
                 padding: 12,
                 borderBottomWidth: 1,
                 borderBottomColor: currentColors.border,
-              }}
+                backgroundColor: pressed ? currentColors.border + '20' : 'transparent',
+              })}
               onPress={handleMenuItemPress(() => {
                 setOpenBudgetId(null);
                 setEditingBudgetId(budget.id);
@@ -423,42 +420,47 @@ export default function BudgetsScreen() {
               disabled={saving}
             >
               <Text style={[themedStyles.text, { fontSize: 14 }]}>Rename</Text>
-            </TouchableOpacity>
+            </Pressable>
 
-            <TouchableOpacity
-              style={{
+            <Pressable
+              style={({ pressed }) => ({
                 padding: 12,
                 borderBottomWidth: 1,
                 borderBottomColor: currentColors.border,
-              }}
+                backgroundColor: pressed ? currentColors.border + '20' : 'transparent',
+              })}
               onPress={handleMenuItemPress(() => handleDuplicateBudget(budget))}
               disabled={saving}
             >
               <Text style={[themedStyles.text, { fontSize: 14 }]}>Duplicate</Text>
-            </TouchableOpacity>
+            </Pressable>
 
-            <TouchableOpacity
-              style={{
+            <Pressable
+              style={({ pressed }) => ({
                 padding: 12,
                 borderBottomWidth: 1,
                 borderBottomColor: currentColors.border,
-              }}
+                backgroundColor: pressed ? currentColors.border + '20' : 'transparent',
+              })}
               onPress={handleMenuItemPress(() => handleShareBudget(budget))}
               disabled={saving}
             >
               <Text style={[themedStyles.text, { fontSize: 14 }]}>Share</Text>
-            </TouchableOpacity>
+            </Pressable>
 
             {sortedBudgets.length > 1 && (
-              <TouchableOpacity
-                style={{ padding: 12 }}
+              <Pressable
+                style={({ pressed }) => ({
+                  padding: 12,
+                  backgroundColor: pressed ? currentColors.border + '20' : 'transparent',
+                })}
                 onPress={handleMenuItemPress(() => handleDeleteBudget(budget))}
                 disabled={saving}
               >
                 <Text style={[themedStyles.text, { fontSize: 14, color: currentColors.error }]}>
                   Delete
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             )}
           </View>
         )}
@@ -643,8 +645,8 @@ export default function BudgetsScreen() {
                       <DropdownMenu budget={budget} />
                     </View>
 
-                    {/* Date Information - Reduced gap for active budget */}
-                    <View style={{ marginBottom: isActive ? 6 : 12 }}>
+                    {/* Date Information */}
+                    <View style={{ marginBottom: 12 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
                         <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
                           Created: {formatDate(budget.createdAt)}
@@ -654,13 +656,6 @@ export default function BudgetsScreen() {
                         </Text>
                       </View>
                     </View>
-
-                    {/* Tap to activate hint for non-active budgets */}
-                    {!isActive && (
-                      <Text style={[themedStyles.textSecondary, { fontSize: 12, textAlign: 'center', fontStyle: 'italic' }]}>
-                        Tap to activate this budget
-                      </Text>
-                    )}
                   </>
                 )}
               </TouchableOpacity>
