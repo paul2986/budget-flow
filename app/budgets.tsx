@@ -354,18 +354,13 @@ export default function BudgetsScreen() {
               <Button
                 text="Copy QR Data"
                 onPress={handleCopyShareData}
-                style={{ backgroundColor: currentColors.primary }}
+                variant="primary"
               />
 
               <Button
                 text="Share via Apps"
                 onPress={handleNativeShare}
-                style={{ 
-                  backgroundColor: 'transparent',
-                  borderWidth: 2,
-                  borderColor: currentColors.primary,
-                }}
-                textStyle={{ color: currentColors.primary }}
+                variant="outline"
               />
             </View>
           </ScrollView>
@@ -605,12 +600,7 @@ export default function BudgetsScreen() {
                     setNewBudgetName('');
                   }}
                   disabled={saving}
-                  style={{ 
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    borderColor: currentColors.primary,
-                  }}
-                  textStyle={{ color: currentColors.primary }}
+                  variant="outline"
                 />
               </View>
               <View style={{ flex: 1 }}>
@@ -618,7 +608,7 @@ export default function BudgetsScreen() {
                   text={saving ? 'Creating...' : 'Create'}
                   onPress={handleAddBudget}
                   disabled={saving}
-                  style={{ backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }}
+                  variant="primary"
                 />
               </View>
             </View>
@@ -632,12 +622,8 @@ export default function BudgetsScreen() {
               text={isRefreshing ? 'Refreshing...' : 'Refresh Budget List'}
               onPress={handleManualRefresh}
               disabled={isRefreshing || saving}
-              style={{ 
-                backgroundColor: 'transparent',
-                borderWidth: 1,
-                borderColor: currentColors.primary,
-              }}
-              textStyle={{ color: currentColors.primary, fontSize: 14 }}
+              variant="outline"
+              textStyle={{ fontSize: 14 }}
             />
           </View>
         )}
@@ -657,7 +643,7 @@ export default function BudgetsScreen() {
                 text="Create First Budget"
                 onPress={() => setShowAddBudgetOptions(true)}
                 disabled={saving}
-                style={{ backgroundColor: currentColors.primary }}
+                variant="primary"
               />
             </View>
           </View>
@@ -704,12 +690,7 @@ export default function BudgetsScreen() {
                             setOpenBudgetId(null);
                           }}
                           disabled={saving}
-                          style={{ 
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            borderColor: currentColors.textSecondary,
-                          }}
-                          textStyle={{ color: currentColors.textSecondary }}
+                          variant="outline"
                         />
                       </View>
                       <View style={{ flex: 1 }}>
@@ -717,7 +698,7 @@ export default function BudgetsScreen() {
                           text={saving ? 'Saving...' : 'Save'}
                           onPress={() => handleRenameBudget(budget.id)}
                           disabled={saving}
-                          style={{ backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }}
+                          variant="primary"
                         />
                       </View>
                     </View>
@@ -805,7 +786,7 @@ export default function BudgetsScreen() {
                   setShowAddBudgetOptions(false);
                   setShowAddBudget(true);
                 }}
-                style={{ backgroundColor: currentColors.primary }}
+                variant="primary"
               />
 
               <Button
@@ -814,12 +795,7 @@ export default function BudgetsScreen() {
                   setShowAddBudgetOptions(false);
                   router.push('/import-link');
                 }}
-                style={{ 
-                  backgroundColor: 'transparent',
-                  borderWidth: 2,
-                  borderColor: currentColors.primary,
-                }}
-                textStyle={{ color: currentColors.primary }}
+                variant="outline"
               />
             </View>
           </View>
@@ -885,12 +861,7 @@ export default function BudgetsScreen() {
                       setDuplicateBudgetName('');
                     }}
                     disabled={saving}
-                    style={{ 
-                      backgroundColor: 'transparent',
-                      borderWidth: 2,
-                      borderColor: currentColors.textSecondary,
-                    }}
-                    textStyle={{ color: currentColors.textSecondary }}
+                    variant="outline"
                   />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -898,7 +869,7 @@ export default function BudgetsScreen() {
                     text={saving ? 'Duplicating...' : 'Duplicate'}
                     onPress={handleConfirmDuplicate}
                     disabled={saving}
-                    style={{ backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }}
+                    variant="primary"
                   />
                 </View>
               </View>

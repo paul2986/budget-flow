@@ -316,8 +316,7 @@ export default function IncomeModal({
                 <Button
                   text="Cancel"
                   onPress={handleCancel}
-                  style={[themedButtonStyles.outline, { borderColor: currentColors.textSecondary }]}
-                  textStyle={{ color: currentColors.textSecondary }}
+                  variant="outline"
                   disabled={saving}
                 />
               </View>
@@ -325,14 +324,7 @@ export default function IncomeModal({
                 <Button
                   text={saving ? 'Adding...' : 'Add Income'}
                   onPress={handleAddIncome}
-                  style={[
-                    themedButtonStyles.primary, 
-                    { 
-                      backgroundColor: (!tempPersonId || !tempIncome.amount || !tempIncome.label.trim() || saving) 
-                        ? currentColors.textSecondary 
-                        : currentColors.income 
-                    }
-                  ]}
+                  variant="secondary"
                   disabled={!tempPersonId || !tempIncome.amount || !tempIncome.label.trim() || saving}
                 />
               </View>

@@ -400,7 +400,7 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
 
       <HelperRow />
 
-      <Button text="Calculate" onPress={handleCalculate} disabled={!canCalculate} />
+      <Button text="Calculate" onPress={handleCalculate} disabled={!canCalculate} variant="primary" />
 
       <Modal visible={infoOpen} transparent animationType="fade" onRequestClose={() => setInfoOpen(false)}>
         <View style={{ flex: 1, backgroundColor: '#00000088', alignItems: 'center', justifyContent: 'center' }}>
@@ -412,7 +412,7 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
             <Text style={[themedStyles.textSecondary, { marginBottom: 12 }]}>
               The minimum shown is the interest charged this month. Paying only this amount will not reduce your balance. Increase your monthly payment to start reducing the principal and pay off the debt sooner.
             </Text>
-            <Button text="Got it" onPress={() => setInfoOpen(false)} />
+            <Button text="Got it" onPress={() => setInfoOpen(false)} variant="primary" />
           </View>
         </View>
       </Modal>
@@ -494,43 +494,21 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
 
             <View style={{ marginTop: 16, flexDirection: 'row', gap: 12 }}>
               <View style={{ flex: 1 }}>
-                <TouchableOpacity
+                <Button
+                  text="Reset"
                   onPress={handleReset}
-                  style={[
-                    themedStyles.card,
-                    {
-                      backgroundColor: currentColors.border + '20',
-                      borderColor: currentColors.border,
-                      borderWidth: 2,
-                      minHeight: 44,
-                      paddingVertical: 10,
-                    },
-                  ]}
-                  accessibilityLabel="Reset calculator"
-                >
-                  <Text style={[themedStyles.text, { textAlign: 'center', fontWeight: '700' }]}>Reset</Text>
-                </TouchableOpacity>
+                  variant="outline"
+                  style={{ marginTop: 0 }}
+                />
               </View>
               <View style={{ flex: 1 }}>
-                <TouchableOpacity
+                <Button
+                  text="Copy Results"
                   onPress={handleCopy}
                   disabled={!result}
-                  style={[
-                    themedStyles.card,
-                    {
-                      backgroundColor: result ? currentColors.secondary : currentColors.textSecondary,
-                      borderColor: result ? currentColors.secondary : currentColors.textSecondary,
-                      borderWidth: 2,
-                      minHeight: 44,
-                      paddingVertical: 10,
-                    },
-                  ]}
-                  accessibilityLabel="Copy results"
-                >
-                  <Text style={[themedStyles.text, { textAlign: 'center', fontWeight: '700', color: '#FFFFFF' }]}>
-                    Copy Results
-                  </Text>
-                </TouchableOpacity>
+                  variant="secondary"
+                  style={{ marginTop: 0 }}
+                />
               </View>
             </View>
           </>

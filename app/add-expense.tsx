@@ -645,11 +645,7 @@ export default function AddExpenseScreen() {
             text={saving ? 'Saving...' : deleting ? 'Deleting...' : (isEditMode ? 'Update Expense' : 'Add Expense')}
             onPress={handleSaveExpense}
             disabled={saving || deleting || data.people.length === 0}
-            style={[
-              themedButtonStyles.primary,
-              { backgroundColor: isEditMode ? '#22C55E' : currentColors.primary },
-              (saving || deleting || data.people.length === 0) && { opacity: 0.7 }
-            ]}
+            variant="primary"
           />
           
           {/* Delete button for edit mode */}
@@ -662,14 +658,7 @@ export default function AddExpenseScreen() {
                   handleDeleteExpense();
                 }}
                 disabled={saving || deleting}
-                style={[
-                  themedButtonStyles.primary,
-                  { 
-                    backgroundColor: currentColors.error,
-                    borderColor: currentColors.error,
-                  },
-                  (saving || deleting) && { opacity: 0.7 }
-                ]}
+                variant="danger"
               />
             </View>
           )}

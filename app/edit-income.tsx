@@ -262,8 +262,8 @@ export default function EditIncomeScreen() {
           <Button
             text="Go Back"
             onPress={() => router.back()}
-            style={[themedButtonStyles.outline, { marginTop: 24, borderColor: currentColors.textSecondary }]}
-            textStyle={{ color: currentColors.textSecondary }}
+            variant="outline"
+            style={{ marginTop: 24 }}
           />
         </View>
       </View>
@@ -345,8 +345,8 @@ export default function EditIncomeScreen() {
             <Button
               text="Cancel"
               onPress={() => router.back()}
-              style={[themedButtonStyles.outline, { marginTop: 0, borderColor: currentColors.textSecondary }]}
-              textStyle={{ color: currentColors.textSecondary }}
+              variant="outline"
+              style={{ marginTop: 0 }}
               disabled={saving}
             />
           </View>
@@ -354,7 +354,8 @@ export default function EditIncomeScreen() {
             <Button
               text={saving ? 'Saving...' : 'Save Changes'}
               onPress={handleSaveIncome}
-              style={[themedButtonStyles.primary, { marginTop: 0, backgroundColor: saving ? currentColors.textSecondary : '#22C55E' }]}
+              variant="primary"
+              style={{ marginTop: 0 }}
               disabled={saving}
             />
           </View>
@@ -365,15 +366,8 @@ export default function EditIncomeScreen() {
           <Button
             text={saving ? 'Deleting...' : 'Delete Income Source'}
             onPress={handleDeleteIncome}
-            style={[
-              themedButtonStyles.outline, 
-              { 
-                marginTop: 0, 
-                borderColor: currentColors.error,
-                backgroundColor: saving ? currentColors.textSecondary + '20' : 'transparent'
-              }
-            ]}
-            textStyle={{ color: saving ? currentColors.textSecondary : currentColors.error }}
+            variant="danger"
+            style={{ marginTop: 0 }}
             disabled={saving}
           />
         </View>

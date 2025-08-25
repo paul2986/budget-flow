@@ -268,7 +268,7 @@ export default function PeopleScreen() {
               <Button
                 text="Add Your First Person"
                 onPress={() => setShowAddPerson(true)}
-                style={[themedButtonStyles.primary, { backgroundColor: currentColors.primary }]}
+                variant="primary"
                 disabled={saving}
               />
             </View>
@@ -301,8 +301,8 @@ export default function PeopleScreen() {
                     setShowAddPerson(false);
                     setNewPersonName('');
                   }}
-                  style={[themedButtonStyles.outline, { marginTop: 0, borderColor: currentColors.primary }]}
-                  textStyle={{ color: currentColors.primary }}
+                  variant="outline"
+                  style={{ marginTop: 0 }}
                   disabled={saving}
                 />
               </View>
@@ -310,7 +310,8 @@ export default function PeopleScreen() {
                 <Button
                   text={saving ? 'Adding...' : 'Add Person'}
                   onPress={handleAddPerson}
-                  style={[themedButtonStyles.primary, { marginTop: 0, backgroundColor: saving ? currentColors.textSecondary : currentColors.primary }]}
+                  variant="primary"
+                  style={{ marginTop: 0 }}
                   disabled={saving}
                 />
               </View>

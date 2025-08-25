@@ -2,7 +2,6 @@
 import React from 'react';
 import { Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, View } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
-import { colors } from '../styles/commonStyles';
 
 interface ButtonProps {
   text: string;
@@ -11,12 +10,21 @@ interface ButtonProps {
   textStyle?: TextStyle;
   disabled?: boolean;
   icon?: React.ReactNode;
+  variant?: 'primary' | 'secondary' | 'outline' | 'danger';
 }
 
-export default function Button({ text, onPress, style, textStyle, disabled, icon }: ButtonProps) {
-  const { currentColors } = useTheme();
+export default function Button({ 
+  text, 
+  onPress, 
+  style, 
+  textStyle, 
+  disabled, 
+  icon, 
+  variant = 'primary' 
+}: ButtonProps) {
+  const { currentColors, isDarkMode } = useTheme();
 
-  console.log('Button: Rendering button with text:', text, 'disabled:', disabled);
+  console.log('Button: Rendering button with text:', text, 'disabled:', disabled, 'variant:', variant);
 
   const handlePress = () => {
     console.log('Button: Button pressed:', text, 'disabled:', disabled);
@@ -28,13 +36,60 @@ export default function Button({ text, onPress, style, textStyle, disabled, icon
     }
   };
 
+  // Get button colors based on variant and theme
+  const getButtonColors = () => {
+    if (disabled) {
+      return {
+        backgroundColor: currentColors.textSecondary + '40',
+        borderColor: currentColors.textSecondary + '40',
+        textColor: currentColors.textSecondary,
+      };
+    }
+
+    switch (variant) {
+      case 'primary':
+        return {
+          backgroundColor: currentColors.primary,
+          borderColor: currentColors.primary,
+          textColor: '#FFFFFF',
+        };
+      case 'secondary':
+        return {
+          backgroundColor: currentColors.secondary,
+          borderColor: currentColors.secondary,
+          textColor: '#FFFFFF',
+        };
+      case 'outline':
+        return {
+          backgroundColor: 'transparent',
+          borderColor: currentColors.primary,
+          textColor: currentColors.primary,
+        };
+      case 'danger':
+        return {
+          backgroundColor: currentColors.error,
+          borderColor: currentColors.error,
+          textColor: '#FFFFFF',
+        };
+      default:
+        return {
+          backgroundColor: currentColors.primary,
+          borderColor: currentColors.primary,
+          textColor: '#FFFFFF',
+        };
+    }
+  };
+
+  const buttonColors = getButtonColors();
+
   return (
     <TouchableOpacity
       style={[
         styles.button,
         { 
-          backgroundColor: disabled ? currentColors.textSecondary : currentColors.primary,
-          borderColor: disabled ? currentColors.textSecondary : currentColors.primary,
+          backgroundColor: buttonColors.backgroundColor,
+          borderColor: buttonColors.borderColor,
+          opacity: disabled ? 0.6 : 1,
         },
         style
       ]}
@@ -56,7 +111,7 @@ export default function Button({ text, onPress, style, textStyle, disabled, icon
             style={[
               styles.text, 
               { 
-                color: disabled ? currentColors.background : '#FFFFFF',
+                color: buttonColors.textColor,
               },
               textStyle
             ]}

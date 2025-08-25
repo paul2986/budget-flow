@@ -219,16 +219,19 @@ export const useThemedStyles = () => {
   const themedButtonStyles = useMemo(() => StyleSheet.create({
     primary: {
       backgroundColor: currentColors.primary,
+      borderColor: currentColors.primary,
       alignSelf: 'center',
       width: '100%',
     },
     secondary: {
       backgroundColor: currentColors.secondary,
+      borderColor: currentColors.secondary,
       alignSelf: 'center',
       width: '100%',
     },
     danger: {
       backgroundColor: currentColors.error,
+      borderColor: currentColors.error,
       alignSelf: 'center',
       width: '100%',
     },
@@ -239,10 +242,29 @@ export const useThemedStyles = () => {
       alignSelf: 'center',
       width: '100%',
     },
+    outlineSecondary: {
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      borderColor: currentColors.secondary,
+      alignSelf: 'center',
+      width: '100%',
+    },
+    outlineDanger: {
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      borderColor: currentColors.error,
+      alignSelf: 'center',
+      width: '100%',
+    },
     small: {
       paddingVertical: 8,
       paddingHorizontal: 16,
       width: 'auto',
+    },
+    disabled: {
+      backgroundColor: currentColors.textSecondary + '40',
+      borderColor: currentColors.textSecondary + '40',
+      opacity: 0.6,
     },
   }), [currentColors]);
 

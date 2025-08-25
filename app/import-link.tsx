@@ -283,7 +283,7 @@ export default function ImportLinkScreen() {
           <Button
             text="Use Manual Input"
             onPress={() => setScanMode(false)}
-            style={themedButtonStyles.outline}
+            variant="outline"
           />
         </View>
       );
@@ -324,7 +324,7 @@ export default function ImportLinkScreen() {
           <Button
             text="Cancel Scanning"
             onPress={() => setScanMode(false)}
-            style={themedButtonStyles.outline}
+            variant="outline"
           />
         </View>
       </View>
@@ -382,7 +382,7 @@ export default function ImportLinkScreen() {
                 text="Paste from Clipboard"
                 onPress={handlePasteFromClipboard}
                 disabled={isImporting}
-                style={themedButtonStyles.outline}
+                variant="outline"
               />
             </View>
             
@@ -392,7 +392,7 @@ export default function ImportLinkScreen() {
                   text="Scan QR Code"
                   onPress={() => setScanMode(true)}
                   disabled={isImporting}
-                  style={themedButtonStyles.outline}
+                  variant="outline"
                 />
               </View>
             )}
@@ -404,7 +404,7 @@ export default function ImportLinkScreen() {
                 text="Clear"
                 onPress={resetImportScreen}
                 disabled={isImporting}
-                style={themedButtonStyles.outline}
+                variant="outline"
               />
             </View>
             <View style={{ flex: 2 }}>
@@ -412,7 +412,7 @@ export default function ImportLinkScreen() {
                 text={isImporting ? 'Importing...' : 'Import Budget'}
                 onPress={() => handleImport(inputValue)}
                 disabled={!inputValue.trim() || isImporting}
-                style={themedButtonStyles.primary}
+                variant="primary"
               />
             </View>
           </View>

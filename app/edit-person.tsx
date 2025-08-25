@@ -333,13 +333,12 @@ export default function EditPersonScreen() {
                 setIsLoadingPerson(true);
                 refreshData(true);
               }}
-              style={[themedButtonStyles.outline, { borderColor: currentColors.primary }]}
-              textStyle={{ color: currentColors.primary }}
+              variant="outline"
             />
             <Button
               text="Go Back"
               onPress={navigateBackToPeople}
-              style={[themedButtonStyles.primary, { backgroundColor: currentColors.primary }]}
+              variant="primary"
             />
           </View>
         </View>
@@ -453,8 +452,7 @@ export default function EditPersonScreen() {
                     setShowAddIncome(false);
                     setNewIncome({ amount: '', label: '', frequency: 'monthly' });
                   }}
-                  style={[themedButtonStyles.outline, { borderColor: currentColors.income }]}
-                  textStyle={{ color: currentColors.income }}
+                  variant="outline"
                   disabled={saving || isDeletingPerson}
                 />
               </View>
@@ -462,7 +460,7 @@ export default function EditPersonScreen() {
                 <Button
                   text={saving ? 'Adding...' : 'Add Income'}
                   onPress={handleAddIncome}
-                  style={[themedButtonStyles.primary, { backgroundColor: (saving || isDeletingPerson) ? currentColors.textSecondary : currentColors.income }]}
+                  variant="secondary"
                   disabled={saving || isDeletingPerson}
                 />
               </View>
@@ -561,13 +559,7 @@ export default function EditPersonScreen() {
             <Button
               text={isDeletingPerson ? 'Deleting...' : 'Delete Person'}
               onPress={handleDeletePerson}
-              style={[
-                themedButtonStyles.primary, 
-                { 
-                  backgroundColor: (saving || isDeletingPerson) ? currentColors.textSecondary : currentColors.error,
-                  borderColor: (saving || isDeletingPerson) ? currentColors.textSecondary : currentColors.error,
-                }
-              ]}
+              variant="danger"
               disabled={saving || isDeletingPerson}
             />
           </View>
