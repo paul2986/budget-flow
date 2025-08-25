@@ -96,20 +96,41 @@ function RootLayoutContent() {
   }, [isDarkMode, themeMode, currentColors]);
 
   // Deep link handler: route to /import-link and prefill "q" with the incoming URL
+  // Only handle actual deep links, not the app's initial launch
   useEffect(() => {
     const handleUrl = (url: string | null) => {
       if (!url) return;
+      
       try {
         console.log('Deep link received:', url);
-        // Push to import-link with query param
-        router.push({ pathname: '/import-link', params: { q: url } });
+        
+        // Parse the URL to check if it's a meaningful deep link
+        const parsedUrl = Linking.parse(url);
+        
+        // Only handle URLs that have query parameters or specific paths
+        // This prevents the app's base URL from triggering navigation
+        if (parsedUrl.queryParams && Object.keys(parsedUrl.queryParams).length > 0) {
+          console.log('Processing deep link with query params:', parsedUrl.queryParams);
+          router.push({ pathname: '/import-link', params: { q: url } });
+        } else if (parsedUrl.path && parsedUrl.path !== '/' && parsedUrl.path !== '') {
+          console.log('Processing deep link with path:', parsedUrl.path);
+          router.push({ pathname: '/import-link', params: { q: url } });
+        } else {
+          console.log('Ignoring base app URL:', url);
+        }
       } catch (e) {
         console.log('Deep link handling error', e);
       }
     };
 
-    // Initial URL
-    Linking.getInitialURL().then(handleUrl).catch((e) => console.log('getInitialURL error', e));
+    // Initial URL - only process if it's a meaningful deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        console.log('Initial URL received:', url);
+        // Add a small delay to ensure the app has fully loaded
+        setTimeout(() => handleUrl(url), 100);
+      }
+    }).catch((e) => console.log('getInitialURL error', e));
 
     // Subscribe to future URLs
     const sub = Linking.addEventListener('url', (event) => handleUrl(event.url));
