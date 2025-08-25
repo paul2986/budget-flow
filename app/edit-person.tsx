@@ -29,7 +29,6 @@ export default function EditPersonScreen() {
   const [deletingIncomeId, setDeletingIncomeId] = useState<string | null>(null);
   const [isLoadingPerson, setIsLoadingPerson] = useState(true);
   const [isDeletingPerson, setIsDeletingPerson] = useState(false);
-  const [hasInitialized, setHasInitialized] = useState(false);
   
   const { formatCurrency } = useCurrency();
   const { currentColors } = useTheme();
@@ -38,41 +37,43 @@ export default function EditPersonScreen() {
   const personId = params.personId;
   const origin = params.origin || 'people'; // Default to people if no origin specified
   
-  const { data, updatePerson, addIncome, removeIncome, removePerson, saving, refreshData } = useBudgetData();
+  const { data, updatePerson, addIncome, removeIncome, removePerson, saving, refreshData, loading } = useBudgetData();
 
-  // Load person data when screen becomes focused - but only once per mount
+  // Load person data when screen becomes focused or when data changes
   useFocusEffect(
     useCallback(() => {
-      if (hasInitialized) {
-        console.log('EditPersonScreen: Already initialized, skipping refresh');
-        return;
-      }
-
       console.log('EditPersonScreen: Screen focused, loading person data...');
-      setIsLoadingPerson(true);
+      console.log('EditPersonScreen: PersonId:', personId);
+      console.log('EditPersonScreen: Available people:', data.people.map(p => ({ id: p.id, name: p.name })));
       
       const loadPersonData = async () => {
+        setIsLoadingPerson(true);
+        
         try {
-          // Only refresh if we haven't found the person yet
-          if (!person && personId && data.people.length === 0) {
-            console.log('EditPersonScreen: No people in data, refreshing...');
+          if (!personId) {
+            console.log('EditPersonScreen: No personId provided');
+            setPerson(null);
+            setIsLoadingPerson(false);
+            return;
+          }
+
+          // First, try to find the person in current data
+          let foundPerson = data.people.find(p => p.id === personId);
+          
+          if (!foundPerson && !loading) {
+            console.log('EditPersonScreen: Person not found in current data, refreshing...');
+            // If person not found and we're not already loading, refresh data
             await refreshData(true);
+            // Try to find the person again after refresh
+            foundPerson = data.people.find(p => p.id === personId);
           }
           
-          if (personId) {
-            const foundPerson = data.people.find(p => p.id === personId);
+          if (foundPerson) {
             console.log('EditPersonScreen: Found person:', foundPerson);
-            
-            if (foundPerson) {
-              console.log('EditPersonScreen: Setting person state to:', foundPerson);
-              setPerson(foundPerson);
-            } else {
-              console.log('EditPersonScreen: Person not found in data.people array');
-              console.log('EditPersonScreen: Available person IDs:', data.people.map(p => p.id));
-              setPerson(null);
-            }
+            setPerson(foundPerson);
           } else {
-            console.log('EditPersonScreen: No personId provided');
+            console.log('EditPersonScreen: Person not found after refresh');
+            console.log('EditPersonScreen: Available person IDs:', data.people.map(p => p.id));
             setPerson(null);
           }
         } catch (error) {
@@ -80,32 +81,11 @@ export default function EditPersonScreen() {
           setPerson(null);
         } finally {
           setIsLoadingPerson(false);
-          setHasInitialized(true);
         }
       };
       
       loadPersonData();
-    }, [personId, hasInitialized]) // Remove data.people from dependencies to prevent infinite loop
-  );
-
-  // Update person state when data changes (but only if we already have a person)
-  const updatePersonFromData = useCallback(() => {
-    if (person && personId && data.people.length > 0) {
-      const updatedPerson = data.people.find(p => p.id === personId);
-      if (updatedPerson && JSON.stringify(updatedPerson) !== JSON.stringify(person)) {
-        console.log('EditPersonScreen: Updating person from data changes');
-        setPerson(updatedPerson);
-      }
-    }
-  }, [person, personId, data.people]);
-
-  // Use a separate effect to update person when data changes
-  useFocusEffect(
-    useCallback(() => {
-      if (hasInitialized) {
-        updatePersonFromData();
-      }
-    }, [hasInitialized, updatePersonFromData])
+    }, [personId, data.people, loading, refreshData])
   );
 
   const navigateToOrigin = useCallback(() => {
@@ -318,7 +298,7 @@ export default function EditPersonScreen() {
   );
 
   // Show loading state while we're waiting for data
-  if (isLoadingPerson) {
+  if (isLoadingPerson || loading) {
     return (
       <View style={themedStyles.container}>
         <StandardHeader
@@ -354,7 +334,6 @@ export default function EditPersonScreen() {
               text="Refresh Data"
               onPress={() => {
                 setIsLoadingPerson(true);
-                setHasInitialized(false);
                 refreshData(true);
               }}
               style={[themedButtonStyles.outline, { borderColor: currentColors.primary }]}
