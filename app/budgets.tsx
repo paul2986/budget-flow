@@ -517,29 +517,28 @@ export default function BudgetsScreen() {
                 ) : (
                   <>
                     <View style={[themedStyles.row, { marginBottom: 8 }]}>
-                      <View style={themedStyles.flex1}>
-                        <Text style={[themedStyles.subtitle, { marginBottom: 4 }]}>
-                          {budget.name}
-                        </Text>
+                      <View style={[themedStyles.flex1, { flexDirection: 'row', alignItems: 'center' }]}>
                         {isActive && (
-                          <View style={[themedStyles.badge, { backgroundColor: currentColors.primary, alignSelf: 'flex-start' }]}>
-                            <Text style={[themedStyles.badgeText, { color: currentColors.backgroundAlt }]}>
+                          <View style={[
+                            themedStyles.badge, 
+                            { 
+                              backgroundColor: currentColors.primary, 
+                              marginRight: 12,
+                              paddingHorizontal: 8,
+                              paddingVertical: 4,
+                              borderRadius: 12,
+                            }
+                          ]}>
+                            <Text style={[themedStyles.badgeText, { color: currentColors.backgroundAlt, fontSize: 12 }]}>
                               Active
                             </Text>
                           </View>
                         )}
+                        <Text style={[themedStyles.subtitle, { marginBottom: 0 }]}>
+                          {budget.name}
+                        </Text>
                       </View>
                       <DropdownMenu budget={budget} />
-                    </View>
-
-                    <View style={[themedStyles.row, { marginBottom: 4 }]}>
-                      <Text style={themedStyles.textSecondary}>People:</Text>
-                      <Text style={themedStyles.text}>{budget.people?.length || 0}</Text>
-                    </View>
-
-                    <View style={[themedStyles.row, { marginBottom: 8 }]}>
-                      <Text style={themedStyles.textSecondary}>Expenses:</Text>
-                      <Text style={themedStyles.text}>{budget.expenses?.length || 0}</Text>
                     </View>
 
                     {!isActive && (
