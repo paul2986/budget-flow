@@ -17,16 +17,18 @@ import StandardHeader from '../components/StandardHeader';
 import Button from '../components/Button';
 
 export default function BudgetsScreen() {
-  const { appData, activeBudget, addBudget, renameBudget, deleteBudget, setActiveBudget, loading, saving } = useBudgetData();
+  const { appData, activeBudget, addBudget, renameBudget, deleteBudget, duplicateBudget, setActiveBudget, loading, saving } = useBudgetData();
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
   const { showToast } = useToast();
   const { isLocked } = useBudgetLock();
   
   const [showAddBudget, setShowAddBudget] = useState(false);
+  const [showAddBudgetOptions, setShowAddBudgetOptions] = useState(false);
   const [newBudgetName, setNewBudgetName] = useState('');
   const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
   const [editingBudgetName, setEditingBudgetName] = useState('');
+  const [openBudgetId, setOpenBudgetId] = useState<string | null>(null);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [shareModalBudget, setShareModalBudget] = useState<Budget | null>(null);
   const [shareData, setShareData] = useState<{ url: string; code?: string; expiresAt?: string } | null>(null);
@@ -66,6 +68,7 @@ export default function BudgetsScreen() {
       if (result.success) {
         setEditingBudgetId(null);
         setEditingBudgetName('');
+        setOpenBudgetId(null);
         showToast('Budget renamed successfully', 'success');
       } else {
         Alert.alert('Error', 'Failed to rename budget. Please try again.');
@@ -92,6 +95,7 @@ export default function BudgetsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              setOpenBudgetId(null); // Close menu
               const result = await deleteBudget(budget.id);
               if (result.success) {
                 showToast('Budget deleted successfully', 'success');
@@ -108,10 +112,26 @@ export default function BudgetsScreen() {
     );
   }, [budgets.length, deleteBudget, showToast]);
 
+  const handleDuplicateBudget = useCallback(async (budget: Budget) => {
+    try {
+      setOpenBudgetId(null); // Close menu
+      const result = await duplicateBudget(budget.id);
+      if (result.success) {
+        showToast('Budget duplicated successfully', 'success');
+      } else {
+        Alert.alert('Error', 'Failed to duplicate budget. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error duplicating budget:', error);
+      Alert.alert('Error', 'Failed to duplicate budget. Please try again.');
+    }
+  }, [duplicateBudget, showToast]);
+
   const handleSetActiveBudget = useCallback(async (budgetId: string) => {
     if (budgetId === activeBudget?.id) return;
 
     try {
+      setOpenBudgetId(null); // Close menu
       const result = await setActiveBudget(budgetId);
       if (result.success) {
         showToast('Budget switched successfully', 'success');
@@ -126,6 +146,7 @@ export default function BudgetsScreen() {
   }, [activeBudget?.id, setActiveBudget, showToast]);
 
   const handleShareBudget = useCallback(async (budget: Budget) => {
+    setOpenBudgetId(null); // Close menu
     setShareModalBudget(budget);
     setShareModalVisible(true);
     setIsGeneratingShare(true);
@@ -251,118 +272,116 @@ export default function BudgetsScreen() {
   };
 
   const DropdownMenu = ({ budget }: { budget: Budget }) => {
-    const [showMenu, setShowMenu] = useState(false);
     const isActive = budget.id === activeBudget?.id;
+    const isMenuOpen = openBudgetId === budget.id;
+
+    const handleMenuToggle = () => {
+      if (isMenuOpen) {
+        setOpenBudgetId(null);
+      } else {
+        setOpenBudgetId(budget.id);
+      }
+    };
 
     return (
       <View style={{ position: 'relative' }}>
         <TouchableOpacity
-          onPress={() => setShowMenu(!showMenu)}
+          onPress={handleMenuToggle}
           style={{
             padding: 8,
             borderRadius: 8,
-            backgroundColor: currentColors.border + '40',
+            backgroundColor: isMenuOpen ? currentColors.primary + '20' : currentColors.border + '40',
           }}
           disabled={saving}
         >
           <Icon name="ellipsis-vertical" size={16} style={{ color: currentColors.text }} />
         </TouchableOpacity>
 
-        {showMenu && (
-          <>
-            <Pressable
+        {isMenuOpen && (
+          <View
+            style={{
+              position: 'absolute',
+              top: 36,
+              right: 0,
+              backgroundColor: currentColors.backgroundAlt,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: currentColors.border,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 3,
+              zIndex: 2,
+              minWidth: 150,
+            }}
+          >
+            {!isActive && (
+              <TouchableOpacity
+                style={{
+                  padding: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: currentColors.border,
+                }}
+                onPress={() => handleSetActiveBudget(budget.id)}
+                disabled={saving}
+              >
+                <Text style={[themedStyles.text, { fontSize: 14 }]}>Set as Active</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
               style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                zIndex: 1,
+                padding: 12,
+                borderBottomWidth: 1,
+                borderBottomColor: currentColors.border,
               }}
-              onPress={() => setShowMenu(false)}
-            />
-            <View
-              style={{
-                position: 'absolute',
-                top: 36,
-                right: 0,
-                backgroundColor: currentColors.backgroundAlt,
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: currentColors.border,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 4,
-                elevation: 3,
-                zIndex: 2,
-                minWidth: 150,
+              onPress={() => {
+                setOpenBudgetId(null);
+                setEditingBudgetId(budget.id);
+                setEditingBudgetName(budget.name);
               }}
+              disabled={saving}
             >
-              {!isActive && (
-                <TouchableOpacity
-                  style={{
-                    padding: 12,
-                    borderBottomWidth: 1,
-                    borderBottomColor: currentColors.border,
-                  }}
-                  onPress={() => {
-                    setShowMenu(false);
-                    handleSetActiveBudget(budget.id);
-                  }}
-                  disabled={saving}
-                >
-                  <Text style={[themedStyles.text, { fontSize: 14 }]}>Set as Active</Text>
-                </TouchableOpacity>
-              )}
+              <Text style={[themedStyles.text, { fontSize: 14 }]}>Rename</Text>
+            </TouchableOpacity>
 
+            <TouchableOpacity
+              style={{
+                padding: 12,
+                borderBottomWidth: 1,
+                borderBottomColor: currentColors.border,
+              }}
+              onPress={() => handleDuplicateBudget(budget)}
+              disabled={saving}
+            >
+              <Text style={[themedStyles.text, { fontSize: 14 }]}>Duplicate</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{
+                padding: 12,
+                borderBottomWidth: 1,
+                borderBottomColor: currentColors.border,
+              }}
+              onPress={() => handleShareBudget(budget)}
+              disabled={saving}
+            >
+              <Text style={[themedStyles.text, { fontSize: 14 }]}>Share</Text>
+            </TouchableOpacity>
+
+            {budgets.length > 1 && (
               <TouchableOpacity
-                style={{
-                  padding: 12,
-                  borderBottomWidth: 1,
-                  borderBottomColor: currentColors.border,
-                }}
-                onPress={() => {
-                  setShowMenu(false);
-                  setEditingBudgetId(budget.id);
-                  setEditingBudgetName(budget.name);
-                }}
+                style={{ padding: 12 }}
+                onPress={() => handleDeleteBudget(budget)}
                 disabled={saving}
               >
-                <Text style={[themedStyles.text, { fontSize: 14 }]}>Rename</Text>
+                <Text style={[themedStyles.text, { fontSize: 14, color: currentColors.error }]}>
+                  Delete
+                </Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={{
-                  padding: 12,
-                  borderBottomWidth: 1,
-                  borderBottomColor: currentColors.border,
-                }}
-                onPress={() => {
-                  setShowMenu(false);
-                  handleShareBudget(budget);
-                }}
-                disabled={saving}
-              >
-                <Text style={[themedStyles.text, { fontSize: 14 }]}>Share</Text>
-              </TouchableOpacity>
-
-              {budgets.length > 1 && (
-                <TouchableOpacity
-                  style={{ padding: 12 }}
-                  onPress={() => {
-                    setShowMenu(false);
-                    handleDeleteBudget(budget);
-                  }}
-                  disabled={saving}
-                >
-                  <Text style={[themedStyles.text, { fontSize: 14, color: currentColors.error }]}>
-                    Delete
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </>
+            )}
+          </View>
         )}
       </View>
     );
@@ -386,7 +405,7 @@ export default function BudgetsScreen() {
         title="Budgets"
         showLeftIcon={false}
         rightIcon="add"
-        onRightPress={() => setShowAddBudget(true)}
+        onRightPress={() => setShowAddBudgetOptions(true)}
         loading={saving}
       />
 
@@ -451,7 +470,7 @@ export default function BudgetsScreen() {
               </Text>
               <Button
                 text="Create First Budget"
-                onPress={() => setShowAddBudget(true)}
+                onPress={() => setShowAddBudgetOptions(true)}
                 disabled={saving}
                 style={{ backgroundColor: currentColors.primary }}
               />
@@ -494,6 +513,7 @@ export default function BudgetsScreen() {
                           onPress={() => {
                             setEditingBudgetId(null);
                             setEditingBudgetName('');
+                            setOpenBudgetId(null);
                           }}
                           disabled={saving}
                           style={{ 
@@ -562,6 +582,79 @@ export default function BudgetsScreen() {
           })
         )}
       </ScrollView>
+
+      {/* Tap-away modal for closing menus */}
+      {openBudgetId && (
+        <Modal
+          visible={true}
+          transparent
+          animationType="none"
+          onRequestClose={() => setOpenBudgetId(null)}
+        >
+          <Pressable
+            style={{
+              flex: 1,
+              backgroundColor: 'transparent',
+            }}
+            onPress={() => setOpenBudgetId(null)}
+          />
+        </Modal>
+      )}
+
+      {/* Add Budget Options Modal */}
+      <Modal
+        visible={showAddBudgetOptions}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAddBudgetOptions(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}>
+          <View style={[themedStyles.card, { margin: 20, maxWidth: 300 }]}>
+            <View style={[themedStyles.row, { marginBottom: 16 }]}>
+              <Text style={[themedStyles.subtitle, { marginBottom: 0 }]}>
+                Add Budget
+              </Text>
+              <TouchableOpacity onPress={() => setShowAddBudgetOptions(false)}>
+                <Icon name="close" size={24} style={{ color: currentColors.text }} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[themedStyles.textSecondary, { marginBottom: 20, textAlign: 'center' }]}>
+              Choose how you'd like to add a new budget
+            </Text>
+
+            <View style={{ gap: 12 }}>
+              <Button
+                text="Create New Budget"
+                onPress={() => {
+                  setShowAddBudgetOptions(false);
+                  setShowAddBudget(true);
+                }}
+                style={{ backgroundColor: currentColors.primary }}
+              />
+
+              <Button
+                text="Import Budget"
+                onPress={() => {
+                  setShowAddBudgetOptions(false);
+                  router.push('/import-link');
+                }}
+                style={{ 
+                  backgroundColor: 'transparent',
+                  borderWidth: 2,
+                  borderColor: currentColors.primary,
+                }}
+                textStyle={{ color: currentColors.primary }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Share Modal */}
       <Modal

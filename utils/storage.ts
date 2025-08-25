@@ -412,6 +412,56 @@ export const deleteBudget = async (budgetId: string): Promise<{ success: boolean
   return await saveAppData({ ...appData, budgets, activeBudgetId });
 };
 
+export const duplicateBudget = async (budgetId: string): Promise<{ success: boolean; error?: Error; budget?: Budget }> => {
+  const appData = await loadAppData();
+  if (!appData.budgets || !Array.isArray(appData.budgets)) {
+    return { success: false, error: new Error('No budgets found') };
+  }
+  const originalBudget = appData.budgets.find((b) => b && b.id === budgetId);
+  if (!originalBudget) {
+    return { success: false, error: new Error('Budget not found') };
+  }
+  
+  // Create a deep copy of the budget with new IDs
+  const duplicatedBudget: Budget = {
+    ...originalBudget,
+    id: `budget_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    name: `${originalBudget.name} (Copy)`,
+    createdAt: Date.now(),
+    // Deep copy people with new IDs
+    people: originalBudget.people.map(person => ({
+      ...person,
+      id: `person_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      income: person.income.map(income => ({
+        ...income,
+        id: `income_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      })),
+    })),
+    // Deep copy expenses with new IDs and update personId references
+    expenses: originalBudget.expenses.map(expense => {
+      const newExpense = {
+        ...expense,
+        id: `expense_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      };
+      // If it's a personal expense, we need to update the personId to match the new person ID
+      if (expense.category === 'personal' && expense.personId) {
+        const originalPersonIndex = originalBudget.people.findIndex(p => p.id === expense.personId);
+        if (originalPersonIndex !== -1) {
+          newExpense.personId = duplicatedBudget.people[originalPersonIndex].id;
+        }
+      }
+      return newExpense;
+    }),
+    // Reset lock settings for the duplicate
+    lock: getDefaultLockSettings(),
+  };
+  
+  const budgets = [...appData.budgets, duplicatedBudget];
+  const newAppData: AppDataV2 = { ...appData, budgets };
+  const res = await saveAppData(newAppData);
+  return { ...res, budget: duplicatedBudget };
+};
+
 export const updateBudget = async (budget: Budget): Promise<{ success: boolean; error?: Error }> => {
   const appData = await loadAppData();
   if (!appData.budgets || !Array.isArray(appData.budgets)) {

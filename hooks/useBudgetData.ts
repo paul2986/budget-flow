@@ -7,6 +7,7 @@ import {
   addBudget as storageAddBudget,
   renameBudget as storageRenameBudget,
   deleteBudget as storageDeleteBudget,
+  duplicateBudget as storageDuplicateBudget,
   updateBudget as storageUpdateBudget,
 } from '../utils/storage';
 import { Person, Expense, Income, HouseholdSettings, AppDataV2, Budget } from '../types/budget';
@@ -260,6 +261,15 @@ export const useBudgetData = () => {
   const deleteBudget = useCallback(
     async (budgetId: string) => {
       const res = await storageDeleteBudget(budgetId);
+      if (res.success) await refreshFromStorage();
+      return res;
+    },
+    [refreshFromStorage]
+  );
+
+  const duplicateBudget = useCallback(
+    async (budgetId: string) => {
+      const res = await storageDuplicateBudget(budgetId);
       if (res.success) await refreshFromStorage();
       return res;
     },
@@ -676,6 +686,7 @@ export const useBudgetData = () => {
     addBudget,
     renameBudget,
     deleteBudget,
+    duplicateBudget,
     setActiveBudget,
     // existing ops scoped to active budget
     addPerson,
