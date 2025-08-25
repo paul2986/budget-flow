@@ -13,7 +13,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useCurrency } from '../hooks/useCurrency';
 import { router, useFocusEffect } from 'expo-router';
 import Icon from '../components/Icon';
-import { Text, View, ScrollView, TouchableOpacity, AppState } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, AppState, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useToast } from '../hooks/useToast';
@@ -31,10 +31,13 @@ export default function HomeScreen() {
   const { formatCurrency } = useCurrency();
   const { themedStyles } = useThemedStyles();
   const { showToast } = useToast();
-  const { data, loading, activeBudget, refreshTrigger, refreshData } = useBudgetData();
+  const { data, loading, activeBudget, refreshTrigger, refreshData, addBudget } = useBudgetData();
   const { isLocked, authenticateForBudget } = useBudgetLock();
   
   const [authenticating, setAuthenticating] = useState(false);
+  const [showBudgetNaming, setShowBudgetNaming] = useState(false);
+  const [budgetName, setBudgetName] = useState('');
+  const [creatingBudget, setCreatingBudget] = useState(false);
   const appState = useRef(AppState.currentState);
 
   const budgetLocked = useMemo(() => {
@@ -135,6 +138,41 @@ export default function HomeScreen() {
     router.push('/budgets');
   }, []);
 
+  const handleCreateFirstBudget = useCallback(() => {
+    setShowBudgetNaming(true);
+    setBudgetName('My Budget');
+  }, []);
+
+  const handleCreateBudget = useCallback(async () => {
+    if (!budgetName.trim()) {
+      showToast('Please enter a budget name', 'error');
+      return;
+    }
+
+    setCreatingBudget(true);
+    try {
+      const result = await addBudget(budgetName.trim());
+      if (result.success) {
+        showToast('Budget created successfully!', 'success');
+        setShowBudgetNaming(false);
+        setBudgetName('');
+        // The useBudgetData hook will automatically refresh and set the new budget as active
+      } else {
+        showToast('Failed to create budget', 'error');
+      }
+    } catch (error) {
+      console.error('HomeScreen: Error creating budget:', error);
+      showToast('Error creating budget', 'error');
+    } finally {
+      setCreatingBudget(false);
+    }
+  }, [budgetName, addBudget, showToast]);
+
+  const handleCancelBudgetNaming = useCallback(() => {
+    setShowBudgetNaming(false);
+    setBudgetName('');
+  }, []);
+
   if (loading) {
     return (
       <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
@@ -146,26 +184,119 @@ export default function HomeScreen() {
     );
   }
 
-  // First-time user: No budget found - redirect to budget creation
-  if (!activeBudget) {
+  // First-time user: No budget found - show budget naming interface
+  if (!activeBudget || showBudgetNaming) {
     return (
-      <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
-        <StandardHeader title="Budget Flow" />
-        <View style={[themedStyles.content, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
-          <Icon name="wallet-outline" size={64} style={{ color: currentColors.textSecondary, marginBottom: 16 }} />
-          <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>
-            Welcome to Budget Flow!
-          </Text>
-          <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 24 }]}>
-            Let's get started by creating your first budget
-          </Text>
-          <Button
-            text="Create Your First Budget"
-            onPress={() => router.push('/budgets')}
-            variant="primary"
-          />
-        </View>
-      </View>
+      <KeyboardAvoidingView 
+        style={[themedStyles.container, { backgroundColor: currentColors.background }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <StandardHeader 
+          title="Budget Flow" 
+          showLeftIcon={false}
+          showRightIcon={false}
+        />
+        
+        <ScrollView 
+          style={themedStyles.content} 
+          contentContainerStyle={[
+            themedStyles.scrollContent,
+            {
+              paddingHorizontal: 24,
+              paddingTop: 40, // Add extra padding to prevent header overlap
+              justifyContent: 'center',
+              flex: 1,
+            }
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={{ alignItems: 'center', marginBottom: 40 }}>
+            <Icon name="wallet-outline" size={80} style={{ color: currentColors.primary, marginBottom: 24 }} />
+            <Text style={[themedStyles.title, { textAlign: 'center', marginBottom: 12 }]}>
+              Welcome to Budget Flow!
+            </Text>
+            <Text style={[themedStyles.textSecondary, { textAlign: 'center', fontSize: 18, lineHeight: 26 }]}>
+              Let's start by creating your first budget
+            </Text>
+          </View>
+
+          <View style={[
+            themedStyles.card,
+            {
+              backgroundColor: currentColors.backgroundAlt,
+              borderColor: currentColors.primary + '30',
+              borderWidth: 2,
+              padding: 32,
+              marginBottom: 24,
+            }
+          ]}>
+            <View style={{ alignItems: 'center', marginBottom: 24 }}>
+              <Icon name="create-outline" size={32} style={{ color: currentColors.primary, marginBottom: 12 }} />
+              <Text style={[themedStyles.subtitle, { textAlign: 'center', fontSize: 20 }]}>
+                Name Your Budget
+              </Text>
+              <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginTop: 8 }]}>
+                Give your budget a name that makes sense to you
+              </Text>
+            </View>
+
+            <TextInput
+              style={[
+                themedStyles.input,
+                {
+                  borderColor: currentColors.primary,
+                  borderWidth: 2,
+                  fontSize: 18,
+                  fontWeight: '600',
+                  textAlign: 'center',
+                  marginBottom: 24,
+                }
+              ]}
+              value={budgetName}
+              onChangeText={setBudgetName}
+              placeholder="Enter budget name..."
+              placeholderTextColor={currentColors.textSecondary}
+              autoFocus={true}
+              selectTextOnFocus={true}
+              maxLength={50}
+            />
+
+            <View style={{ gap: 12 }}>
+              <Button
+                text={creatingBudget ? "Creating Budget..." : "Create Budget"}
+                onPress={handleCreateBudget}
+                variant="primary"
+                disabled={creatingBudget || !budgetName.trim()}
+              />
+              
+              {showBudgetNaming && (
+                <Button
+                  text="Cancel"
+                  onPress={handleCancelBudgetNaming}
+                  variant="outline"
+                  disabled={creatingBudget}
+                />
+              )}
+            </View>
+          </View>
+
+          <View style={[
+            themedStyles.card,
+            {
+              backgroundColor: currentColors.info + '10',
+              borderColor: currentColors.info + '30',
+              borderWidth: 1,
+              padding: 20,
+              alignItems: 'center',
+            }
+          ]}>
+            <Icon name="information-circle" size={20} style={{ color: currentColors.info, marginBottom: 8 }} />
+            <Text style={[themedStyles.textSecondary, { textAlign: 'center', fontSize: 14 }]}>
+              After creating your budget, you'll be guided through adding people and expenses
+            </Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     );
   }
 
@@ -315,7 +446,7 @@ export default function HomeScreen() {
             themedStyles.scrollContent,
             {
               paddingHorizontal: 24,
-              paddingTop: 32,
+              paddingTop: 40, // Add extra padding to prevent header overlap
               justifyContent: 'center',
               flex: 1,
             }
@@ -423,7 +554,7 @@ export default function HomeScreen() {
             themedStyles.scrollContent,
             {
               paddingHorizontal: 24,
-              paddingTop: 24,
+              paddingTop: 32, // Add extra padding to prevent header overlap
             }
           ]}
           showsVerticalScrollIndicator={false}
