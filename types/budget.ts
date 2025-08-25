@@ -33,7 +33,7 @@ export interface Expense {
   description: string;
   category: 'household' | 'personal';
   frequency: Frequency;
-  personId?: string; // Only for personal expenses
+  personId: string; // Required - all expenses must be assigned to a person
   date: string; // ISO string for the start/added date
   notes?: string; // Optional notes for additional context
   categoryTag?: ExpenseCategory; // Optional category tag for filtering/reporting (default 'Misc')

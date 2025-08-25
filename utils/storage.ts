@@ -169,18 +169,27 @@ const validateLegacyBudgetData = (data: any): LegacyBudgetData => {
             validFreq.includes(e.frequency) &&
             e.date
         )
-        .map((e: any) => ({
-          id: e.id,
-          amount: typeof e.amount === 'number' ? e.amount : 0,
-          description: typeof e.description === 'string' ? e.description : '',
-          category: (['household', 'personal'].includes(e.category) ? e.category : 'household') as 'household' | 'personal',
-          frequency: validFreq.includes(e.frequency) ? e.frequency : 'monthly',
-          personId: e.category === 'personal' && typeof e.personId === 'string' ? e.personId : undefined,
-          date: typeof e.date === 'string' ? e.date : new Date().toISOString(),
-          notes: typeof e.notes === 'string' ? e.notes : '',
-          categoryTag: sanitizeCategoryTag(e.categoryTag || 'Misc'),
-          endDate: sanitizeEndDate(e.frequency, e.endDate),
-        }))
+        .map((e: any) => {
+          // For legacy data, assign to first person if no personId exists
+          let personId = typeof e.personId === 'string' ? e.personId : '';
+          if (!personId && people.length > 0) {
+            personId = people[0].id;
+          }
+          
+          return {
+            id: e.id,
+            amount: typeof e.amount === 'number' ? e.amount : 0,
+            description: typeof e.description === 'string' ? e.description : '',
+            category: (['household', 'personal'].includes(e.category) ? e.category : 'household') as 'household' | 'personal',
+            frequency: validFreq.includes(e.frequency) ? e.frequency : 'monthly',
+            personId: personId, // Now required for all expenses
+            date: typeof e.date === 'string' ? e.date : new Date().toISOString(),
+            notes: typeof e.notes === 'string' ? e.notes : '',
+            categoryTag: sanitizeCategoryTag(e.categoryTag || 'Misc'),
+            endDate: sanitizeEndDate(e.frequency, e.endDate),
+          };
+        })
+        .filter((e: any) => e.personId) // Only keep expenses that have a valid personId
     : [];
   const distribution =
     safeData?.householdSettings &&
@@ -492,15 +501,19 @@ export const duplicateBudget = async (budgetId: string, customName?: string): Pr
         id: `expense_${now}_${Math.random().toString(36).substr(2, 9)}`,
       };
       
-      // If it's a personal expense, we need to update the personId to match the new person ID
-      if (expense.category === 'personal' && expense.personId) {
+      // Update the personId to match the new person ID (required for all expenses)
+      if (expense.personId) {
         const originalPersonIndex = originalPeople.findIndex(p => p && p.id === expense.personId);
         if (originalPersonIndex !== -1 && duplicatedPeople[originalPersonIndex]) {
           newExpense.personId = duplicatedPeople[originalPersonIndex].id;
         } else {
-          console.warn('storage: Could not find matching person for expense, removing personId:', expense);
-          newExpense.personId = undefined;
+          console.warn('storage: Could not find matching person for expense, assigning to first person:', expense);
+          // Assign to first person if original person not found
+          newExpense.personId = duplicatedPeople.length > 0 ? duplicatedPeople[0].id : '';
         }
+      } else {
+        // For legacy expenses without personId, assign to first person
+        newExpense.personId = duplicatedPeople.length > 0 ? duplicatedPeople[0].id : '';
       }
       
       return newExpense;

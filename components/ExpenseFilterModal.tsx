@@ -228,8 +228,8 @@ export default function ExpenseFilterModal({
             </View>
           </View>
 
-          {/* Person filter for personal expenses */}
-          {tempFilter === 'personal' && people.length > 0 && (
+          {/* Person filter - now available for all expense types */}
+          {people.length > 0 && (
             <View style={[themedStyles.section, { paddingBottom: 0 }]}>
               <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Person</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>

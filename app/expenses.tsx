@@ -188,9 +188,11 @@ export default function ExpensesScreen() {
     filteredExpenses = filteredExpenses.filter((e) => e.category === 'household');
   } else if (filter === 'personal') {
     filteredExpenses = filteredExpenses.filter((e) => e.category === 'personal');
-    if (personFilter) {
-      filteredExpenses = filteredExpenses.filter((e) => e.personId === personFilter);
-    }
+  }
+
+  // Apply person filter to all expenses (both household and personal)
+  if (personFilter) {
+    filteredExpenses = filteredExpenses.filter((e) => e.personId === personFilter);
   }
 
   if (categoryFilter) {
@@ -452,7 +454,7 @@ export default function ExpensesScreen() {
                     </View>
 
                     <Text style={[themedStyles.textSecondary, { flex: 1, fontSize: 12 }]}>
-                      {expense.category === 'personal' && person ? `${person.name} • ` : ''}
+                      {person ? `${person.name} • ` : 'Unknown Person • '}
                       {expense.frequency} • {new Date(expense.date).toLocaleDateString()}
                     </Text>
                   </View>

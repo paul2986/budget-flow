@@ -95,7 +95,8 @@ export default function AddExpenseScreen() {
       setAmount('');
       setCategory('household');
       setFrequency('monthly');
-      setPersonId('');
+      // Auto-select first person if only one exists
+      setPersonId(data.people.length === 1 ? data.people[0].id : '');
       setNotes('');
       setCategoryTag('Misc');
       setStartDateYMD(toYMD(new Date()));
@@ -128,8 +129,27 @@ export default function AddExpenseScreen() {
       return;
     }
 
-    if (category === 'personal' && !personId) {
-      Alert.alert('Error', 'Please select a person for personal expenses');
+    // Check if no people exist at all
+    if (data.people.length === 0) {
+      Alert.alert(
+        'No People Added', 
+        'You must add at least one person before creating expenses. All expenses must be assigned to someone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Add Person', 
+            onPress: () => {
+              router.push('/people');
+            }
+          }
+        ]
+      );
+      return;
+    }
+
+    // All expenses must be assigned to a person
+    if (!personId) {
+      Alert.alert('Error', 'Please select a person to assign this expense to');
       return;
     }
 
@@ -157,7 +177,7 @@ export default function AddExpenseScreen() {
         amount: numAmount,
         category,
         frequency,
-        personId: category === 'personal' ? personId : undefined,
+        personId: personId, // Always assign to a person
         date: isEditMode ? expenseToEdit!.date : new Date(startDateYMD + 'T00:00:00Z').toISOString(),
         notes: notes.trim(),
         categoryTag: normalizedTag,
@@ -305,6 +325,54 @@ export default function AddExpenseScreen() {
     </View>
   ), [category, currentColors, saving, deleting, themedStyles]);
 
+  const PersonPicker = useCallback(() => {
+    if (data.people.length === 0) return null;
+
+    return (
+      <View style={themedStyles.section}>
+        <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
+          Assign to Person <Text style={{ color: currentColors.error }}>*</Text>
+        </Text>
+        <View style={[themedStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
+          {data.people.map((person) => (
+            <TouchableOpacity
+              key={person.id}
+              style={[
+                themedStyles.badge,
+                { 
+                  backgroundColor: personId === person.id ? currentColors.secondary : currentColors.border,
+                  marginRight: 8,
+                  marginBottom: 8,
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 20,
+                }
+              ]}
+              onPress={() => setPersonId(person.id)}
+              disabled={saving || deleting}
+            >
+              <Text style={[
+                themedStyles.badgeText,
+                { 
+                  color: personId === person.id ? '#FFFFFF' : currentColors.text,
+                  fontWeight: '600',
+                }
+              ]}>
+                {person.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <Text style={[themedStyles.textSecondary, { fontSize: 12, marginTop: 4 }]}>
+          {category === 'household' 
+            ? 'Select who this household expense should be assigned to for tracking purposes.'
+            : 'Select the person this personal expense belongs to.'
+          }
+        </Text>
+      </View>
+    );
+  }, [data.people, personId, currentColors, saving, deleting, themedStyles, category]);
+
   const CategoryTagPicker = useCallback(() => {
     const allCategories = [...EXPENSE_CATEGORIES, ...customCategories];
 
@@ -418,46 +486,6 @@ export default function AddExpenseScreen() {
     </View>
   ), [frequency, currentColors, saving, deleting, themedStyles]);
 
-  const PersonPicker = useCallback(() => {
-    if (category !== 'personal' || data.people.length === 0) return null;
-
-    return (
-      <View style={themedStyles.section}>
-        <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Person</Text>
-        <View style={[themedStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
-          {data.people.map((person) => (
-            <TouchableOpacity
-              key={person.id}
-              style={[
-                themedStyles.badge,
-                { 
-                  backgroundColor: personId === person.id ? currentColors.secondary : currentColors.border,
-                  marginRight: 8,
-                  marginBottom: 8,
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 20,
-                }
-              ]}
-              onPress={() => setPersonId(person.id)}
-              disabled={saving || deleting}
-            >
-              <Text style={[
-                themedStyles.badgeText,
-                { 
-                  color: personId === person.id ? '#FFFFFF' : currentColors.text,
-                  fontWeight: '600',
-                }
-              ]}>
-                {person.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-    );
-  }, [category, data.people, personId, currentColors, saving, deleting, themedStyles]);
-
   const handleCreateCustomCategory = useCallback(async () => {
     const normalized = normalizeCategoryName(newCustomName);
     if (!normalized) {
@@ -494,7 +522,7 @@ export default function AddExpenseScreen() {
         loading={(() => {
           const isRecurring = ['daily', 'weekly', 'monthly', 'yearly'].includes(frequency);
           const invalid = isRecurring && !!endDateYMD && endDateYMD < startDateYMD;
-          return saving || deleting || invalid;
+          return saving || deleting || invalid || data.people.length === 0;
         })()}
       />
 
@@ -542,6 +570,7 @@ export default function AddExpenseScreen() {
         </View>
 
         <OwnershipPicker />
+        <PersonPicker />
         <CategoryTagPicker />
         <FrequencyPicker />
 
@@ -581,18 +610,32 @@ export default function AddExpenseScreen() {
           </View>
         )}
 
-        <PersonPicker />
-
-        {category === 'personal' && data.people.length === 0 && (
+        {data.people.length === 0 && (
           <View style={themedStyles.card}>
             <View style={themedStyles.centerContent}>
               <Icon name="people-outline" size={48} style={{ color: currentColors.textSecondary, marginBottom: 12 }} />
               <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>
                 No People Added
               </Text>
-              <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
-                Add people in the People tab to assign personal expenses
+              <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 16 }]}>
+                You must add at least one person before creating expenses. All expenses must be assigned to someone.
               </Text>
+              <TouchableOpacity
+                onPress={() => router.push('/people')}
+                style={[
+                  themedStyles.badge,
+                  { 
+                    backgroundColor: currentColors.primary,
+                    paddingHorizontal: 20,
+                    paddingVertical: 12,
+                    borderRadius: 24,
+                  }
+                ]}
+              >
+                <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontWeight: '600' }]}>
+                  Add People
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -601,11 +644,11 @@ export default function AddExpenseScreen() {
           <Button
             text={saving ? 'Saving...' : deleting ? 'Deleting...' : (isEditMode ? 'Update Expense' : 'Add Expense')}
             onPress={handleSaveExpense}
-            disabled={saving || deleting}
+            disabled={saving || deleting || data.people.length === 0}
             style={[
               themedButtonStyles.primary,
               { backgroundColor: isEditMode ? '#22C55E' : currentColors.primary },
-              (saving || deleting) && { opacity: 0.7 }
+              (saving || deleting || data.people.length === 0) && { opacity: 0.7 }
             ]}
           />
           
