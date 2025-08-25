@@ -35,23 +35,28 @@ export const useBudgetData = () => {
   const isLoadingRef = useRef(false);
   const lastRefreshTimeRef = useRef<number>(0);
 
+  // Stable refresh function that doesn't depend on other state
   const refreshFromStorage = useCallback(async () => {
     console.log('useBudgetData: refreshFromStorage called');
-    const loadedApp = await loadAppData();
-    console.log('useBudgetData: loaded app data:', {
-      budgetsCount: loadedApp.budgets?.length || 0,
-      activeBudgetId: loadedApp.activeBudgetId,
-      budgetNames: loadedApp.budgets?.map(b => b.name) || []
-    });
-    setAppData(loadedApp);
-    const active = getActiveBudget(loadedApp);
-    console.log('useBudgetData: active budget:', {
-      id: active.id,
-      name: active.name,
-      peopleCount: active.people?.length || 0,
-      expensesCount: active.expenses?.length || 0
-    });
-    setData({ people: active.people, expenses: active.expenses, householdSettings: active.householdSettings });
+    try {
+      const loadedApp = await loadAppData();
+      console.log('useBudgetData: loaded app data:', {
+        budgetsCount: loadedApp.budgets?.length || 0,
+        activeBudgetId: loadedApp.activeBudgetId,
+        budgetNames: loadedApp.budgets?.map(b => b.name) || []
+      });
+      setAppData(loadedApp);
+      const active = getActiveBudget(loadedApp);
+      console.log('useBudgetData: active budget:', {
+        id: active.id,
+        name: active.name,
+        peopleCount: active.people?.length || 0,
+        expensesCount: active.expenses?.length || 0
+      });
+      setData({ people: active.people, expenses: active.expenses, householdSettings: active.householdSettings });
+    } catch (error) {
+      console.error('useBudgetData: Error in refreshFromStorage:', error);
+    }
   }, []);
 
   // Function to get the most current data - ALWAYS load from AsyncStorage for operations
@@ -218,17 +223,17 @@ export const useBudgetData = () => {
         } else {
           console.error('useBudgetData: Save failed, reverting state:', result.error);
           // Revert state by reloading from storage
-          await loadData();
+          await refreshFromStorage();
           return { success: false, error: result.error };
         }
       } catch (error) {
         console.error('useBudgetData: Error in atomic save operation:', error);
         // Revert state by reloading from storage
-        await loadData();
+        await refreshFromStorage();
         return { success: false, error: error as Error };
       }
     },
-    [appData, loadData]
+    [appData, refreshFromStorage]
   );
 
   // Budget management APIs
@@ -641,9 +646,10 @@ export const useBudgetData = () => {
       }
 
       console.log('useBudgetData: Executing refresh...');
-      await loadData();
+      await refreshFromStorage();
+      lastRefreshTimeRef.current = Date.now();
     },
-    [loadData, saving, loading]
+    [refreshFromStorage]
   );
 
   const clearAllData = useCallback(async (): Promise<{ success: boolean; error?: Error }> => {

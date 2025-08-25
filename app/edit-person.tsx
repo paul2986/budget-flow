@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { 
   calculatePersonIncome, 
   calculateMonthlyAmount, 
@@ -37,47 +37,44 @@ export default function EditPersonScreen() {
   const personId = params.personId;
   const origin = params.origin || 'people'; // Default to people if no origin specified
   
-  const { data, updatePerson, addIncome, removeIncome, updateIncome, removePerson, saving, refreshData } = useBudgetData();
+  const { data, updatePerson, addIncome, removeIncome, removePerson, saving, refreshData } = useBudgetData();
 
-  // Update person state whenever data changes
-  useEffect(() => {
-    console.log('EditPersonScreen: useEffect triggered');
-    console.log('EditPersonScreen: personId:', personId);
-    console.log('EditPersonScreen: data.people:', data.people);
-    
-    if (personId && data.people.length > 0) {
-      const foundPerson = data.people.find(p => p.id === personId);
-      console.log('EditPersonScreen: Found person:', foundPerson);
-      
-      if (foundPerson) {
-        console.log('EditPersonScreen: Setting person state to:', foundPerson);
-        setPerson(foundPerson);
-        setIsLoadingPerson(false);
-      } else {
-        console.log('EditPersonScreen: Person not found in data.people array');
-        console.log('EditPersonScreen: Available person IDs:', data.people.map(p => p.id));
-        setPerson(null);
-        setIsLoadingPerson(false);
-      }
-    } else if (personId && data.people.length === 0) {
-      console.log('EditPersonScreen: No people in data yet, keeping loading state');
-      setIsLoadingPerson(true);
-    } else {
-      console.log('EditPersonScreen: No personId provided');
-      setPerson(null);
-      setIsLoadingPerson(false);
-    }
-  }, [personId, data.people]);
-
-  // Force refresh data when component mounts and when screen becomes focused
+  // Refresh data when screen becomes focused and find the person
   useFocusEffect(
     useCallback(() => {
       console.log('EditPersonScreen: Screen focused, refreshing data...');
       setIsLoadingPerson(true);
-      refreshData(true).then(() => {
-        console.log('EditPersonScreen: Data refresh completed');
-      });
-    }, [refreshData])
+      
+      const loadPersonData = async () => {
+        try {
+          await refreshData(true);
+          
+          if (personId && data.people.length > 0) {
+            const foundPerson = data.people.find(p => p.id === personId);
+            console.log('EditPersonScreen: Found person:', foundPerson);
+            
+            if (foundPerson) {
+              console.log('EditPersonScreen: Setting person state to:', foundPerson);
+              setPerson(foundPerson);
+            } else {
+              console.log('EditPersonScreen: Person not found in data.people array');
+              console.log('EditPersonScreen: Available person IDs:', data.people.map(p => p.id));
+              setPerson(null);
+            }
+          } else {
+            console.log('EditPersonScreen: No personId provided or no people in data');
+            setPerson(null);
+          }
+        } catch (error) {
+          console.error('EditPersonScreen: Error loading person data:', error);
+          setPerson(null);
+        } finally {
+          setIsLoadingPerson(false);
+        }
+      };
+      
+      loadPersonData();
+    }, [personId, refreshData, data.people])
   );
 
   const navigateToOrigin = useCallback(() => {
@@ -183,6 +180,12 @@ export default function EditPersonScreen() {
         setNewIncome({ amount: '', label: '', frequency: 'monthly' });
         setShowAddIncome(false);
         console.log('EditPersonScreen: Income added successfully');
+        
+        // Update local person state to reflect the new income
+        setPerson(prev => prev ? {
+          ...prev,
+          income: [...prev.income, income]
+        } : null);
       } else {
         Alert.alert('Error', 'Failed to add income. Please try again.');
       }
@@ -217,6 +220,12 @@ export default function EditPersonScreen() {
               const result = await removeIncome(person.id, incomeId);
               if (result.success) {
                 console.log('EditPersonScreen: Income removed successfully');
+                
+                // Update local person state to reflect the removed income
+                setPerson(prev => prev ? {
+                  ...prev,
+                  income: prev.income.filter(i => i.id !== incomeId)
+                } : null);
               } else {
                 Alert.alert('Error', 'Failed to remove income. Please try again.');
               }
@@ -278,7 +287,7 @@ export default function EditPersonScreen() {
   );
 
   // Show loading state while we're waiting for data
-  if (isLoadingPerson || (personId && !person && data.people.length === 0)) {
+  if (isLoadingPerson) {
     return (
       <View style={themedStyles.container}>
         <StandardHeader

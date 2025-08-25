@@ -1,7 +1,7 @@
 
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { useTheme } from '../hooks/useTheme';
@@ -19,7 +19,7 @@ import Icon from '../components/Icon';
 import StandardHeader from '../components/StandardHeader';
 
 export default function PeopleScreen() {
-  const { data, addPerson, removePerson, addIncome, removeIncome, updateIncome, saving, refreshData } = useBudgetData();
+  const { data, addPerson, removePerson, addIncome, removeIncome, saving, refreshData } = useBudgetData();
   const { currentColors } = useTheme();
   const { themedStyles, themedButtonStyles } = useThemedStyles();
   const { formatCurrency } = useCurrency();
@@ -34,12 +34,6 @@ export default function PeopleScreen() {
     label: '',
     frequency: 'monthly' as const,
   });
-
-  // Force refresh data when component mounts
-  useEffect(() => {
-    console.log('PeopleScreen: Component mounted, refreshing data...');
-    refreshData();
-  }, [refreshData]);
 
   // Refresh data when screen becomes focused (e.g., after editing a person)
   useFocusEffect(
@@ -72,10 +66,7 @@ export default function PeopleScreen() {
       if (result.success) {
         setNewPersonName('');
         setShowAddPerson(false);
-        console.log('PeopleScreen: Person added successfully, staying on people screen');
-        
-        // Just refresh the data to show the new person, don't navigate away
-        await refreshData(true);
+        console.log('PeopleScreen: Person added successfully');
       } else {
         Alert.alert('Error', 'Failed to add person. Please try again.');
       }
@@ -83,7 +74,7 @@ export default function PeopleScreen() {
       console.error('PeopleScreen: Error adding person:', error);
       Alert.alert('Error', 'Failed to add person. Please try again.');
     }
-  }, [newPersonName, addPerson, refreshData]);
+  }, [newPersonName, addPerson]);
 
   const handleRemovePerson = useCallback((person: Person) => {
     console.log('PeopleScreen: Attempting to remove person:', person);
