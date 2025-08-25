@@ -543,24 +543,28 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
     <View style={themedStyles.container}>
       <StandardHeader title="Tools" showLeftIcon={false} showRightIcon={false} />
       <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0, paddingTop: 16 }]}>
-        <View style={themedStyles.section}>
-          <View
-            style={[
-              themedStyles.card,
-              {
-                backgroundColor: currentColors.primary + '12',
-                borderColor: currentColors.primary + '35',
-                borderWidth: 2,
-              },
-            ]}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-              <Icon name="calculator" size={22} style={{ color: currentColors.primary, marginRight: 8 }} />
-              <Text style={[themedStyles.text, { fontWeight: '800' }]}>Credit Card Payoff Calculator</Text>
-            </View>
-
-            {renderCalculatorCard()}
+        {/* Credit Card Calculator Section - matching dashboard style */}
+        <View style={{ marginBottom: 24 }}>
+          <View style={{ 
+            flexDirection: 'row', 
+            alignItems: 'center', 
+            marginBottom: 16,
+            minHeight: 32,
+          }}>
+            <Icon 
+              name="calculator" 
+              size={24} 
+              style={{ 
+                color: currentColors.primary, 
+                marginRight: 12,
+                marginTop: -2,
+              }} 
+            />
+            <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0 }]}>
+              Credit Card Payoff Calculator
+            </Text>
           </View>
+          {renderCalculatorCard()}
         </View>
 
         {renderResults()}
