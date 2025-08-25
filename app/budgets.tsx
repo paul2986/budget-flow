@@ -563,7 +563,7 @@ export default function BudgetsScreen() {
 
                     {!isActive && (
                       <Button
-                        text="Switch to This Budget"
+                        text="Activate"
                         onPress={() => handleSetActiveBudget(budget.id)}
                         disabled={saving}
                         style={{ 
