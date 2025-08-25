@@ -54,6 +54,7 @@ export default function BudgetsScreen() {
   const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
   const [editingBudgetName, setEditingBudgetName] = useState('');
   const [openBudgetId, setOpenBudgetId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [shareModalBudget, setShareModalBudget] = useState<Budget | null>(null);
   const [shareData, setShareData] = useState<{ url: string; code?: string; expiresAt?: string } | null>(null);
@@ -132,6 +133,7 @@ export default function BudgetsScreen() {
           onPress: async () => {
             try {
               setOpenBudgetId(null); // Close menu
+              setMenuPosition(null);
               const result = await deleteBudget(budget.id);
               if (result.success) {
                 showToast('Budget deleted successfully', 'success');
@@ -150,6 +152,7 @@ export default function BudgetsScreen() {
 
   const handleDuplicateBudget = useCallback((budget: Budget) => {
     setOpenBudgetId(null); // Close menu
+    setMenuPosition(null);
     setDuplicateBudgetId(budget.id);
     setDuplicateBudgetName(`${budget.name} (Copy)`);
     setShowDuplicateModal(true);
@@ -203,6 +206,7 @@ export default function BudgetsScreen() {
 
   const handleShareBudget = useCallback(async (budget: Budget) => {
     setOpenBudgetId(null); // Close menu
+    setMenuPosition(null);
     setShareModalBudget(budget);
     setShareModalVisible(true);
     setIsGeneratingShare(true);
@@ -253,6 +257,13 @@ export default function BudgetsScreen() {
       handleSetActiveBudget(budget.id);
     }
   }, [activeBudget?.id, handleSetActiveBudget]);
+
+  // Close menu when tapping outside
+  const closeMenu = useCallback(() => {
+    console.log('Closing menu');
+    setOpenBudgetId(null);
+    setMenuPosition(null);
+  }, []);
 
   const renderShareModalContent = () => {
     if (!shareModalBudget) return null;
@@ -342,23 +353,21 @@ export default function BudgetsScreen() {
     const handleMenuToggle = (event: any) => {
       event.stopPropagation(); // Prevent event bubbling to parent
       console.log('Menu toggle pressed for budget:', budget.name);
+      
       if (isMenuOpen) {
-        setOpenBudgetId(null);
+        closeMenu();
       } else {
-        setOpenBudgetId(budget.id);
+        // Measure the button position to position the menu correctly
+        event.target.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+          console.log('Menu button position:', { pageX, pageY, width, height });
+          setMenuPosition({ x: pageX, y: pageY + height + 4 });
+          setOpenBudgetId(budget.id);
+        });
       }
     };
 
-    const handleMenuItemPress = (action: () => void) => {
-      return (event: any) => {
-        event.stopPropagation(); // Prevent event bubbling
-        console.log('Menu item pressed');
-        action();
-      };
-    };
-
     return (
-      <View style={{ position: 'relative', zIndex: 10 }}>
+      <View style={{ zIndex: 10 }}>
         <TouchableOpacity
           onPress={handleMenuToggle}
           style={{
@@ -370,13 +379,43 @@ export default function BudgetsScreen() {
         >
           <Icon name="ellipsis-vertical" size={16} style={{ color: currentColors.text }} />
         </TouchableOpacity>
+      </View>
+    );
+  };
 
-        {isMenuOpen && (
+  // Render the dropdown menu as an overlay
+  const renderDropdownOverlay = () => {
+    if (!openBudgetId || !menuPosition) return null;
+
+    const budget = sortedBudgets.find(b => b.id === openBudgetId);
+    if (!budget) return null;
+
+    const isActive = budget.id === activeBudget?.id;
+
+    const handleMenuItemPress = (action: () => void) => {
+      console.log('Menu item pressed, executing action');
+      action();
+    };
+
+    return (
+      <Modal
+        visible={true}
+        transparent
+        animationType="none"
+        onRequestClose={closeMenu}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: 'transparent',
+          }}
+          onPress={closeMenu}
+        >
           <View
             style={{
               position: 'absolute',
-              top: 36,
-              right: 0,
+              top: menuPosition.y,
+              right: 20, // Fixed position from right edge
               backgroundColor: currentColors.backgroundAlt,
               borderRadius: 8,
               borderWidth: 1,
@@ -385,86 +424,100 @@ export default function BudgetsScreen() {
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.25,
               shadowRadius: 8,
-              elevation: 10,
-              zIndex: 1000,
+              elevation: 15,
+              zIndex: 9999,
               minWidth: 150,
             }}
           >
             {!isActive && (
-              <Pressable
-                style={({ pressed }) => ({
+              <TouchableOpacity
+                style={{
                   padding: 12,
                   borderBottomWidth: 1,
                   borderBottomColor: currentColors.border,
-                  backgroundColor: pressed ? currentColors.border + '20' : 'transparent',
+                }}
+                onPress={() => handleMenuItemPress(() => {
+                  console.log('Set as Active pressed');
+                  closeMenu();
+                  handleSetActiveBudget(budget.id);
                 })}
-                onPress={handleMenuItemPress(() => handleSetActiveBudget(budget.id))}
                 disabled={saving}
+                activeOpacity={0.7}
               >
                 <Text style={[themedStyles.text, { fontSize: 14 }]}>Set as Active</Text>
-              </Pressable>
+              </TouchableOpacity>
             )}
 
-            <Pressable
-              style={({ pressed }) => ({
+            <TouchableOpacity
+              style={{
                 padding: 12,
                 borderBottomWidth: 1,
                 borderBottomColor: currentColors.border,
-                backgroundColor: pressed ? currentColors.border + '20' : 'transparent',
-              })}
-              onPress={handleMenuItemPress(() => {
-                setOpenBudgetId(null);
+              }}
+              onPress={() => handleMenuItemPress(() => {
+                console.log('Rename pressed');
+                closeMenu();
                 setEditingBudgetId(budget.id);
                 setEditingBudgetName(budget.name);
               })}
               disabled={saving}
+              activeOpacity={0.7}
             >
               <Text style={[themedStyles.text, { fontSize: 14 }]}>Rename</Text>
-            </Pressable>
+            </TouchableOpacity>
 
-            <Pressable
-              style={({ pressed }) => ({
+            <TouchableOpacity
+              style={{
                 padding: 12,
                 borderBottomWidth: 1,
                 borderBottomColor: currentColors.border,
-                backgroundColor: pressed ? currentColors.border + '20' : 'transparent',
+              }}
+              onPress={() => handleMenuItemPress(() => {
+                console.log('Duplicate pressed');
+                handleDuplicateBudget(budget);
               })}
-              onPress={handleMenuItemPress(() => handleDuplicateBudget(budget))}
               disabled={saving}
+              activeOpacity={0.7}
             >
               <Text style={[themedStyles.text, { fontSize: 14 }]}>Duplicate</Text>
-            </Pressable>
+            </TouchableOpacity>
 
-            <Pressable
-              style={({ pressed }) => ({
+            <TouchableOpacity
+              style={{
                 padding: 12,
                 borderBottomWidth: 1,
                 borderBottomColor: currentColors.border,
-                backgroundColor: pressed ? currentColors.border + '20' : 'transparent',
+              }}
+              onPress={() => handleMenuItemPress(() => {
+                console.log('Share pressed');
+                handleShareBudget(budget);
               })}
-              onPress={handleMenuItemPress(() => handleShareBudget(budget))}
               disabled={saving}
+              activeOpacity={0.7}
             >
               <Text style={[themedStyles.text, { fontSize: 14 }]}>Share</Text>
-            </Pressable>
+            </TouchableOpacity>
 
             {sortedBudgets.length > 1 && (
-              <Pressable
-                style={({ pressed }) => ({
+              <TouchableOpacity
+                style={{
                   padding: 12,
-                  backgroundColor: pressed ? currentColors.border + '20' : 'transparent',
+                }}
+                onPress={() => handleMenuItemPress(() => {
+                  console.log('Delete pressed');
+                  handleDeleteBudget(budget);
                 })}
-                onPress={handleMenuItemPress(() => handleDeleteBudget(budget))}
                 disabled={saving}
+                activeOpacity={0.7}
               >
                 <Text style={[themedStyles.text, { fontSize: 14, color: currentColors.error }]}>
                   Delete
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             )}
           </View>
-        )}
-      </View>
+        </Pressable>
+      </Modal>
     );
   };
 
@@ -664,23 +717,8 @@ export default function BudgetsScreen() {
         )}
       </ScrollView>
 
-      {/* Tap-away modal for closing menus */}
-      {openBudgetId && (
-        <Modal
-          visible={true}
-          transparent
-          animationType="none"
-          onRequestClose={() => setOpenBudgetId(null)}
-        >
-          <Pressable
-            style={{
-              flex: 1,
-              backgroundColor: 'transparent',
-            }}
-            onPress={() => setOpenBudgetId(null)}
-          />
-        </Modal>
-      )}
+      {/* Dropdown Menu Overlay */}
+      {renderDropdownOverlay()}
 
       {/* Add Budget Options Modal */}
       <Modal
