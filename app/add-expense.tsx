@@ -77,8 +77,14 @@ export default function AddExpenseScreen() {
       const list = await getCustomExpenseCategories();
       console.log('AddExpenseScreen: Reloaded custom categories after data change:', list);
       setCustomCategories(list);
+      
+      // If current categoryTag is not in the updated list and not a default, reset to 'Misc'
+      if (categoryTag && !DEFAULT_CATEGORIES.includes(categoryTag) && !list.includes(categoryTag)) {
+        console.log('AddExpenseScreen: Current category tag not found in updated list, resetting to Misc');
+        setCategoryTag('Misc');
+      }
     })();
-  }, [data.people.length, data.expenses.length]); // Reload when core data changes
+  }, [data.people.length, data.expenses.length, categoryTag]); // Reload when core data changes
 
   // Load expense data for editing
   useEffect(() => {
@@ -377,6 +383,8 @@ export default function AddExpenseScreen() {
       };
 
       console.log('AddExpenseScreen: Adding new person from expense screen:', person);
+      console.log('AddExpenseScreen: Current form state before person creation:', { description, amount, category, categoryTag });
+      
       const result = await addPerson(person);
       console.log('AddExpenseScreen: Person added result:', result);
       
@@ -385,7 +393,22 @@ export default function AddExpenseScreen() {
         setShowAddPersonModal(false);
         // Auto-select the newly created person
         setPersonId(person.id);
-        console.log('AddExpenseScreen: Person added successfully and auto-selected');
+        
+        // If we're adding a person and the category is household, switch to personal
+        // since the user explicitly wanted to add a person for assignment
+        if (category === 'household') {
+          setCategory('personal');
+          console.log('AddExpenseScreen: Switched to personal category since user added a person');
+        }
+        
+        // Form state (description, amount, categoryTag, etc.) is preserved - no reset
+        console.log('AddExpenseScreen: Person added successfully and auto-selected, form state preserved:', { 
+          description, 
+          amount, 
+          category: category === 'household' ? 'personal' : category, 
+          categoryTag,
+          selectedPersonId: person.id 
+        });
       } else {
         Alert.alert('Error', 'Failed to add person. Please try again.');
       }
@@ -395,7 +418,7 @@ export default function AddExpenseScreen() {
     } finally {
       setAddingPerson(false);
     }
-  }, [newPersonName, addPerson]);
+  }, [newPersonName, addPerson, description, amount, category, categoryTag]);
 
   const PersonPicker = useCallback(() => {
     // Don't show person picker for household expenses
@@ -418,7 +441,10 @@ export default function AddExpenseScreen() {
                 You need to add people to your budget before creating personal expenses.
               </Text>
               <TouchableOpacity
-                onPress={() => setShowAddPersonModal(true)}
+                onPress={() => {
+                  console.log('AddExpenseScreen: Opening add person modal, preserving form state:', { description, amount, category, categoryTag });
+                  setShowAddPersonModal(true);
+                }}
                 style={[
                   themedStyles.badge,
                   { 
@@ -540,6 +566,7 @@ export default function AddExpenseScreen() {
               }
             ]}
             onPress={() => {
+              console.log('AddExpenseScreen: Opening custom category modal, preserving form state:', { description, amount });
               setCustomError(null);
               setNewCustomName('');
               setShowCustomModal(true);
@@ -614,18 +641,24 @@ export default function AddExpenseScreen() {
       return;
     }
     try {
+      console.log('AddExpenseScreen: Creating custom category:', normalized);
+      console.log('AddExpenseScreen: Current form state before category creation:', { description, amount });
+      
       const next = [...customCategories, normalized];
       await saveCustomExpenseCategories(next);
       setCustomCategories(next);
       setCategoryTag(normalized); // Automatically select the newly created category
       setShowCustomModal(false);
-      // Form state is preserved - description and amount are not reset
-      console.log('AddExpenseScreen: Custom category created and selected, form state preserved');
+      setNewCustomName(''); // Clear the modal input
+      setCustomError(null); // Clear any errors
+      
+      // Form state (description, amount, etc.) is preserved - no reset
+      console.log('AddExpenseScreen: Custom category created and selected, form state preserved:', { description, amount });
     } catch (e) {
-      console.log('Error saving custom category', e);
+      console.error('AddExpenseScreen: Error saving custom category', e);
       setCustomError('Failed to save category. Try again.');
     }
-  }, [newCustomName, customCategories]);
+  }, [newCustomName, customCategories, description, amount]);
 
   // Calculate loading state - only show spinner when actually saving/deleting or when there's a date validation error
   const isLoading = (() => {
@@ -758,7 +791,12 @@ export default function AddExpenseScreen() {
       )}
 
       {/* Custom Category Modal */}
-      <Modal visible={showCustomModal} animationType="slide" transparent onRequestClose={() => setShowCustomModal(false)}>
+      <Modal visible={showCustomModal} animationType="slide" transparent onRequestClose={() => {
+        console.log('AddExpenseScreen: Custom category modal closed via back button, form state preserved:', { description, amount });
+        setShowCustomModal(false);
+        setNewCustomName('');
+        setCustomError(null);
+      }}>
         <View style={{
           flex: 1,
           backgroundColor: '#00000055',
@@ -784,7 +822,12 @@ export default function AddExpenseScreen() {
             ) : null}
             <View style={[themedStyles.row]}>
               <TouchableOpacity
-                onPress={() => setShowCustomModal(false)}
+                onPress={() => {
+                  console.log('AddExpenseScreen: Cancelling custom category modal, form state preserved:', { description, amount });
+                  setShowCustomModal(false);
+                  setNewCustomName('');
+                  setCustomError(null);
+                }}
                 style={[themedStyles.badge, { backgroundColor: currentColors.border, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 }]}
               >
                 <Text style={[themedStyles.badgeText, { color: currentColors.text }]}>Cancel</Text>
@@ -801,7 +844,11 @@ export default function AddExpenseScreen() {
       </Modal>
 
       {/* Add Person Modal */}
-      <Modal visible={showAddPersonModal} animationType="slide" transparent onRequestClose={() => setShowAddPersonModal(false)}>
+      <Modal visible={showAddPersonModal} animationType="slide" transparent onRequestClose={() => {
+        console.log('AddExpenseScreen: Add person modal closed via back button, form state preserved:', { description, amount, category, categoryTag });
+        setShowAddPersonModal(false);
+        setNewPersonName('');
+      }}>
         <View style={{
           flex: 1,
           backgroundColor: '#00000055',
@@ -826,6 +873,7 @@ export default function AddExpenseScreen() {
             <View style={[themedStyles.row, { marginTop: 16 }]}>
               <TouchableOpacity
                 onPress={() => {
+                  console.log('AddExpenseScreen: Cancelling add person modal, form state preserved:', { description, amount, category, categoryTag });
                   setShowAddPersonModal(false);
                   setNewPersonName('');
                 }}

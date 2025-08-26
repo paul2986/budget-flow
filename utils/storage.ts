@@ -649,11 +649,13 @@ export const clearAllAppData = async (): Promise<{ success: boolean; error?: Err
       AsyncStorage.removeItem(STORAGE_KEYS.EXPENSES_FILTERS),
       // Also clear any legacy data that might exist
       AsyncStorage.removeItem(STORAGE_KEYS.BUDGET_DATA),
+      // Clear the main app data
+      AsyncStorage.removeItem(STORAGE_KEYS.APP_DATA_V2),
     ]);
     
-    console.log('storage: Cleared custom categories, filters, and legacy data');
+    console.log('storage: Cleared custom categories, filters, legacy data, and main app data');
     
-    // Save the fresh app data
+    // Save the fresh app data (this will create a new empty state)
     const result = await saveAppData(freshAppData);
     
     if (result.success) {

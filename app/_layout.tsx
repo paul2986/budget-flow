@@ -2,6 +2,7 @@
 import { useEffect, useCallback, useMemo } from 'react';
 import { useTheme, ThemeProvider } from '../hooks/useTheme';
 import { useToast, ToastProvider } from '../hooks/useToast';
+import { useBudgetData } from '../hooks/useBudgetData';
 import { StatusBar } from 'expo-status-bar';
 import { Tabs, router, usePathname } from 'expo-router';
 import { setupErrorLogging } from '../utils/errorLogger';
@@ -14,9 +15,15 @@ import * as Linking from 'expo-linking';
 
 const STORAGE_KEY = 'app_theme_mode';
 
+// Wrapper component to provide budget data context to CustomTabBar
+function CustomTabBarWrapper() {
+  return <CustomTabBar />;
+}
+
 function CustomTabBar() {
   const { currentColors, isDarkMode, themeMode } = useTheme();
   const { themedStyles } = useThemedStyles();
+  const { appData, activeBudget } = useBudgetData();
   const pathname = usePathname();
 
   const navigateToTab = useCallback((route: string) => {
@@ -32,9 +39,32 @@ function CustomTabBar() {
     { route: '/settings', icon: 'settings-outline', activeIcon: 'settings' },
   ], []);
 
+  // Hide tab bar for first-time users (no budgets exist or no active budget)
+  const shouldHideTabBar = useMemo(() => {
+    const hasNoBudgets = !appData || !appData.budgets || appData.budgets.length === 0;
+    const hasNoActiveBudget = !activeBudget;
+    const isFirstTimeUser = hasNoBudgets || hasNoActiveBudget;
+    
+    console.log('CustomTabBar: Tab bar visibility check:', {
+      hasNoBudgets,
+      hasNoActiveBudget,
+      isFirstTimeUser,
+      budgetsCount: appData?.budgets?.length || 0,
+      activeBudgetId: activeBudget?.id || 'none'
+    });
+    
+    return isFirstTimeUser;
+  }, [appData, activeBudget]);
+
   useEffect(() => {
     console.log('CustomTabBar: Theme updated', { isDarkMode, themeMode, currentColors });
   }, [isDarkMode, themeMode, currentColors]);
+
+  // Don't render tab bar for first-time users
+  if (shouldHideTabBar) {
+    console.log('CustomTabBar: Hiding tab bar for first-time user');
+    return null;
+  }
 
   return (
     <View
@@ -160,7 +190,7 @@ function RootLayoutContent() {
             headerShown: false,
             tabBarStyle: { display: 'none' },
           }}
-          tabBar={() => <CustomTabBar />}
+          tabBar={() => <CustomTabBarWrapper />}
         >
           <Tabs.Screen name="index" />
           <Tabs.Screen name="people" />
