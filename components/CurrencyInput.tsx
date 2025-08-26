@@ -116,7 +116,9 @@ export default function CurrencyInput({
         <View style={{
           position: 'absolute',
           left: 16,
-          top: 16, // Match the input's padding top
+          top: 0,
+          bottom: 0,
+          justifyContent: 'center', // Center vertically within the input height
           zIndex: 1,
           pointerEvents: 'none',
         }}>
@@ -140,6 +142,8 @@ export default function CurrencyInput({
             {
               paddingLeft: 40, // Always make room for currency symbol
               lineHeight: 24, // Ensure consistent line height
+              textAlignVertical: 'center', // Center text vertically on Android
+              includeFontPadding: false, // Remove extra font padding on Android
             },
             error ? { borderColor: currentColors.error } : null,
             inputStyle,
