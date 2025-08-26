@@ -901,6 +901,21 @@ export default function AddExpenseScreen() {
     }
   }, [newCustomName, customCategories, tempCategories, description, amount, category, frequency, personId]);
 
+  // Format date for display
+  const formatDateForDisplay = useCallback((dateString: string) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString + 'T00:00:00');
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+      });
+    } catch (error) {
+      return dateString;
+    }
+  }, []);
+
   // Calculate loading state - only show spinner when actually saving/deleting or when there's a date validation error
   const isLoading = (() => {
     const isRecurring = ['daily', 'weekly', 'monthly', 'yearly'].includes(frequency);
@@ -958,34 +973,66 @@ export default function AddExpenseScreen() {
         {(['daily', 'weekly', 'monthly', 'yearly'] as const).includes(frequency) && (
           <View style={themedStyles.section}>
             <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>End date (optional)</Text>
-            <View style={[themedStyles.rowStart]}>
-              <TouchableOpacity
-                onPress={() => setShowEndPicker(true)}
-                disabled={saving || deleting || isSaving}
-                style={[
-                  themedStyles.badge,
-                  { backgroundColor: currentColors.border, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 }
-                ]}
-              >
-                <Text style={[themedStyles.badgeText, { color: currentColors.text }]}>
-                  {endDateYMD ? endDateYMD : 'Pick date'}
-                </Text>
-              </TouchableOpacity>
+            
+            {/* End date input field */}
+            <TouchableOpacity
+              onPress={() => setShowEndPicker(true)}
+              disabled={saving || deleting || isSaving}
+              style={[
+                themedStyles.input,
+                {
+                  justifyContent: 'center',
+                  paddingVertical: 16,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: currentColors.background,
+                  borderColor: currentColors.border,
+                  borderWidth: 1,
+                }
+              ]}
+            >
+              <Text style={[
+                themedStyles.text,
+                { 
+                  color: endDateYMD ? currentColors.text : currentColors.textSecondary,
+                  flex: 1,
+                }
+              ]}>
+                {endDateYMD ? formatDateForDisplay(endDateYMD) : 'Select end date'}
+              </Text>
+              
+              {/* Clear button when date is selected */}
               {endDateYMD ? (
                 <TouchableOpacity
-                  onPress={() => setEndDateYMD('')}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    setEndDateYMD('');
+                  }}
                   disabled={saving || deleting || isSaving}
-                  style={[
-                    themedStyles.badge,
-                    { backgroundColor: currentColors.error + '20', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, marginLeft: 8 }
-                  ]}
+                  style={{
+                    padding: 4,
+                    marginLeft: 8,
+                  }}
                 >
-                  <Text style={[themedStyles.badgeText, { color: currentColors.error }]}>Clear</Text>
+                  <Icon 
+                    name="close-circle" 
+                    size={20} 
+                    style={{ color: currentColors.textSecondary }} 
+                  />
                 </TouchableOpacity>
-              ) : null}
-            </View>
+              ) : (
+                <Icon 
+                  name="calendar-outline" 
+                  size={20} 
+                  style={{ color: currentColors.textSecondary, marginLeft: 8 }} 
+                />
+              )}
+            </TouchableOpacity>
+            
             {endDateYMD && endDateYMD < startDateYMD ? (
-              <Text style={[themedStyles.textSecondary, { color: currentColors.error, marginTop: 6 }]}>End date cannot be earlier than start date</Text>
+              <Text style={[themedStyles.textSecondary, { color: currentColors.error, marginTop: 6 }]}>
+                End date cannot be earlier than start date
+              </Text>
             ) : null}
             
             {/* Inline date picker when showEndPicker is true */}
