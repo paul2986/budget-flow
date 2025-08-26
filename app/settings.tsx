@@ -209,20 +209,6 @@ export default function SettingsScreen() {
               flexDirection: 'row',
               alignItems: 'center',
               paddingVertical: 8,
-              borderBottomWidth: 1,
-              borderBottomColor: currentColors.border,
-            }}
-            onPress={() => router.push('/import-link')}
-          >
-            <Icon name="download-outline" size={20} style={{ color: currentColors.text, marginRight: 12 }} />
-            <Text style={themedStyles.text}>Import Budget</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingVertical: 8,
             }}
             onPress={handleClearAllData}
           >
