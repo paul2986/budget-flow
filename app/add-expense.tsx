@@ -239,12 +239,12 @@ export default function AddExpenseScreen() {
       return;
     }
 
-    // Check if no people exist at all (including temp people)
+    // Check if no people exist at all (including temp people) for personal expenses only
     const allPeople = getAllPeople();
-    if (allPeople.length === 0) {
+    if (category === 'personal' && allPeople.length === 0) {
       Alert.alert(
         'No People Added', 
-        'You must add at least one person before creating expenses. All expenses must be assigned to someone.',
+        'You must add at least one person before creating personal expenses.',
         [
           { text: 'Cancel', style: 'cancel' },
           { 
@@ -261,19 +261,16 @@ export default function AddExpenseScreen() {
     // Determine the final personId to use
     let finalPersonId = personId;
     
-    // Auto-assign household expenses to first person if not already assigned
-    if (category === 'household' && !finalPersonId && allPeople.length > 0) {
-      finalPersonId = allPeople[0].id;
-    }
-    
-    // Validate that we have a person assigned
-    if (!finalPersonId) {
-      if (category === 'personal') {
+    // For household expenses, don't require a person to be assigned
+    if (category === 'household') {
+      // If no person is selected for household expense, that's fine - leave it empty
+      finalPersonId = personId || '';
+    } else {
+      // For personal expenses, require a person to be assigned
+      if (!finalPersonId) {
         Alert.alert('Error', 'Please select a person to assign this personal expense to');
-      } else {
-        Alert.alert('Error', 'Please select a person to assign this expense to');
+        return;
       }
-      return;
     }
 
     const normalizedTag = normalizeCategoryName(categoryTag || 'Misc');
@@ -301,25 +298,27 @@ export default function AddExpenseScreen() {
         selectedCategory: normalizedTag
       });
 
-      // Step 1: Create any new people first
+      // Step 1: Create any new people first (only if we have a person to create)
       let actualPersonId = finalPersonId;
-      for (const tempPerson of tempPeople) {
-        if (tempPerson.id === finalPersonId) {
-          console.log('AddExpenseScreen: Creating temp person:', tempPerson);
-          const newPerson: Person = {
-            id: `person_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            name: tempPerson.name,
-            income: [],
-          };
-          
-          const result = await addPerson(newPerson);
-          if (!result.success) {
-            throw new Error(`Failed to create person: ${result.error?.message || 'Unknown error'}`);
+      if (finalPersonId) {
+        for (const tempPerson of tempPeople) {
+          if (tempPerson.id === finalPersonId) {
+            console.log('AddExpenseScreen: Creating temp person:', tempPerson);
+            const newPerson: Person = {
+              id: `person_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              name: tempPerson.name,
+              income: [],
+            };
+            
+            const result = await addPerson(newPerson);
+            if (!result.success) {
+              throw new Error(`Failed to create person: ${result.error?.message || 'Unknown error'}`);
+            }
+            
+            actualPersonId = newPerson.id;
+            console.log('AddExpenseScreen: Created person successfully:', newPerson.id);
+            break;
           }
-          
-          actualPersonId = newPerson.id;
-          console.log('AddExpenseScreen: Created person successfully:', newPerson.id);
-          break;
         }
       }
 
@@ -351,7 +350,7 @@ export default function AddExpenseScreen() {
         amount: numAmount,
         category,
         frequency,
-        personId: actualPersonId, // Use the actual person ID (either existing or newly created)
+        personId: actualPersonId, // Use the actual person ID (either existing, newly created, or empty for household)
         date: isEditMode ? expenseToEdit!.date : new Date(startDateYMD + 'T00:00:00Z').toISOString(),
         notes: '', // Always include notes as empty string
         categoryTag: normalizedTag,
@@ -461,13 +460,8 @@ export default function AddExpenseScreen() {
           ]}
           onPress={() => {
             setCategory('household');
-            // For household expenses, assign to first person for tracking but don't show picker
-            const allPeople = getAllPeople();
-            if (allPeople.length > 0) {
-              setPersonId(allPeople[0].id);
-            } else {
-              setPersonId(''); // Clear personId if no people exist
-            }
+            // For household expenses, clear person assignment since it's not required
+            setPersonId('');
           }}
           disabled={saving || deleting}
         >
@@ -514,7 +508,7 @@ export default function AddExpenseScreen() {
         </TouchableOpacity>
       </View>
     </View>
-  ), [category, currentColors, saving, deleting, themedStyles, getAllPeople]);
+  ), [category, currentColors, saving, deleting, themedStyles]);
 
   const handleAddPersonFromExpense = useCallback(async () => {
     if (!newPersonName.trim()) {
@@ -896,7 +890,7 @@ export default function AddExpenseScreen() {
       <ScrollView 
         ref={scrollViewRef}
         style={themedStyles.content} 
-        contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16, paddingTop: 16 }]}
+        contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0, paddingTop: 16 }]}
       >
         <View style={themedStyles.section}>
           <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Description</Text>

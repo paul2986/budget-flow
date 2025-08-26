@@ -228,7 +228,7 @@ export default function HomeScreen() {
           contentContainerStyle={[
             themedStyles.scrollContent,
             {
-              paddingHorizontal: 16, // Reduced from 24 to match other pages
+              paddingHorizontal: 0, // Reduced from 16 to 0
               paddingTop: showBudgetNaming && appData && appData.budgets && appData.budgets.length > 0 ? 20 : 20, // Reduced top padding for first-time users
               paddingBottom: 120, // Ensure bottom content is visible above nav bar
               justifyContent: 'flex-start',
@@ -349,7 +349,7 @@ export default function HomeScreen() {
           contentContainerStyle={[
             themedStyles.scrollContent,
             {
-              paddingHorizontal: 16, // Reduced from 24 to match other pages
+              paddingHorizontal: 0, // Reduced from 16 to 0
               paddingTop: 20,
               paddingBottom: 120, // Ensure bottom content is visible above nav bar
               flexGrow: 1,
@@ -642,7 +642,7 @@ export default function HomeScreen() {
           contentContainerStyle={[
             themedStyles.scrollContent,
             {
-              paddingHorizontal: 16, // Reduced from 24 to match other pages
+              paddingHorizontal: 0, // Reduced from 16 to 0
               paddingTop: 20, // Reduced from 40 to bring content to top
               paddingBottom: 120, // Ensure bottom content is visible above nav bar
               justifyContent: 'flex-start', // Changed from center to flex-start to align to top
@@ -751,7 +751,7 @@ export default function HomeScreen() {
           contentContainerStyle={[
             themedStyles.scrollContent,
             {
-              paddingHorizontal: 16, // Reduced from 24 to match other pages
+              paddingHorizontal: 16, // Keep some padding for partial setup
               paddingTop: 32,
               paddingBottom: 120, // Ensure bottom content is visible above nav bar
             }

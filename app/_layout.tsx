@@ -96,7 +96,7 @@ function CustomTabBar() {
       >
         {tabs.map((tab) => {
           const isActive = pathname === tab.route;
-          const iconColor = isActive ? currentColors.primary : currentColors.textSecondary;
+          const iconColor = isActive ? currentColors.primary : currentColors.text; // Changed from textSecondary to text for better contrast
 
           return (
             <TouchableOpacity
@@ -183,13 +183,13 @@ function RootLayoutContent() {
   }, []);
 
   return (
-    // Outer wrapper paints the top safe area the same color as headers
-    <View style={{ flex: 1, backgroundColor: currentColors.backgroundAlt }}>
-      {/* Status bar matches header color */}
-      <StatusBar style={isDarkMode ? 'light' : 'dark'} backgroundColor={currentColors.backgroundAlt} />
+    // Outer wrapper paints the top safe area the same color as the page background for welcome page
+    <View style={{ flex: 1, backgroundColor: currentColors.background }}>
+      {/* Status bar matches page background color */}
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} backgroundColor={currentColors.background} />
 
-      {/* Explicit top safe area spacer with header color */}
-      <View style={{ height: insets.top, backgroundColor: currentColors.backgroundAlt }} />
+      {/* Explicit top safe area spacer with page background color */}
+      <View style={{ height: insets.top, backgroundColor: currentColors.background }} />
 
       {/* Content area uses the page background color; no bottom safe area padding */}
       <View style={{ flex: 1, backgroundColor: currentColors.background }}>
