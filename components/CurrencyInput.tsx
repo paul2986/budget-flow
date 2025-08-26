@@ -55,11 +55,11 @@ export default function CurrencyInput({
         setDisplayValue(numericValue.toString());
       }
     } else {
-      // When not focused, show formatted number without currency symbol (since we have overlay)
+      // When not focused, show formatted number
       if (numericValue === null || numericValue === 0) {
         setDisplayValue('');
       } else {
-        // Format number with commas and decimals but without currency symbol
+        // Format number with commas and decimals
         setDisplayValue(numericValue.toLocaleString('en-US', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
@@ -84,7 +84,7 @@ export default function CurrencyInput({
     if (numericValue !== null && numericValue > 0) {
       // Update the parent with the numeric string value
       onChangeText(numericValue.toString());
-      // Format number with commas and decimals but without currency symbol (since we have overlay)
+      // Format number with commas and decimals
       setDisplayValue(numericValue.toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
@@ -111,53 +111,30 @@ export default function CurrencyInput({
         </Text>
       )}
       
-      <View style={{ position: 'relative' }}>
-        <TextInput
-          ref={inputRef}
-          style={[
-            themedStyles.input,
-            {
-              paddingLeft: 40, // Always make room for currency symbol
-              fontSize: 16,
-              fontWeight: '500',
-              lineHeight: 20,
-              textAlignVertical: 'center',
-              includeFontPadding: false,
-            },
-            error ? { borderColor: currentColors.error } : null,
-            inputStyle,
-          ]}
-          value={displayValue}
-          onChangeText={handleChangeText}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          placeholder={placeholder}
-          placeholderTextColor={currentColors.textSecondary}
-          keyboardType="numeric"
-          editable={editable}
-          {...props}
-        />
-        
-        {/* Currency symbol overlay - positioned to align perfectly with input text */}
-        <View style={{
-          position: 'absolute',
-          left: 16,
-          top: 16, // Match the input's padding
-          pointerEvents: 'none',
-        }}>
-          <Text style={[
-            {
-              color: displayValue === '' ? currentColors.textSecondary : currentColors.text,
-              fontSize: 16, // Match input fontSize exactly
-              fontWeight: '500', // Match input fontWeight exactly
-              lineHeight: 20, // Match input lineHeight exactly
-              includeFontPadding: false, // Match input includeFontPadding
-            }
-          ]}>
-            {currency.symbol}
-          </Text>
-        </View>
-      </View>
+      <TextInput
+        ref={inputRef}
+        style={[
+          themedStyles.input,
+          {
+            fontSize: 16,
+            fontWeight: '500',
+            lineHeight: 20,
+            textAlignVertical: 'center',
+            includeFontPadding: false,
+          },
+          error ? { borderColor: currentColors.error } : null,
+          inputStyle,
+        ]}
+        value={displayValue}
+        onChangeText={handleChangeText}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        placeholderTextColor={currentColors.textSecondary}
+        keyboardType="numeric"
+        editable={editable}
+        {...props}
+      />
       
       {error && (
         <Text style={[
