@@ -1,16 +1,17 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { useCurrency } from '../hooks/useCurrency';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { calculateMonthlyAmount } from '../utils/calculations';
 import Icon from './Icon';
-import { Expense, DEFAULT_CATEGORIES } from '../types/budget';
+import { Expense, DEFAULT_CATEGORIES, Person } from '../types/budget';
 import { router } from 'expo-router';
 
 interface ExpenseBreakdownSectionProps {
   expenses: Expense[];
+  people?: Person[]; // Add people prop to enable person switching
 }
 
 interface CategoryBreakdown {
@@ -28,15 +29,20 @@ interface TypeBreakdown {
   categories: CategoryBreakdown[];
 }
 
-export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSectionProps) {
+export default function ExpenseBreakdownSection({ expenses, people = [] }: ExpenseBreakdownSectionProps) {
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
   const { themedStyles } = useThemedStyles();
+  
+  // State for personal expenses person filter
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
 
   console.log('ExpenseBreakdownSection: Component rendered with expenses:', {
     expensesLength: expenses?.length || 0,
     expensesArray: Array.isArray(expenses),
-    firstExpense: expenses?.[0]
+    firstExpense: expenses?.[0],
+    peopleLength: people?.length || 0,
+    selectedPersonId
   });
 
   // Calculate breakdown data
@@ -44,7 +50,8 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
     console.log('ExpenseBreakdownSection: Processing expenses:', {
       expensesLength: expenses?.length || 0,
       expensesArray: Array.isArray(expenses),
-      firstExpense: expenses?.[0]
+      firstExpense: expenses?.[0],
+      selectedPersonId
     });
 
     if (!expenses || !Array.isArray(expenses) || expenses.length === 0) {
@@ -64,7 +71,8 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
         category: e.category,
         categoryTag: e.categoryTag,
         amount: e.amount,
-        frequency: e.frequency
+        frequency: e.frequency,
+        personId: e.personId
       }))
     });
 
@@ -80,15 +88,21 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
     }
 
     const groupByType = (type: 'household' | 'personal'): TypeBreakdown | null => {
-      const typeExpenses = activeExpenses.filter(expense => expense.category === type);
+      let typeExpenses = activeExpenses.filter(expense => expense.category === type);
       
-      console.log(`ExpenseBreakdownSection: ${type} expenses:`, {
+      // If we're looking at personal expenses and a specific person is selected, filter by that person
+      if (type === 'personal' && selectedPersonId) {
+        typeExpenses = typeExpenses.filter(expense => expense.personId === selectedPersonId);
+      }
+      
+      console.log(`ExpenseBreakdownSection: ${type} expenses (selectedPersonId: ${selectedPersonId}):`, {
         count: typeExpenses.length,
         sampleExpenses: typeExpenses.slice(0, 3).map(e => ({
           id: e.id,
           category: e.category,
           categoryTag: e.categoryTag,
-          amount: e.amount
+          amount: e.amount,
+          personId: e.personId
         }))
       });
 
@@ -151,7 +165,8 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
       hasHousehold: !!household,
       hasPersonal: !!personal,
       householdAmount: household?.amount || 0,
-      personalAmount: personal?.amount || 0
+      personalAmount: personal?.amount || 0,
+      selectedPersonId
     });
 
     return {
@@ -159,24 +174,114 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
       personal,
       totalAmount,
     };
-  }, [expenses]);
+  }, [expenses, selectedPersonId]);
 
   // Navigation handler for category taps
   const handleCategoryPress = (expenseType: 'household' | 'personal', categoryName: string) => {
     console.log('ExpenseBreakdownSection: Navigating to expenses with filters:', {
       expenseType,
-      categoryName
+      categoryName,
+      selectedPersonId
     });
     
     // Navigate to expenses page with pre-applied filters
+    const params: any = {
+      filter: expenseType,
+      category: categoryName,
+      fromDashboard: 'true'
+    };
+    
+    // If personal expenses and a specific person is selected, add person filter
+    if (expenseType === 'personal' && selectedPersonId) {
+      params.personId = selectedPersonId;
+    }
+    
     router.push({
       pathname: '/expenses',
-      params: {
-        filter: expenseType,
-        category: categoryName,
-        fromDashboard: 'true'
-      }
+      params
     });
+  };
+
+  // Get people who have personal expenses
+  const peopleWithPersonalExpenses = useMemo(() => {
+    if (!people || !expenses) return [];
+    
+    const personalExpenses = expenses.filter(e => e.category === 'personal' && e.personId);
+    const peopleIds = new Set(personalExpenses.map(e => e.personId));
+    
+    return people.filter(person => peopleIds.has(person.id));
+  }, [people, expenses]);
+
+  // Person switcher component
+  const PersonSwitcher = () => {
+    if (!people || people.length === 0 || peopleWithPersonalExpenses.length === 0) {
+      return null;
+    }
+
+    return (
+      <View style={{
+        flexDirection: 'row',
+        backgroundColor: currentColors.backgroundAlt,
+        borderRadius: 12,
+        padding: 4,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: currentColors.border,
+      }}>
+        {/* All People Option */}
+        <TouchableOpacity
+          onPress={() => setSelectedPersonId(null)}
+          style={{
+            flex: 1,
+            paddingVertical: 12,
+            paddingHorizontal: 16,
+            borderRadius: 8,
+            backgroundColor: selectedPersonId === null ? currentColors.personal : 'transparent',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={[
+            themedStyles.text,
+            {
+              fontSize: 14,
+              fontWeight: '600',
+              color: selectedPersonId === null ? '#fff' : currentColors.text,
+            }
+          ]}>
+            All People
+          </Text>
+        </TouchableOpacity>
+
+        {/* Individual People Options */}
+        {peopleWithPersonalExpenses.map((person) => (
+          <TouchableOpacity
+            key={person.id}
+            onPress={() => setSelectedPersonId(person.id)}
+            style={{
+              flex: 1,
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              borderRadius: 8,
+              backgroundColor: selectedPersonId === person.id ? currentColors.personal : 'transparent',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={[
+              themedStyles.text,
+              {
+                fontSize: 14,
+                fontWeight: '600',
+                color: selectedPersonId === person.id ? '#fff' : currentColors.text,
+              }
+            ]}>
+              {person.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
   };
 
   if (!breakdownData.household && !breakdownData.personal) {
@@ -200,6 +305,11 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
     const isHousehold = breakdown.type === 'household';
     const typeColor = isHousehold ? currentColors.household : currentColors.personal;
     const typeIcon = isHousehold ? 'home' : 'person';
+
+    // Get selected person name for personal expenses header
+    const selectedPersonName = selectedPersonId && people 
+      ? people.find(p => p.id === selectedPersonId)?.name 
+      : null;
 
     return (
       <View
@@ -229,7 +339,12 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[themedStyles.subtitle, { fontSize: 20, fontWeight: '700', marginBottom: 4 }]}>
-              {isHousehold ? 'Household Expenses' : 'Personal Expenses'}
+              {isHousehold 
+                ? 'Household Expenses' 
+                : selectedPersonName 
+                  ? `${selectedPersonName}'s Personal Expenses`
+                  : 'Personal Expenses'
+              }
             </Text>
             <Text style={[themedStyles.textSecondary, { fontSize: 14 }]}>
               {breakdown.count} {breakdown.count === 1 ? 'expense' : 'expenses'} • {breakdown.percentage.toFixed(1)}% of total
@@ -247,6 +362,9 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
             </Text>
           </View>
         </View>
+
+        {/* Person Switcher for Personal Expenses */}
+        {!isHousehold && <PersonSwitcher />}
 
         {/* Categories - Interactive */}
         <View style={{ gap: 12 }}>

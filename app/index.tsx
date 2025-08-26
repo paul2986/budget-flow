@@ -1017,7 +1017,7 @@ export default function HomeScreen() {
                   Expense Breakdown
                 </Text>
               </View>
-              <ExpenseBreakdownSection expenses={expenses} />
+              <ExpenseBreakdownSection expenses={expenses} people={people} />
             </View>
 
             {/* 4. Ending/Expiring Section */}

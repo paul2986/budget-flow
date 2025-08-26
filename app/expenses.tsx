@@ -27,6 +27,7 @@ export default function ExpensesScreen() {
     filter?: string;
     category?: string;
     fromDashboard?: string;
+    personId?: string;
   }>();
 
   // Filter modal state
@@ -68,7 +69,8 @@ export default function ExpensesScreen() {
       if (params.fromDashboard === 'true') {
         console.log('ExpensesScreen: Applying filters from dashboard navigation:', {
           filter: params.filter,
-          category: params.category
+          category: params.category,
+          personId: params.personId
         });
         
         // Apply filters from URL parameters
@@ -77,6 +79,9 @@ export default function ExpensesScreen() {
         }
         if (params.category) {
           setCategoryFilter(params.category);
+        }
+        if (params.personId) {
+          setPersonFilter(params.personId);
         }
         
         // Clear the search query when coming from dashboard
@@ -91,6 +96,12 @@ export default function ExpensesScreen() {
         if (params.category) {
           filterMessages.push(`${params.category} category`);
         }
+        if (params.personId) {
+          const person = data.people.find(p => p.id === params.personId);
+          if (person) {
+            filterMessages.push(`${person.name}'s expenses`);
+          }
+        }
         if (filterMessages.length > 0) {
           announceFilter(`Filtered by ${filterMessages.join(' and ')}`);
         }
@@ -101,7 +112,7 @@ export default function ExpensesScreen() {
         setSearchTerm(filters.search || '');
       }
     })();
-  }, [params.filter, params.category, params.fromDashboard, announceFilter]);
+  }, [params.filter, params.category, params.fromDashboard, params.personId, announceFilter, data.people]);
 
   // Reload custom categories when data changes (e.g., after clearing all data)
   useEffect(() => {
