@@ -88,6 +88,71 @@ export const saveCustomExpenseCategories = async (categories: string[]): Promise
   }
 };
 
+export const renameCustomExpenseCategory = async (oldName: string, newName: string): Promise<{ success: boolean; error?: Error }> => {
+  try {
+    const normalizedOldName = normalizeCategoryName(oldName);
+    const normalizedNewName = normalizeCategoryName(newName);
+    
+    // Validate new name
+    if (!normalizedNewName || normalizedNewName === normalizedOldName) {
+      return { success: false, error: new Error('Invalid new category name') };
+    }
+    
+    // Check if new name conflicts with default categories
+    if (DEFAULT_CATEGORIES.includes(normalizedNewName)) {
+      return { success: false, error: new Error('Cannot rename to a default category name') };
+    }
+    
+    // Get current custom categories
+    const customCategories = await getCustomExpenseCategories();
+    
+    // Check if old category exists
+    if (!customCategories.includes(normalizedOldName)) {
+      return { success: false, error: new Error('Category not found') };
+    }
+    
+    // Check if new name already exists
+    if (customCategories.includes(normalizedNewName)) {
+      return { success: false, error: new Error('A category with this name already exists') };
+    }
+    
+    // Update custom categories list
+    const updatedCategories = customCategories.map(cat => 
+      cat === normalizedOldName ? normalizedNewName : cat
+    );
+    await saveCustomExpenseCategories(updatedCategories);
+    
+    // Update all expenses that use this category
+    const appData = await loadAppData();
+    let hasChanges = false;
+    
+    const updatedBudgets = appData.budgets.map(budget => {
+      const updatedExpenses = budget.expenses.map(expense => {
+        if (normalizeCategoryName(expense.categoryTag || 'Misc') === normalizedOldName) {
+          hasChanges = true;
+          return { ...expense, categoryTag: normalizedNewName };
+        }
+        return expense;
+      });
+      
+      return { ...budget, expenses: updatedExpenses, modifiedAt: Date.now() };
+    });
+    
+    if (hasChanges) {
+      const updatedAppData = { ...appData, budgets: updatedBudgets };
+      const saveResult = await saveAppData(updatedAppData);
+      if (!saveResult.success) {
+        return { success: false, error: saveResult.error };
+      }
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('storage: renameCustomExpenseCategory error', error);
+    return { success: false, error: error as Error };
+  }
+};
+
 export type ExpensesFilters = {
   category: string | null; // null means All
   search: string;

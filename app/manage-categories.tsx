@@ -1,22 +1,27 @@
 
 import { useEffect, useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import StandardHeader from '../components/StandardHeader';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useTheme } from '../hooks/useTheme';
 import Icon from '../components/Icon';
 import { DEFAULT_CATEGORIES } from '../types/budget';
-import { getCustomExpenseCategories, saveCustomExpenseCategories, normalizeCategoryName } from '../utils/storage';
+import { getCustomExpenseCategories, saveCustomExpenseCategories, normalizeCategoryName, renameCustomExpenseCategory } from '../utils/storage';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { router } from 'expo-router';
+import Button from '../components/Button';
 
 export default function ManageCategoriesScreen() {
   const { themedStyles } = useThemedStyles();
   const { currentColors } = useTheme();
-  const { data } = useBudgetData();
+  const { data, refreshData } = useBudgetData();
 
   const [customs, setCustoms] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [renameModalVisible, setRenameModalVisible] = useState(false);
+  const [categoryToRename, setCategoryToRename] = useState<string>('');
+  const [newCategoryName, setNewCategoryName] = useState<string>('');
+  const [renaming, setRenaming] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -67,6 +72,50 @@ export default function ManageCategoriesScreen() {
         },
       },
     ]);
+  };
+
+  const handleRename = (category: string) => {
+    setCategoryToRename(category);
+    setNewCategoryName(category);
+    setRenameModalVisible(true);
+  };
+
+  const handleRenameSubmit = async () => {
+    if (!newCategoryName.trim()) {
+      Alert.alert('Error', 'Category name cannot be empty.');
+      return;
+    }
+
+    if (newCategoryName.trim() === categoryToRename) {
+      setRenameModalVisible(false);
+      return;
+    }
+
+    setRenaming(true);
+    try {
+      const result = await renameCustomExpenseCategory(categoryToRename, newCategoryName.trim());
+      
+      if (result.success) {
+        await refresh();
+        await refreshData(); // Refresh budget data to reflect changes in expenses
+        setRenameModalVisible(false);
+        setCategoryToRename('');
+        setNewCategoryName('');
+      } else {
+        Alert.alert('Error', result.error?.message || 'Failed to rename category. Please try again.');
+      }
+    } catch (e) {
+      console.log('Failed to rename custom category', e);
+      Alert.alert('Error', 'Failed to rename category. Please try again.');
+    } finally {
+      setRenaming(false);
+    }
+  };
+
+  const handleRenameCancel = () => {
+    setRenameModalVisible(false);
+    setCategoryToRename('');
+    setNewCategoryName('');
   };
 
   return (
@@ -146,21 +195,38 @@ export default function ManageCategoriesScreen() {
                       </View>
                       {used && <Text style={[themedStyles.textSecondary, { color: currentColors.warning }]}>In use</Text>}
                     </View>
-                    <TouchableOpacity
-                      onPress={() => handleDelete(c)}
-                      disabled={used}
-                      style={{
-                        paddingVertical: 8,
-                        paddingHorizontal: 12,
-                        borderRadius: 12,
-                        backgroundColor: used ? currentColors.border : currentColors.error + '15',
-                      }}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Icon name="trash-outline" size={18} style={{ color: used ? currentColors.textSecondary : currentColors.error, marginRight: 6 }} />
-                        <Text style={[themedStyles.text, { color: used ? currentColors.textSecondary : currentColors.error, fontWeight: '700' }]}>Delete</Text>
-                      </View>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <TouchableOpacity
+                        onPress={() => handleRename(c)}
+                        style={{
+                          paddingVertical: 8,
+                          paddingHorizontal: 12,
+                          borderRadius: 12,
+                          backgroundColor: currentColors.primary + '15',
+                          marginRight: 8,
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Icon name="pencil-outline" size={18} style={{ color: currentColors.primary, marginRight: 6 }} />
+                          <Text style={[themedStyles.text, { color: currentColors.primary, fontWeight: '700' }]}>Rename</Text>
+                        </View>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDelete(c)}
+                        disabled={used}
+                        style={{
+                          paddingVertical: 8,
+                          paddingHorizontal: 12,
+                          borderRadius: 12,
+                          backgroundColor: used ? currentColors.border : currentColors.error + '15',
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Icon name="trash-outline" size={18} style={{ color: used ? currentColors.textSecondary : currentColors.error, marginRight: 6 }} />
+                          <Text style={[themedStyles.text, { color: used ? currentColors.textSecondary : currentColors.error, fontWeight: '700' }]}>Delete</Text>
+                        </View>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 );
               })
@@ -168,6 +234,86 @@ export default function ManageCategoriesScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Rename Category Modal */}
+      <Modal
+        visible={renameModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleRenameCancel}
+      >
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }} 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 20,
+          }}>
+            <View style={[
+              themedStyles.card,
+              {
+                width: '100%',
+                maxWidth: 400,
+                padding: 24,
+                borderRadius: 16,
+              }
+            ]}>
+              <Text style={[themedStyles.title, { marginBottom: 8, textAlign: 'center' }]}>
+                Rename Category
+              </Text>
+              <Text style={[themedStyles.textSecondary, { marginBottom: 20, textAlign: 'center' }]}>
+                Enter a new name for "{categoryToRename}"
+              </Text>
+
+              <View style={{ marginBottom: 24 }}>
+                <Text style={[themedStyles.label, { marginBottom: 8 }]}>Category Name</Text>
+                <TextInput
+                  style={[
+                    themedStyles.input,
+                    {
+                      borderColor: currentColors.border,
+                      borderWidth: 1,
+                      borderRadius: 12,
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      fontSize: 16,
+                      color: currentColors.text,
+                      backgroundColor: currentColors.background,
+                    }
+                  ]}
+                  value={newCategoryName}
+                  onChangeText={setNewCategoryName}
+                  placeholder="Enter category name"
+                  placeholderTextColor={currentColors.textSecondary}
+                  maxLength={20}
+                  autoFocus={true}
+                  selectTextOnFocus={true}
+                />
+              </View>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Button
+                  title="Cancel"
+                  onPress={handleRenameCancel}
+                  variant="secondary"
+                  style={{ flex: 1, marginRight: 8 }}
+                />
+                <Button
+                  title="Rename"
+                  onPress={handleRenameSubmit}
+                  loading={renaming}
+                  disabled={!newCategoryName.trim() || newCategoryName.trim() === categoryToRename}
+                  style={{ flex: 1, marginLeft: 8 }}
+                />
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
