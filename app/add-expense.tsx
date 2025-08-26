@@ -518,6 +518,13 @@ export default function AddExpenseScreen() {
     }
   }, [newCustomName, customCategories]);
 
+  // Calculate loading state - only show spinner when actually saving/deleting or when there's a date validation error
+  const isLoading = (() => {
+    const isRecurring = ['daily', 'weekly', 'monthly', 'yearly'].includes(frequency);
+    const hasDateError = isRecurring && !!endDateYMD && endDateYMD < startDateYMD;
+    return saving || deleting || hasDateError;
+  })();
+
   return (
     <View style={themedStyles.container}>
       <StandardHeader
@@ -526,11 +533,7 @@ export default function AddExpenseScreen() {
         rightIcon={isEditMode ? 'checkmark' : 'add'}
         onRightPress={isEditMode ? handleSaveExpense : handleSaveExpense}
         showRightIcon={true}
-        loading={(() => {
-          const isRecurring = ['daily', 'weekly', 'monthly', 'yearly'].includes(frequency);
-          const invalid = isRecurring && !!endDateYMD && endDateYMD < startDateYMD;
-          return saving || deleting || invalid || data.people.length === 0;
-        })()}
+        loading={isLoading}
       />
 
       <ScrollView 
@@ -638,7 +641,7 @@ export default function AddExpenseScreen() {
           <Button
             text={saving ? 'Saving...' : deleting ? 'Deleting...' : (isEditMode ? 'Update Expense' : 'Add Expense')}
             onPress={handleSaveExpense}
-            disabled={saving || deleting || data.people.length === 0}
+            disabled={saving || deleting}
             variant="primary"
           />
           
