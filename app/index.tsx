@@ -29,6 +29,7 @@ import ExpenseBreakdownSection from '../components/ExpenseBreakdownSection';
 import Button from '../components/Button';
 
 export default function HomeScreen() {
+  // All hooks must be called at the top, before any conditional logic
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
   const { themedStyles } = useThemedStyles();
@@ -45,6 +46,7 @@ export default function HomeScreen() {
   const appState = useRef(AppState.currentState);
   const scrollViewRef = useRef<ScrollView>(null);
 
+  // All memoized values and effects must be here, before any conditional returns
   const budgetLocked = useMemo(() => {
     // Can't be locked if no budgets exist or no active budget
     if (!appData || !appData.budgets || appData.budgets.length === 0 || !activeBudget) return false;
@@ -78,24 +80,6 @@ export default function HomeScreen() {
     // Show full dashboard only if both people and expenses exist
     return people.length > 0 && expenses.length > 0;
   }, [appData, activeBudget, data]);
-
-  // Check lock status when app becomes active
-  const handleAppStateChange = useCallback((nextAppState: string) => {
-    if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-      console.log('HomeScreen: App became active, checking lock status');
-    }
-    appState.current = nextAppState;
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      console.log('HomeScreen: Screen focused, refreshing data');
-      refreshData(true);
-      
-      const subscription = AppState.addEventListener('change', handleAppStateChange);
-      return () => subscription?.remove();
-    }, [handleAppStateChange, refreshData])
-  );
 
   const calculations = useMemo(() => {
     // Can't calculate if no budgets exist or no active budget
@@ -136,6 +120,14 @@ export default function HomeScreen() {
       remaining,
     };
   }, [appData, activeBudget, data, refreshTrigger]);
+
+  // Check lock status when app becomes active
+  const handleAppStateChange = useCallback((nextAppState: string) => {
+    if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+      console.log('HomeScreen: App became active, checking lock status');
+    }
+    appState.current = nextAppState;
+  }, []);
 
   const handleUnlock = useCallback(async () => {
     if (!appData || !appData.budgets || appData.budgets.length === 0 || !activeBudget) return;
@@ -197,6 +189,19 @@ export default function HomeScreen() {
   const handleContinueFromBudgetReady = useCallback(() => {
     setShowBudgetReady(false);
   }, []);
+
+  // All useEffect hooks must be here
+  useFocusEffect(
+    useCallback(() => {
+      console.log('HomeScreen: Screen focused, refreshing data');
+      refreshData(true);
+      
+      const subscription = AppState.addEventListener('change', handleAppStateChange);
+      return () => subscription?.remove();
+    }, [handleAppStateChange, refreshData])
+  );
+
+
 
   if (loading) {
     return (
@@ -638,8 +643,11 @@ export default function HomeScreen() {
     );
   }
 
+  // Derived values (not hooks, so can be after all hooks)
   const people = data && data.people && Array.isArray(data.people) ? data.people : [];
   const expenses = data && data.expenses && Array.isArray(data.expenses) ? data.expenses : [];
+
+
 
   // First-time user guidance: Budget exists but no people/expenses
   if (isFirstTimeUser) {
@@ -1017,7 +1025,11 @@ export default function HomeScreen() {
                   Expense Breakdown
                 </Text>
               </View>
-              <ExpenseBreakdownSection expenses={expenses} people={people} />
+              <ExpenseBreakdownSection 
+                key={`expense-breakdown-${activeBudget?.id || 'no-budget'}`}
+                expenses={expenses} 
+                people={people} 
+              />
             </View>
 
             {/* 4. Ending/Expiring Section */}
