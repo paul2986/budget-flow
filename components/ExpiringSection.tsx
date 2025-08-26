@@ -66,7 +66,7 @@ export default function ExpiringSection({ expenses }: ExpiringSectionProps) {
         {
           flex: 1,
           paddingHorizontal: 16,
-          paddingVertical: 10,
+          paddingVertical: 6, // Reduced from 10 to 6 to match OverviewSection toggle height
           borderRadius: 8,
           backgroundColor: activeTab === tab ? currentColors.border : 'transparent',
           alignItems: 'center',
