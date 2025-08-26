@@ -101,6 +101,35 @@ export default function AddExpenseScreen() {
     return [...EXPENSE_CATEGORIES, ...customCategories, ...tempCategoryNames];
   }, [customCategories, tempCategories]);
 
+  // Check if form is valid for enabling the save button
+  const isFormValid = useCallback(() => {
+    // Basic validation
+    if (!description.trim()) return false;
+    
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) return false;
+    
+    // For personal expenses, require a person to be assigned
+    const allPeople = getAllPeople();
+    if (category === 'personal') {
+      if (allPeople.length === 0) return false;
+      if (!personId) return false;
+    }
+    
+    // Validate category tag
+    const normalizedTag = normalizeCategoryName(categoryTag || 'Misc');
+    if (!normalizedTag) return false;
+    
+    // Validate end date rules for recurring only
+    const isRecurring = ['daily', 'weekly', 'monthly', 'yearly'].includes(frequency);
+    if (isRecurring && endDate) {
+      const startVal = new Date(startDateYMD + 'T00:00:00');
+      if (endDate < startVal) return false;
+    }
+    
+    return true;
+  }, [description, amount, category, personId, categoryTag, frequency, startDateYMD, endDate, getAllPeople]);
+
   // Load custom categories initially and scroll to top
   useEffect(() => {
     const loadCustomCategories = async () => {
@@ -974,7 +1003,14 @@ export default function AddExpenseScreen() {
         rightIcon={isEditMode ? 'checkmark' : 'add'}
         onRightPress={isEditMode ? handleSaveExpense : handleSaveExpense}
         showRightIcon={true}
+        rightIconColor={isFormValid() && !isLoading ? '#FFFFFF' : currentColors.textSecondary}
         loading={isLoading}
+        rightButtons={[{
+          icon: isEditMode ? 'checkmark' : 'add',
+          onPress: handleSaveExpense,
+          backgroundColor: isFormValid() && !isLoading ? currentColors.primary : currentColors.textSecondary + '40',
+          iconColor: isFormValid() && !isLoading ? '#FFFFFF' : currentColors.textSecondary
+        }]}
       />
 
       <ScrollView 
@@ -1083,7 +1119,7 @@ export default function AddExpenseScreen() {
           <Button
             text={saving || isSaving ? 'Saving...' : deleting ? 'Deleting...' : (isEditMode ? 'Update Expense' : 'Add Expense')}
             onPress={handleSaveExpense}
-            disabled={saving || deleting || isSaving}
+            disabled={!isFormValid() || saving || deleting || isSaving}
             variant="primary"
           />
           

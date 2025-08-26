@@ -89,6 +89,16 @@ export default function IncomeModal({
     }
   };
 
+  // Check if form is valid for enabling the add button
+  const isFormValid = () => {
+    if (!tempPersonId || !tempIncome.amount || !tempIncome.label.trim() || saving) {
+      return false;
+    }
+    
+    const amount = parseFloat(tempIncome.amount);
+    return !isNaN(amount) && amount > 0;
+  };
+
   const FrequencyPicker = ({ value, onChange }: { value: string, onChange: (value: string) => void }) => (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
       {['daily', 'weekly', 'monthly', 'yearly'].map((freq) => (
@@ -167,24 +177,24 @@ export default function IncomeModal({
                   width: 44,
                   height: 44,
                   borderRadius: 22,
-                  backgroundColor: (!tempPersonId || !tempIncome.amount || !tempIncome.label.trim() || saving) 
-                    ? currentColors.textSecondary + '40' 
-                    : currentColors.primary,
+                  backgroundColor: isFormValid() 
+                    ? currentColors.primary 
+                    : currentColors.textSecondary + '40',
                   justifyContent: 'center',
                   alignItems: 'center',
                   boxShadow: '0px 2px 4px rgba(0,0,0,0.15)',
                   borderWidth: 1,
                   borderColor: 'transparent',
                 }}
-                disabled={!tempPersonId || !tempIncome.amount || !tempIncome.label.trim() || saving}
+                disabled={!isFormValid()}
               >
                 <Icon 
                   name="add" 
                   size={24} 
                   style={{ 
-                    color: (!tempPersonId || !tempIncome.amount || !tempIncome.label.trim() || saving) 
-                      ? currentColors.textSecondary 
-                      : '#FFFFFF'
+                    color: isFormValid() 
+                      ? '#FFFFFF' 
+                      : currentColors.textSecondary
                   }} 
                 />
               </TouchableOpacity>
@@ -286,27 +296,6 @@ export default function IncomeModal({
                 onChange={(freq) => setTempIncome({ ...tempIncome, frequency: freq as any })}
               />
             </View>
-
-            {/* Preview */}
-            {tempIncome.amount && tempIncome.label && (
-              <View style={[themedStyles.card, { backgroundColor: currentColors.success + '10', marginTop: 16 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                  <Icon name="eye-outline" size={20} style={{ color: currentColors.success, marginRight: 8 }} />
-                  <Text style={[themedStyles.text, { fontWeight: '600', color: currentColors.success }]}>
-                    Preview
-                  </Text>
-                </View>
-                <Text style={[themedStyles.text, { marginBottom: 4 }]}>
-                  <Text style={{ fontWeight: '600' }}>Source:</Text> {tempIncome.label}
-                </Text>
-                <Text style={[themedStyles.text, { marginBottom: 4 }]}>
-                  <Text style={{ fontWeight: '600' }}>Amount:</Text> {tempIncome.amount ? formatCurrency(parseFloat(tempIncome.amount) || 0) : '$0.00'}
-                </Text>
-                <Text style={themedStyles.text}>
-                  <Text style={{ fontWeight: '600' }}>Frequency:</Text> {tempIncome.frequency}
-                </Text>
-              </View>
-            )}
           </ScrollView>
 
           {/* Bottom action buttons */}
@@ -325,7 +314,7 @@ export default function IncomeModal({
                   text={saving ? 'Adding...' : 'Add Income'}
                   onPress={handleAddIncome}
                   variant="secondary"
-                  disabled={!tempPersonId || !tempIncome.amount || !tempIncome.label.trim() || saving}
+                  disabled={!isFormValid()}
                 />
               </View>
             </View>
