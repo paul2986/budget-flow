@@ -200,10 +200,19 @@ export default function ExpensesScreen() {
   // Apply filters
   let filteredExpenses = data.expenses;
 
+  console.log('ExpensesScreen: All expenses before filtering:', data.expenses.map(e => ({ 
+    id: e.id, 
+    description: e.description, 
+    category: e.category, 
+    amount: e.amount 
+  })));
+
   if (filter === 'household') {
     filteredExpenses = filteredExpenses.filter((e) => e.category === 'household');
+    console.log('ExpensesScreen: Household expenses after filtering:', filteredExpenses.length);
   } else if (filter === 'personal') {
     filteredExpenses = filteredExpenses.filter((e) => e.category === 'personal');
+    console.log('ExpensesScreen: Personal expenses after filtering:', filteredExpenses.length);
   }
 
   // Apply person filter to all expenses (both household and personal)
@@ -403,6 +412,12 @@ export default function ExpensesScreen() {
           </View>
         ) : (
           filteredExpenses.map((expense) => {
+            console.log('ExpensesScreen: Rendering expense:', { 
+              id: expense.id, 
+              description: expense.description, 
+              category: expense.category,
+              personId: expense.personId 
+            });
             const person = expense.personId ? data.people.find((p) => p.id === expense.personId) : null;
             const monthlyAmount = calculateMonthlyAmount(expense.amount, expense.frequency);
             const isDeleting = deletingExpenseId === expense.id;
@@ -470,7 +485,12 @@ export default function ExpensesScreen() {
                     </View>
 
                     <Text style={[themedStyles.textSecondary, { flex: 1, fontSize: 12 }]}>
-                      {person ? `${person.name} • ` : 'Unknown Person • '}
+                      {expense.category === 'household' && !expense.personId 
+                        ? 'Household • ' 
+                        : person 
+                          ? `${person.name} • ` 
+                          : 'Unknown Person • '
+                      }
                       {expense.frequency} • {new Date(expense.date).toLocaleDateString()}
                     </Text>
                   </View>

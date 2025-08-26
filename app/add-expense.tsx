@@ -357,7 +357,16 @@ export default function AddExpenseScreen() {
         endDate: isRecurring && endVal ? endVal : undefined,
       };
 
+      console.log('AddExpenseScreen: Final expense data before save:', {
+        category: expenseData.category,
+        personId: expenseData.personId,
+        description: expenseData.description,
+        amount: expenseData.amount
+      });
+
       console.log('AddExpenseScreen: Saving expense:', expenseData);
+      console.log('AddExpenseScreen: Expense category being saved:', expenseData.category);
+      console.log('AddExpenseScreen: Expense personId being saved:', expenseData.personId);
 
       let result;
       if (isEditMode) {
@@ -444,7 +453,7 @@ export default function AddExpenseScreen() {
 
   const OwnershipPicker = useCallback(() => (
     <View style={[themedStyles.section, { paddingTop: 0 }]}>
-      <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Type</Text>
+      <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Expense Type</Text>
       <View style={[themedStyles.row, { marginTop: 8 }]}>
         <TouchableOpacity
           style={[
@@ -459,6 +468,7 @@ export default function AddExpenseScreen() {
             }
           ]}
           onPress={() => {
+            console.log('AddExpenseScreen: Setting category to household');
             setCategory('household');
             // For household expenses, clear person assignment since it's not required
             setPersonId('');
@@ -489,6 +499,7 @@ export default function AddExpenseScreen() {
             }
           ]}
           onPress={() => {
+            console.log('AddExpenseScreen: Setting category to personal');
             setCategory('personal');
             // Clear personId when switching to personal so user must select
             setPersonId('');

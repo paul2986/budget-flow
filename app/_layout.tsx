@@ -196,16 +196,16 @@ function RootLayoutContent() {
     };
   }, []);
 
-  // Use page background color for safe zone only on welcome page, otherwise use default system color
-  const safeZoneBackgroundColor = isWelcomePage ? currentColors.background : undefined;
+  // Use page background color for safe zone only on welcome page, otherwise use header background color
+  const safeZoneBackgroundColor = isWelcomePage ? currentColors.background : currentColors.backgroundAlt;
 
   return (
     // Outer wrapper paints the top safe area with conditional background color
     <View style={{ flex: 1, backgroundColor: safeZoneBackgroundColor }}>
-      {/* Status bar matches page background color only on welcome page */}
+      {/* Status bar matches page background color only on welcome page, otherwise header background */}
       <StatusBar 
         style={isDarkMode ? 'light' : 'dark'} 
-        backgroundColor={isWelcomePage ? currentColors.background : undefined} 
+        backgroundColor={isWelcomePage ? currentColors.background : currentColors.backgroundAlt} 
       />
 
       {/* Explicit top safe area spacer with conditional background color */}
