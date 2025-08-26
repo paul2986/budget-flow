@@ -987,6 +987,25 @@ export default function AddExpenseScreen() {
             {endDateYMD && endDateYMD < startDateYMD ? (
               <Text style={[themedStyles.textSecondary, { color: currentColors.error, marginTop: 6 }]}>End date cannot be earlier than start date</Text>
             ) : null}
+            
+            {/* Inline date picker when showEndPicker is true */}
+            {showEndPicker && (
+              <View style={{ marginTop: 16, backgroundColor: currentColors.card, borderRadius: 12, padding: 16 }}>
+                <DateTimePicker
+                  value={endDateYMD ? new Date(endDateYMD + 'T00:00:00') : new Date()}
+                  mode="date"
+                  display="default"
+                  onChange={(event: any, selected?: Date) => {
+                    setShowEndPicker(false);
+                    if (selected) {
+                      const ymd = toYMD(selected);
+                      setEndDateYMD(ymd);
+                    }
+                  }}
+                  style={{ alignSelf: 'center' }}
+                />
+              </View>
+            )}
           </View>
         )}
 
@@ -1014,22 +1033,6 @@ export default function AddExpenseScreen() {
           )}
         </View>
       </ScrollView>
-
-      {/* End date DateTimePicker (native) */}
-      {showEndPicker && (
-        <DateTimePicker
-          value={endDateYMD ? new Date(endDateYMD + 'T00:00:00') : new Date()}
-          mode="date"
-          display="default"
-          onChange={(event: any, selected?: Date) => {
-            setShowEndPicker(false);
-            if (selected) {
-              const ymd = toYMD(selected);
-              setEndDateYMD(ymd);
-            }
-          }}
-        />
-      )}
 
       {/* Custom Category Modal */}
       <Modal visible={showCustomModal} animationType="slide" transparent onRequestClose={() => {
