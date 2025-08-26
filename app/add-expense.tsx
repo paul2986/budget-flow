@@ -56,6 +56,7 @@ export default function AddExpenseScreen() {
   const [personId, setPersonId] = useState<string>('');
   const [categoryTag, setCategoryTag] = useState<ExpenseCategory>('Misc');
   const [deleting, setDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // Track local saving state
 
   // Temporary entities that will be created on save
   const [tempPeople, setTempPeople] = useState<TempPerson[]>([]);
@@ -145,7 +146,13 @@ export default function AddExpenseScreen() {
   }, [data.people.length, data.expenses.length, refreshTrigger]);
 
   // Separate effect to validate categoryTag when custom categories change
+  // Fixed: Don't run validation when saving to prevent category flickering
   useEffect(() => {
+    // Skip validation if we're currently saving to prevent flickering
+    if (isSaving || saving) {
+      return;
+    }
+
     // Check if current categoryTag is still valid
     const currentCategoryStillValid = DEFAULT_CATEGORIES.includes(categoryTag) || 
                                      customCategories.includes(categoryTag) || 
@@ -161,7 +168,7 @@ export default function AddExpenseScreen() {
       });
       setCategoryTag('Misc');
     }
-  }, [customCategories, tempCategories, categoryTag]);
+  }, [customCategories, tempCategories, categoryTag, isSaving, saving]);
 
   // Load expense data for editing
   useEffect(() => {
@@ -291,6 +298,9 @@ export default function AddExpenseScreen() {
     }
 
     try {
+      // Set local saving state to prevent category validation during save
+      setIsSaving(true);
+      
       console.log('AddExpenseScreen: Starting save process with temp entities:', {
         tempPeople: tempPeople.length,
         tempCategories: tempCategories.length,
@@ -395,6 +405,9 @@ export default function AddExpenseScreen() {
     } catch (error) {
       console.error('AddExpenseScreen: Error saving expense:', error);
       Alert.alert('Error', 'Failed to save expense. Please try again.');
+    } finally {
+      // Reset local saving state
+      setIsSaving(false);
     }
   }, [description, amount, category, frequency, personId, categoryTag, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin, startDateYMD, endDateYMD, getAllPeople, tempPeople, tempCategories, customCategories, addPerson]);
 
@@ -479,7 +492,7 @@ export default function AddExpenseScreen() {
               console.log('AddExpenseScreen: Cleared person assignment when switching from personal to household');
             }
           }}
-          disabled={saving || deleting}
+          disabled={saving || deleting || isSaving}
         >
           <Text style={[
             themedStyles.badgeText,
@@ -510,7 +523,7 @@ export default function AddExpenseScreen() {
             // Clear personId when switching to personal so user must select
             setPersonId('');
           }}
-          disabled={saving || deleting}
+          disabled={saving || deleting || isSaving}
         >
           <Text style={[
             themedStyles.badgeText,
@@ -525,7 +538,7 @@ export default function AddExpenseScreen() {
         </TouchableOpacity>
       </View>
     </View>
-  ), [category, currentColors, saving, deleting, themedStyles, isEditMode, expenseToEdit]);
+  ), [category, currentColors, saving, deleting, isSaving, themedStyles, isEditMode, expenseToEdit]);
 
   const handleAddPersonFromExpense = useCallback(async () => {
     if (!newPersonName.trim()) {
@@ -675,7 +688,7 @@ export default function AddExpenseScreen() {
                     }
                   ]}
                   onPress={() => setPersonId(person.id)}
-                  disabled={saving || deleting}
+                  disabled={saving || deleting || isSaving}
                 >
                   <Text style={[
                     themedStyles.badgeText,
@@ -699,7 +712,7 @@ export default function AddExpenseScreen() {
 
     // Return null for all other cases
     return null;
-  }, [getAllPeople, personId, currentColors, saving, deleting, themedStyles, category, tempPeople]);
+  }, [getAllPeople, personId, currentColors, saving, deleting, isSaving, themedStyles, category, tempPeople]);
 
   const CategoryTagPicker = useCallback(() => {
     const allCategories = getAllCategories();
@@ -727,7 +740,7 @@ export default function AddExpenseScreen() {
                   }
                 ]}
                 onPress={() => setCategoryTag(tag)}
-                disabled={saving || deleting}
+                disabled={saving || deleting || isSaving}
                 accessibilityHint="Applies a category to this expense"
                 accessibilityLabel={`Select category ${tag}${categoryTag === tag ? ', selected' : ''}`}
               >
@@ -773,7 +786,7 @@ export default function AddExpenseScreen() {
               setNewCustomName('');
               setShowCustomModal(true);
             }}
-            disabled={saving || deleting}
+            disabled={saving || deleting || isSaving}
             accessibilityLabel="Add custom category"
             accessibilityHint="Opens entry to add a custom category"
           >
@@ -795,7 +808,7 @@ export default function AddExpenseScreen() {
         )}
       </View>
     );
-  }, [categoryTag, currentColors, saving, deleting, themedStyles, getAllCategories, tempCategories]);
+  }, [categoryTag, currentColors, saving, deleting, isSaving, themedStyles, getAllCategories, tempCategories]);
 
   const FrequencyPicker = useCallback(() => (
     <View style={themedStyles.section}>
@@ -816,7 +829,7 @@ export default function AddExpenseScreen() {
               }
             ]}
             onPress={() => setFrequency(freq)}
-            disabled={saving || deleting}
+            disabled={saving || deleting || isSaving}
           >
             <Text style={[
               themedStyles.badgeText,
@@ -832,7 +845,7 @@ export default function AddExpenseScreen() {
         ))}
       </View>
     </View>
-  ), [frequency, currentColors, saving, deleting, themedStyles]);
+  ), [frequency, currentColors, saving, deleting, isSaving, themedStyles]);
 
   const handleCreateCustomCategory = useCallback(async () => {
     const normalized = normalizeCategoryName(newCustomName);
@@ -892,7 +905,7 @@ export default function AddExpenseScreen() {
   const isLoading = (() => {
     const isRecurring = ['daily', 'weekly', 'monthly', 'yearly'].includes(frequency);
     const hasDateError = isRecurring && !!endDateYMD && endDateYMD < startDateYMD;
-    return saving || deleting || hasDateError;
+    return saving || deleting || isSaving || hasDateError;
   })();
 
   return (
@@ -919,7 +932,7 @@ export default function AddExpenseScreen() {
             onChangeText={setDescription}
             placeholder="Enter expense description"
             placeholderTextColor={currentColors.textSecondary}
-            editable={!saving && !deleting}
+            editable={!saving && !deleting && !isSaving}
           />
         </View>
 
@@ -932,7 +945,7 @@ export default function AddExpenseScreen() {
             placeholder="0.00"
             placeholderTextColor={currentColors.textSecondary}
             keyboardType="numeric"
-            editable={!saving && !deleting}
+            editable={!saving && !deleting && !isSaving}
           />
         </View>
 
@@ -948,7 +961,7 @@ export default function AddExpenseScreen() {
             <View style={[themedStyles.rowStart]}>
               <TouchableOpacity
                 onPress={() => setShowEndPicker(true)}
-                disabled={saving || deleting}
+                disabled={saving || deleting || isSaving}
                 style={[
                   themedStyles.badge,
                   { backgroundColor: currentColors.border, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 }
@@ -961,7 +974,7 @@ export default function AddExpenseScreen() {
               {endDateYMD ? (
                 <TouchableOpacity
                   onPress={() => setEndDateYMD('')}
-                  disabled={saving || deleting}
+                  disabled={saving || deleting || isSaving}
                   style={[
                     themedStyles.badge,
                     { backgroundColor: currentColors.error + '20', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, marginLeft: 8 }
@@ -979,9 +992,9 @@ export default function AddExpenseScreen() {
 
         <View style={[themedStyles.section, { paddingTop: 32 }]}>
           <Button
-            text={saving ? 'Saving...' : deleting ? 'Deleting...' : (isEditMode ? 'Update Expense' : 'Add Expense')}
+            text={saving || isSaving ? 'Saving...' : deleting ? 'Deleting...' : (isEditMode ? 'Update Expense' : 'Add Expense')}
             onPress={handleSaveExpense}
-            disabled={saving || deleting}
+            disabled={saving || deleting || isSaving}
             variant="primary"
           />
           
@@ -994,7 +1007,7 @@ export default function AddExpenseScreen() {
                   console.log('AddExpenseScreen: Bottom delete button pressed');
                   handleDeleteExpense();
                 }}
-                disabled={saving || deleting}
+                disabled={saving || deleting || isSaving}
                 variant="danger"
               />
             </View>
