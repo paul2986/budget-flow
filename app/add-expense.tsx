@@ -926,12 +926,20 @@ export default function AddExpenseScreen() {
   const handleEndDateChange = useCallback((event: any, selectedDate?: Date) => {
     console.log('AddExpenseScreen: End date picker event:', event.type, selectedDate);
     
-    // Always hide the picker first
-    setShowEndPicker(false);
-    
-    if (event.type === 'set' && selectedDate) {
-      console.log('AddExpenseScreen: Setting end date to:', selectedDate);
-      setEndDate(selectedDate);
+    if (Platform.OS === 'android') {
+      // On Android, always hide the picker after any interaction
+      setShowEndPicker(false);
+      
+      if (event.type === 'set' && selectedDate) {
+        console.log('AddExpenseScreen: Setting end date to:', selectedDate);
+        setEndDate(selectedDate);
+      }
+    } else {
+      // On iOS, only set the date if it's provided
+      if (selectedDate) {
+        console.log('AddExpenseScreen: Setting end date to:', selectedDate);
+        setEndDate(selectedDate);
+      }
     }
   }, []);
 
@@ -1085,98 +1093,86 @@ export default function AddExpenseScreen() {
         </View>
       </ScrollView>
 
-      {/* DateTimePicker Modal for End Date */}
+      {/* DateTimePicker for End Date - Direct Implementation */}
       {showEndPicker && (
-        <Modal
-          visible={showEndPicker}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setShowEndPicker(false)}
-        >
-          <View style={{
-            flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}>
-            <View style={[
-              themedStyles.card,
-              {
-                margin: 20,
-                padding: 20,
-                backgroundColor: currentColors.background,
-                borderRadius: 12,
-                minWidth: 300,
-              }
-            ]}>
-              <Text style={[themedStyles.subtitle, { marginBottom: 16, textAlign: 'center' }]}>
-                Select End Date
-              </Text>
-              
-              <DateTimePicker
-                value={endDate || new Date()}
-                mode="date"
-                display="default"
-                onChange={handleEndDateChange}
-                minimumDate={new Date(startDateYMD + 'T00:00:00')}
-              />
-              
-              <View style={[themedStyles.row, { marginTop: 16, justifyContent: 'space-between' }]}>
-                <TouchableOpacity
-                  onPress={() => setShowEndPicker(false)}
-                  style={[
-                    themedStyles.badge,
-                    { 
-                      backgroundColor: currentColors.border,
-                      paddingHorizontal: 20,
-                      paddingVertical: 12,
-                      borderRadius: 20,
-                      flex: 1,
-                      marginRight: 8,
-                    }
-                  ]}
-                >
-                  <Text style={[
-                    themedStyles.badgeText,
-                    { 
-                      color: currentColors.text,
-                      fontWeight: '600',
-                      textAlign: 'center',
-                    }
-                  ]}>
-                    Cancel
+        <>
+          {Platform.OS === 'ios' ? (
+            // iOS: Show in a modal
+            <Modal
+              visible={showEndPicker}
+              transparent={true}
+              animationType="fade"
+              onRequestClose={() => setShowEndPicker(false)}
+            >
+              <View style={{
+                flex: 1,
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}>
+                <View style={[
+                  themedStyles.card,
+                  {
+                    margin: 20,
+                    padding: 20,
+                    backgroundColor: currentColors.background,
+                    borderRadius: 12,
+                    minWidth: 300,
+                  }
+                ]}>
+                  <Text style={[themedStyles.subtitle, { marginBottom: 16, textAlign: 'center' }]}>
+                    Select End Date
                   </Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  onPress={() => setShowEndPicker(false)}
-                  style={[
-                    themedStyles.badge,
-                    { 
-                      backgroundColor: currentColors.primary,
-                      paddingHorizontal: 20,
-                      paddingVertical: 12,
-                      borderRadius: 20,
-                      flex: 1,
-                      marginLeft: 8,
-                    }
-                  ]}
-                >
-                  <Text style={[
-                    themedStyles.badgeText,
-                    { 
-                      color: '#FFFFFF',
-                      fontWeight: '600',
-                      textAlign: 'center',
-                    }
-                  ]}>
-                    Done
-                  </Text>
-                </TouchableOpacity>
+                  
+                  <DateTimePicker
+                    value={endDate || new Date()}
+                    mode="date"
+                    display="default"
+                    onChange={handleEndDateChange}
+                    minimumDate={new Date(startDateYMD + 'T00:00:00')}
+                  />
+                  
+                  <View style={[themedStyles.row, { marginTop: 16, justifyContent: 'space-between' }]}>
+                    <TouchableOpacity
+                      onPress={() => setShowEndPicker(false)}
+                      style={[
+                        themedStyles.badge,
+                        { 
+                          backgroundColor: currentColors.border,
+                          paddingHorizontal: 20,
+                          paddingVertical: 12,
+                          borderRadius: 20,
+                          flex: 1,
+                          marginRight: 8,
+                        }
+                      ]}
+                    >
+                      <Text style={[
+                        themedStyles.badgeText,
+                        { 
+                          color: currentColors.text,
+                          fontWeight: '600',
+                          textAlign: 'center',
+                        }
+                      ]}>
+                        Done
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
-            </View>
-          </View>
-        </Modal>
+            </Modal>
+          ) : (
+            // Android: Show directly
+            <DateTimePicker
+              value={endDate || new Date()}
+              mode="date"
+              display="default"
+              onChange={handleEndDateChange}
+              minimumDate={new Date(startDateYMD + 'T00:00:00')}
+            />
+          )}
+        </>
       )}
 
       {/* Custom Category Modal */}
