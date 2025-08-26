@@ -82,6 +82,7 @@ export default function BudgetsScreen() {
         showToast('Budget renamed successfully', 'success');
         setEditingBudgetId(null);
         setEditingName('');
+        setDropdownBudgetId(null); // Close dropdown after successful rename
       } else {
         showToast(result.error?.message || 'Failed to rename budget', 'error');
       }
@@ -105,6 +106,7 @@ export default function BudgetsScreen() {
               const result = await deleteBudget(budgetId);
               if (result.success) {
                 showToast('Budget deleted successfully', 'success');
+                setDropdownBudgetId(null); // Close dropdown after successful delete
               } else {
                 showToast(result.error?.message || 'Failed to delete budget', 'error');
               }
@@ -123,6 +125,7 @@ export default function BudgetsScreen() {
       const result = await duplicateBudget(budgetId, `${budgetName} (Copy)`);
       if (result.success) {
         showToast('Budget duplicated successfully', 'success');
+        setDropdownBudgetId(null); // Close dropdown after successful duplicate
       } else {
         showToast(result.error?.message || 'Failed to duplicate budget', 'error');
       }
@@ -137,6 +140,7 @@ export default function BudgetsScreen() {
       const result = await setActiveBudget(budgetId);
       if (result.success) {
         showToast('Active budget changed', 'success');
+        setDropdownBudgetId(null); // Close dropdown after successful activation
       } else {
         showToast(result.error?.message || 'Failed to set active budget', 'error');
       }
@@ -177,10 +181,7 @@ export default function BudgetsScreen() {
               paddingHorizontal: 16,
               paddingVertical: 12,
             }}
-            onPress={() => {
-              handleSetActiveBudget(budget.id);
-              setDropdownBudgetId(null);
-            }}
+            onPress={() => handleSetActiveBudget(budget.id)}
           >
             <Icon name="checkmark-circle" size={18} color={currentColors.success} />
             <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Set as Active</Text>
@@ -211,10 +212,7 @@ export default function BudgetsScreen() {
             paddingHorizontal: 16,
             paddingVertical: 12,
           }}
-          onPress={() => {
-            handleDuplicateBudget(budget.id, budget.name);
-            setDropdownBudgetId(null);
-          }}
+          onPress={() => handleDuplicateBudget(budget.id, budget.name)}
         >
           <Icon name="copy" size={18} color={currentColors.text} />
           <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Duplicate</Text>
@@ -228,10 +226,7 @@ export default function BudgetsScreen() {
               paddingHorizontal: 16,
               paddingVertical: 12,
             }}
-            onPress={() => {
-              handleDeleteBudget(budget.id, budget.name);
-              setDropdownBudgetId(null);
-            }}
+            onPress={() => handleDeleteBudget(budget.id, budget.name)}
           >
             <Icon name="trash" size={18} color={currentColors.error} />
             <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15, color: currentColors.error }]}>Delete</Text>
@@ -276,7 +271,20 @@ export default function BudgetsScreen() {
           const isEditing = editingBudgetId === budget.id;
           
           return (
-            <View key={budget.id} style={[themedStyles.card, { position: 'relative' }]}>
+            <View 
+              key={budget.id} 
+              style={[
+                themedStyles.card, 
+                { 
+                  position: 'relative',
+                  // Make active budget more prominent with green highlighting
+                  borderWidth: isActive ? 2 : 1,
+                  borderColor: isActive ? currentColors.success : currentColors.border,
+                  backgroundColor: isActive ? currentColors.success + '08' : currentColors.backgroundAlt,
+                  boxShadow: isActive ? '0px 4px 12px rgba(34, 197, 94, 0.15)' : '0px 2px 4px rgba(0,0,0,0.05)',
+                }
+              ]}
+            >
               <View style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -320,7 +328,7 @@ export default function BudgetsScreen() {
                             fontWeight: isActive ? '700' : '600', 
                             flex: 1,
                             fontSize: 18,
-                            color: isActive ? currentColors.primary : currentColors.text
+                            color: isActive ? currentColors.success : currentColors.text
                           }
                         ]}>
                           {budget.name}
@@ -332,11 +340,14 @@ export default function BudgetsScreen() {
                               paddingHorizontal: 10,
                               paddingVertical: 4,
                               borderRadius: 8,
+                              flexDirection: 'row',
+                              alignItems: 'center',
                             }
                           ]}>
+                            <Icon name="checkmark-circle" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
                             <Text style={[
                               {
-                                color: currentColors.background,
+                                color: '#FFFFFF',
                                 fontSize: 12,
                                 fontWeight: '700'
                               }

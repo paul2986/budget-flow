@@ -254,7 +254,7 @@ export default function ExpensesScreen() {
 
   const hasActiveFilters = !!categoryFilter || !!searchTerm || (filter !== 'all') || !!personFilter;
 
-  // Header buttons - filter button on left, add button on right
+  // Header buttons - filter button on left, clear filter button (if filters active), add button on right
   const leftButtons = [
     {
       icon: 'funnel-outline',
@@ -262,6 +262,13 @@ export default function ExpensesScreen() {
       backgroundColor: hasActiveFilters ? currentColors.secondary : currentColors.border + '80',
       iconColor: hasActiveFilters ? '#FFFFFF' : currentColors.text,
     },
+    // Add clear filter button next to filter button when filters are active
+    ...(hasActiveFilters ? [{
+      icon: 'close',
+      onPress: handleClearFilters,
+      backgroundColor: currentColors.error,
+      iconColor: '#FFFFFF',
+    }] : []),
   ];
 
   const rightButtons = [
@@ -284,31 +291,8 @@ export default function ExpensesScreen() {
         loading={saving || deletingExpenseId !== null} 
       />
 
-      {/* Clear filters button - only show when filters are active */}
-      {hasActiveFilters && (
-        <View style={[themedStyles.section, { paddingTop: 8, paddingBottom: 0, paddingHorizontal: 16 }]}>
-          <TouchableOpacity
-            onPress={handleClearFilters}
-            style={{
-              backgroundColor: currentColors.error + '15',
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              borderRadius: 20,
-              alignSelf: 'flex-start',
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-          >
-            <Icon name="close-circle-outline" size={16} style={{ color: currentColors.error, marginRight: 6 }} />
-            <Text style={[themedStyles.text, { color: currentColors.error, fontSize: 13, fontWeight: '600' }]}>
-              Clear All Filters
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       {/* Sort options - now more prominent */}
-      <View style={[themedStyles.section, { paddingBottom: 0, paddingTop: hasActiveFilters ? 8 : 12, paddingHorizontal: 16 }]}>
+      <View style={[themedStyles.section, { paddingBottom: 0, paddingTop: 12, paddingHorizontal: 16 }]}>
         <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Sort by</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={{ paddingHorizontal: 4, flexDirection: 'row' }}>
@@ -321,7 +305,7 @@ export default function ExpensesScreen() {
 
       {/* Active filters summary - compact */}
       {hasActiveFilters && (
-        <View style={[themedStyles.section, { paddingTop: 0, paddingHorizontal: 16 }]}>
+        <View style={[themedStyles.section, { paddingTop: 8, paddingHorizontal: 16 }]}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={[themedStyles.textSecondary, { marginRight: 8, fontSize: 12 }]}>Filtered:</Text>
