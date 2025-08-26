@@ -64,7 +64,7 @@ export default function OverviewSection({
         {
           flex: 1,
           paddingHorizontal: 12,
-          paddingVertical: 10,
+          paddingVertical: 6, // Reduced from 10 to 6 to make switches narrower in height
           borderRadius: 8,
           backgroundColor: viewMode === mode ? currentColors.border : 'transparent',
           alignItems: 'center',
