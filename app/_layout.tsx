@@ -147,6 +147,8 @@ function RootLayoutContent() {
     return hasNoBudgets || hasNoActiveBudget;
   }, [pathname, appData, activeBudget]);
 
+
+
   // Deep link handler: route to /import-link and prefill "q" with the incoming URL
   // Only handle actual deep links, not the app's initial launch
   useEffect(() => {
