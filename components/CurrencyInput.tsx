@@ -112,38 +112,17 @@ export default function CurrencyInput({
       )}
       
       <View style={{ position: 'relative' }}>
-        {/* Currency symbol overlay - positioned to align with text baseline */}
-        <View style={{
-          position: 'absolute',
-          left: 16,
-          top: 0,
-          bottom: 0,
-          justifyContent: 'center', // Center vertically within the input height
-          zIndex: 1,
-          pointerEvents: 'none',
-        }}>
-          <Text style={[
-            themedStyles.text,
-            { 
-              color: displayValue === '' ? currentColors.textSecondary : currentColors.text,
-              fontSize: 16,
-              fontWeight: '500',
-              lineHeight: 24, // Match the text input's line height for proper alignment
-            }
-          ]}>
-            {currency.symbol}
-          </Text>
-        </View>
-        
         <TextInput
           ref={inputRef}
           style={[
             themedStyles.input,
             {
               paddingLeft: 40, // Always make room for currency symbol
-              lineHeight: 24, // Ensure consistent line height
-              textAlignVertical: 'center', // Center text vertically on Android
-              includeFontPadding: false, // Remove extra font padding on Android
+              fontSize: 16,
+              fontWeight: '500',
+              lineHeight: 20,
+              textAlignVertical: 'center',
+              includeFontPadding: false,
             },
             error ? { borderColor: currentColors.error } : null,
             inputStyle,
@@ -152,12 +131,32 @@ export default function CurrencyInput({
           onChangeText={handleChangeText}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          placeholder={placeholder} // Remove currency symbol from placeholder to avoid duplication
+          placeholder={placeholder}
           placeholderTextColor={currentColors.textSecondary}
           keyboardType="numeric"
           editable={editable}
           {...props}
         />
+        
+        {/* Currency symbol overlay - positioned to align perfectly with input text */}
+        <View style={{
+          position: 'absolute',
+          left: 16,
+          top: 16, // Match the input's padding
+          pointerEvents: 'none',
+        }}>
+          <Text style={[
+            {
+              color: displayValue === '' ? currentColors.textSecondary : currentColors.text,
+              fontSize: 16, // Match input fontSize exactly
+              fontWeight: '500', // Match input fontWeight exactly
+              lineHeight: 20, // Match input lineHeight exactly
+              includeFontPadding: false, // Match input includeFontPadding
+            }
+          ]}>
+            {currency.symbol}
+          </Text>
+        </View>
       </View>
       
       {error && (
