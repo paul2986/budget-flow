@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useBudgetData } from '../hooks/useBudgetData';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal, Platform } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { useThemedStyles } from '../hooks/useThemedStyles';
@@ -125,6 +125,21 @@ export default function AddExpenseScreen() {
       scrollViewRef.current?.scrollTo({ y: 0, animated: false });
     }, 100);
   }, []);
+
+  // Always scroll to top when the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('AddExpenseScreen: Screen focused, scrolling to top to ensure description field is visible');
+      // Use a small delay to ensure the screen is fully rendered
+      const timeoutId = setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+      }, 50);
+      
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    }, [])
+  );
 
   // Reload custom categories when data changes (e.g., after clearing all data)
   // Fixed: Removed categoryTag and tempCategories from dependencies to prevent infinite loop
