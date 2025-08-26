@@ -412,7 +412,10 @@ export default function BudgetsScreen() {
     );
   };
 
-  if (isLocked) {
+  // Check if the active budget is locked (only show lock screen if there's an active budget that's locked)
+  const activeBudgetLocked = activeBudget ? isLocked(activeBudget) : false;
+  
+  if (activeBudgetLocked) {
     return (
       <View style={themedStyles.container}>
         <StandardHeader title="Budgets" showLeftIcon={false} showRightIcon={false} />
