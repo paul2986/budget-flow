@@ -8,7 +8,7 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useCurrency } from '../hooks/useCurrency';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
-import { Expense, ExpenseCategory, DEFAULT_CATEGORIES } from '../types/budget';
+import { Expense, ExpenseCategory, DEFAULT_CATEGORIES, Person } from '../types/budget';
 import StandardHeader from '../components/StandardHeader';
 import { getCustomExpenseCategories, saveCustomExpenseCategories, normalizeCategoryName } from '../utils/storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -16,7 +16,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 const EXPENSE_CATEGORIES: ExpenseCategory[] = DEFAULT_CATEGORIES;
 
 export default function AddExpenseScreen() {
-  const { data, addExpense, updateExpense, removeExpense, saving } = useBudgetData();
+  const { data, addExpense, updateExpense, removeExpense, addPerson, saving } = useBudgetData();
   const { currentColors } = useTheme();
   const { themedStyles, themedButtonStyles } = useThemedStyles();
   const { formatCurrency } = useCurrency();
@@ -45,6 +45,11 @@ export default function AddExpenseScreen() {
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [newCustomName, setNewCustomName] = useState('');
   const [customError, setCustomError] = useState<string | null>(null);
+
+  // Add person modal state
+  const [showAddPersonModal, setShowAddPersonModal] = useState(false);
+  const [newPersonName, setNewPersonName] = useState('');
+  const [addingPerson, setAddingPerson] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -150,7 +155,7 @@ export default function AddExpenseScreen() {
           { 
             text: 'Add Person', 
             onPress: () => {
-              router.push('/people');
+              setShowAddPersonModal(true);
             }
           }
         ]
@@ -233,7 +238,7 @@ export default function AddExpenseScreen() {
       console.error('AddExpenseScreen: Error saving expense:', error);
       Alert.alert('Error', 'Failed to save expense. Please try again.');
     }
-  }, [description, amount, category, frequency, personId, categoryTag, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin, startDateYMD, endDateYMD]);
+  }, [description, amount, category, frequency, personId, categoryTag, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin, startDateYMD, endDateYMD, data.people.length]);
 
   const handleDeleteExpense = useCallback(async () => {
     if (!isEditMode || !expenseToEdit) {
@@ -357,6 +362,41 @@ export default function AddExpenseScreen() {
     </View>
   ), [category, currentColors, saving, deleting, themedStyles, data.people]);
 
+  const handleAddPersonFromExpense = useCallback(async () => {
+    if (!newPersonName.trim()) {
+      Alert.alert('Error', 'Please enter a name');
+      return;
+    }
+
+    try {
+      setAddingPerson(true);
+      const person: Person = {
+        id: `person_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name: newPersonName.trim(),
+        income: [],
+      };
+
+      console.log('AddExpenseScreen: Adding new person from expense screen:', person);
+      const result = await addPerson(person);
+      console.log('AddExpenseScreen: Person added result:', result);
+      
+      if (result.success) {
+        setNewPersonName('');
+        setShowAddPersonModal(false);
+        // Auto-select the newly created person
+        setPersonId(person.id);
+        console.log('AddExpenseScreen: Person added successfully and auto-selected');
+      } else {
+        Alert.alert('Error', 'Failed to add person. Please try again.');
+      }
+    } catch (error) {
+      console.error('AddExpenseScreen: Error adding person:', error);
+      Alert.alert('Error', 'Failed to add person. Please try again.');
+    } finally {
+      setAddingPerson(false);
+    }
+  }, [newPersonName, addPerson]);
+
   const PersonPicker = useCallback(() => {
     // Don't show person picker for household expenses
     if (category === 'household') return null;
@@ -378,11 +418,11 @@ export default function AddExpenseScreen() {
                 You need to add people to your budget before creating personal expenses.
               </Text>
               <TouchableOpacity
-                onPress={() => router.push('/people')}
+                onPress={() => setShowAddPersonModal(true)}
                 style={[
                   themedStyles.badge,
                   { 
-                    backgroundColor: currentColors.error,
+                    backgroundColor: currentColors.primary,
                     paddingHorizontal: 16,
                     paddingVertical: 10,
                     borderRadius: 20,
@@ -390,7 +430,7 @@ export default function AddExpenseScreen() {
                 ]}
               >
                 <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontWeight: '600' }]}>
-                  Add People
+                  Add Person
                 </Text>
               </TouchableOpacity>
             </View>
@@ -754,6 +794,56 @@ export default function AddExpenseScreen() {
                 style={[themedStyles.badge, { backgroundColor: currentColors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 }]}
               >
                 <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontWeight: '700' }]}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add Person Modal */}
+      <Modal visible={showAddPersonModal} animationType="slide" transparent onRequestClose={() => setShowAddPersonModal(false)}>
+        <View style={{
+          flex: 1,
+          backgroundColor: '#00000055',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+        }}>
+          <View style={[themedStyles.card, { width: '100%', maxWidth: 480 }]}>
+            <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Add Person</Text>
+            <Text style={[themedStyles.textSecondary, { marginBottom: 16 }]}>
+              Add a person to assign this expense to. Your expense data will be preserved.
+            </Text>
+            <TextInput
+              style={themedStyles.input}
+              value={newPersonName}
+              onChangeText={setNewPersonName}
+              placeholder="Enter person's name"
+              placeholderTextColor={currentColors.textSecondary}
+              maxLength={50}
+              autoFocus
+            />
+            <View style={[themedStyles.row, { marginTop: 16 }]}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowAddPersonModal(false);
+                  setNewPersonName('');
+                }}
+                style={[themedStyles.badge, { backgroundColor: currentColors.border, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 }]}
+                disabled={addingPerson}
+              >
+                <Text style={[themedStyles.badgeText, { color: currentColors.text }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleAddPersonFromExpense}
+                style={[themedStyles.badge, { backgroundColor: currentColors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 }]}
+                disabled={addingPerson || !newPersonName.trim()}
+              >
+                {addingPerson ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontWeight: '700' }]}>Add Person</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
