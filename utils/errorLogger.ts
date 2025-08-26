@@ -100,89 +100,107 @@ export const setupErrorLogging = () => {
   console.log('🔧 Setting up comprehensive error logging...');
 
   // Capture unhandled errors in web environment
-  if (typeof window !== 'undefined') {
-    // Override window.onerror to catch JavaScript errors
+  if (typeof window !== 'undefined' && Platform.OS === 'web' && typeof window.addEventListener === 'function') {
+    // Override window.onerror to catch JavaScript errors (only if it exists)
     const originalOnError = window.onerror;
-    window.onerror = (message, source, lineno, colno, error) => {
-      const sourceFile = source ? source.split('/').pop() : 'unknown';
-      const errorData = {
-        message: message,
-        source: `${sourceFile}:${lineno}:${colno}`,
-        line: lineno,
-        column: colno,
-        error: error?.stack || error,
-        timestamp: new Date().toISOString()
-      };
+    if (typeof window.onerror !== 'undefined') {
+      window.onerror = (message, source, lineno, colno, error) => {
+        const sourceFile = source ? source.split('/').pop() : 'unknown';
+        const errorData = {
+          message: message,
+          source: `${sourceFile}:${lineno}:${colno}`,
+          line: lineno,
+          column: colno,
+          error: error?.stack || error,
+          timestamp: new Date().toISOString()
+        };
 
-      console.error('🚨 RUNTIME ERROR:', errorData);
-      sendErrorToParent('error', 'JavaScript Runtime Error', errorData);
-      
-      // Call original handler if it exists
-      if (originalOnError && typeof originalOnError === 'function') {
-        try {
-          return originalOnError.call(window, message, source, lineno, colno, error);
-        } catch (e) {
-          console.error('Error in original error handler:', e);
+        console.error('🚨 RUNTIME ERROR:', errorData);
+        sendErrorToParent('error', 'JavaScript Runtime Error', errorData);
+        
+        // Call original handler if it exists
+        if (originalOnError && typeof originalOnError === 'function') {
+          try {
+            return originalOnError.call(window, message, source, lineno, colno, error);
+          } catch (e) {
+            console.error('Error in original error handler:', e);
+          }
         }
-      }
-      
-      return false; // Don't prevent default error handling
-    };
+        
+        return false; // Don't prevent default error handling
+      };
+    } else {
+      console.log('🔧 window.onerror not available, skipping error handler override');
+    }
 
-    // Capture unhandled promise rejections with comprehensive handling
+    // Capture unhandled promise rejections with comprehensive handling (only if it exists)
     const originalUnhandledRejection = window.onunhandledrejection;
-    window.onunhandledrejection = (event) => {
-      const errorData = {
-        reason: event.reason,
-        promise: event.promise,
-        timestamp: new Date().toISOString(),
-        stack: event.reason?.stack || 'No stack trace available',
-        message: event.reason?.message || String(event.reason)
-      };
+    if (typeof window.onunhandledrejection !== 'undefined') {
+      window.onunhandledrejection = (event) => {
+        const errorData = {
+          reason: event.reason,
+          promise: event.promise,
+          timestamp: new Date().toISOString(),
+          stack: event.reason?.stack || 'No stack trace available',
+          message: event.reason?.message || String(event.reason)
+        };
 
-      console.error('🚨 UNHANDLED PROMISE REJECTION:', errorData);
-      sendErrorToParent('error', 'Unhandled Promise Rejection', errorData);
-      
-      // Call original handler if it exists
-      if (originalUnhandledRejection && typeof originalUnhandledRejection === 'function') {
-        try {
-          return originalUnhandledRejection.call(window, event);
-        } catch (e) {
-          console.error('Error in original unhandled rejection handler:', e);
+        console.error('🚨 UNHANDLED PROMISE REJECTION:', errorData);
+        sendErrorToParent('error', 'Unhandled Promise Rejection', errorData);
+        
+        // Call original handler if it exists
+        if (originalUnhandledRejection && typeof originalUnhandledRejection === 'function') {
+          try {
+            return originalUnhandledRejection.call(window, event);
+          } catch (e) {
+            console.error('Error in original unhandled rejection handler:', e);
+          }
         }
+        
+        // Prevent the default behavior (which would log to console)
+        event.preventDefault();
+      };
+    } else {
+      console.log('🔧 window.onunhandledrejection not available, skipping rejection handler override');
+    }
+
+    // Also add event listener as backup (only if addEventListener exists)
+    if (typeof window.addEventListener === 'function') {
+      try {
+        window.addEventListener('unhandledrejection', (event) => {
+          const errorData = {
+            reason: event.reason,
+            timestamp: new Date().toISOString(),
+            stack: event.reason?.stack || 'No stack trace available',
+            message: event.reason?.message || String(event.reason)
+          };
+
+          console.error('🚨 UNHANDLED PROMISE REJECTION (listener):', errorData);
+          sendErrorToParent('error', 'Unhandled Promise Rejection', errorData);
+        });
+
+        // Add error event listener for additional coverage
+        window.addEventListener('error', (event) => {
+          const errorData = {
+            message: event.message,
+            filename: event.filename,
+            lineno: event.lineno,
+            colno: event.colno,
+            error: event.error?.stack || event.error,
+            timestamp: new Date().toISOString()
+          };
+
+          console.error('🚨 ERROR EVENT:', errorData);
+          sendErrorToParent('error', 'Error Event', errorData);
+        });
+        
+        console.log('✅ Web event listeners set up successfully');
+      } catch (error) {
+        console.error('❌ Failed to set up web event listeners:', error);
       }
-      
-      // Prevent the default behavior (which would log to console)
-      event.preventDefault();
-    };
-
-    // Also add event listener as backup
-    window.addEventListener('unhandledrejection', (event) => {
-      const errorData = {
-        reason: event.reason,
-        timestamp: new Date().toISOString(),
-        stack: event.reason?.stack || 'No stack trace available',
-        message: event.reason?.message || String(event.reason)
-      };
-
-      console.error('🚨 UNHANDLED PROMISE REJECTION (listener):', errorData);
-      sendErrorToParent('error', 'Unhandled Promise Rejection', errorData);
-    });
-
-    // Add error event listener for additional coverage
-    window.addEventListener('error', (event) => {
-      const errorData = {
-        message: event.message,
-        filename: event.filename,
-        lineno: event.lineno,
-        colno: event.colno,
-        error: event.error?.stack || event.error,
-        timestamp: new Date().toISOString()
-      };
-
-      console.error('🚨 ERROR EVENT:', errorData);
-      sendErrorToParent('error', 'Error Event', errorData);
-    });
+    } else {
+      console.log('🔧 addEventListener not available, skipping event listeners');
+    }
   }
 
   // React Native specific error handling
