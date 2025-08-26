@@ -1,6 +1,6 @@
 
 import { useToast } from '../hooks/useToast';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Pressable } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { router, useFocusEffect } from 'expo-router';
 import { useBudgetLock } from '../hooks/useBudgetLock';
@@ -157,128 +157,140 @@ export default function BudgetsScreen() {
     }
   }, [setActiveBudget, showToast]);
 
-  const handleDropdownAction = useCallback((action: () => void | Promise<void>) => {
-    console.log('Dropdown action triggered');
-    // Execute the action
-    if (typeof action === 'function') {
-      const result = action();
-      if (result instanceof Promise) {
-        result.catch(error => {
-          console.error('Dropdown action error:', error);
-        });
-      }
-    }
-  }, []);
-
   const DropdownMenu = ({ budget }: { budget: Budget }) => {
     const isActive = activeBudget?.id === budget.id;
     
     return (
-      <View style={[
-        {
-          position: 'absolute',
-          top: 50,
-          right: 8,
-          zIndex: 1001,
-          minWidth: 180,
-          backgroundColor: currentColors.backgroundAlt,
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: currentColors.border,
-          shadowColor: currentColors.text,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.15,
-          shadowRadius: 12,
-          elevation: 8,
-          paddingVertical: 8,
-        }
-      ]}>
-        {!isActive && (
+      <Modal
+        visible={dropdownBudgetId === budget.id}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setDropdownBudgetId(null)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+            justifyContent: 'flex-start',
+            alignItems: 'flex-end',
+            paddingTop: 120, // Adjust based on where the menu should appear
+            paddingRight: 20,
+          }}
+          activeOpacity={1}
+          onPress={() => {
+            console.log('Modal background pressed, closing dropdown');
+            setDropdownBudgetId(null);
+          }}
+        >
           <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: 16,
-              paddingVertical: 12,
+            activeOpacity={1}
+            onPress={(e) => {
+              // Prevent the modal from closing when touching the menu itself
+              e.stopPropagation();
             }}
-            onPress={() => {
-              console.log('Set as Active pressed for budget:', budget.id);
-              handleDropdownAction(() => handleSetActiveBudget(budget.id));
-            }}
-            activeOpacity={0.7}
           >
-            <Icon name="checkmark-circle" size={18} color={currentColors.success} />
-            <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Set as Active</Text>
-          </TouchableOpacity>
-        )}
-        
-        <TouchableOpacity
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-          }}
-          onPress={() => {
-            console.log('Rename pressed for budget:', budget.id);
-            handleDropdownAction(() => {
-              setEditingBudgetId(budget.id);
-              setEditingName(budget.name);
-              setDropdownBudgetId(null);
-            });
-          }}
-          activeOpacity={0.7}
-        >
-          <Icon name="create" size={18} color={currentColors.text} />
-          <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Rename</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-          }}
-          onPress={() => {
-            console.log('Duplicate pressed for budget:', budget.id);
-            handleDropdownAction(() => handleDuplicateBudget(budget.id, budget.name));
-          }}
-          activeOpacity={0.7}
-        >
-          <Icon name="copy" size={18} color={currentColors.text} />
-          <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Duplicate</Text>
-        </TouchableOpacity>
-        
-        {budgets.length > 1 && (
-          <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: 16,
-              paddingVertical: 12,
-              opacity: isActive ? 0.5 : 1, // Visual indication that active budget cannot be deleted
-            }}
-            onPress={() => {
-              console.log('Delete pressed for budget:', budget.id);
-              if (!isActive) {
-                handleDropdownAction(() => handleDeleteBudget(budget.id, budget.name));
+            <View style={[
+              {
+                minWidth: 180,
+                backgroundColor: currentColors.backgroundAlt,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: currentColors.border,
+                shadowColor: currentColors.text,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.15,
+                shadowRadius: 12,
+                elevation: 8,
+                paddingVertical: 8,
               }
-            }}
-            disabled={isActive} // Disable delete button for active budget
-            activeOpacity={0.7}
-          >
-            <Icon name="trash" size={18} color={isActive ? currentColors.textSecondary : currentColors.error} />
-            <Text style={[themedStyles.text, { 
-              marginLeft: 12, 
-              fontSize: 15, 
-              color: isActive ? currentColors.textSecondary : currentColors.error 
-            }]}>
-              {isActive ? 'Cannot Delete Active' : 'Delete'}
-            </Text>
+            ]}>
+              {!isActive && (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                  }}
+                  onPress={() => {
+                    console.log('Set as Active pressed for budget:', budget.id);
+                    handleSetActiveBudget(budget.id);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Icon name="checkmark-circle" size={18} color={currentColors.success} />
+                  <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Set as Active</Text>
+                </TouchableOpacity>
+              )}
+              
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                }}
+                onPress={() => {
+                  console.log('Rename pressed for budget:', budget.id);
+                  setEditingBudgetId(budget.id);
+                  setEditingName(budget.name);
+                  setDropdownBudgetId(null);
+                }}
+                activeOpacity={0.7}
+              >
+                <Icon name="create" size={18} color={currentColors.text} />
+                <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Rename</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                }}
+                onPress={() => {
+                  console.log('Duplicate pressed for budget:', budget.id);
+                  handleDuplicateBudget(budget.id, budget.name);
+                }}
+                activeOpacity={0.7}
+              >
+                <Icon name="copy" size={18} color={currentColors.text} />
+                <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Duplicate</Text>
+              </TouchableOpacity>
+              
+              {budgets.length > 1 && (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    opacity: isActive ? 0.5 : 1, // Visual indication that active budget cannot be deleted
+                  }}
+                  onPress={() => {
+                    console.log('Delete pressed for budget:', budget.id);
+                    if (!isActive) {
+                      handleDeleteBudget(budget.id, budget.name);
+                    }
+                  }}
+                  disabled={isActive} // Disable delete button for active budget
+                  activeOpacity={0.7}
+                >
+                  <Icon name="trash" size={18} color={isActive ? currentColors.textSecondary : currentColors.error} />
+                  <Text style={[themedStyles.text, { 
+                    marginLeft: 12, 
+                    fontSize: 15, 
+                    color: isActive ? currentColors.textSecondary : currentColors.error 
+                  }]}>
+                    {isActive ? 'Cannot Delete Active' : 'Delete'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </TouchableOpacity>
-        )}
-      </View>
+        </TouchableOpacity>
+      </Modal>
     );
   };
 
@@ -427,7 +439,7 @@ export default function BudgetsScreen() {
                 )}
               </View>
               
-              {dropdownBudgetId === budget.id && <DropdownMenu budget={budget} />}
+              <DropdownMenu budget={budget} />
             </View>
           );
         })}
@@ -447,92 +459,79 @@ export default function BudgetsScreen() {
 
       {/* Create Budget Modal */}
       {showCreateModal && (
-        <View style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 2000,
-        }}>
+        <Modal
+          visible={showCreateModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => {
+            setShowCreateModal(false);
+            setNewBudgetName('');
+          }}
+        >
           <View style={{
-            backgroundColor: currentColors.backgroundAlt,
-            borderRadius: 16,
-            padding: 24,
-            margin: 20,
-            width: '90%',
-            maxWidth: 400,
-            borderWidth: 1,
-            borderColor: currentColors.border,
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
           }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <Text style={[themedStyles.subtitle, { marginBottom: 0, fontSize: 20 }]}>Create New Budget</Text>
-              <TouchableOpacity onPress={() => {
-                setShowCreateModal(false);
-                setNewBudgetName('');
-              }}>
-                <Icon name="close" size={24} color={currentColors.text} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
-              Budget Name:
-            </Text>
-            
-            <TextInput
-              style={themedStyles.input}
-              placeholder="Enter budget name"
-              placeholderTextColor={currentColors.textSecondary}
-              value={newBudgetName}
-              onChangeText={setNewBudgetName}
-              editable={!isCreating}
-              autoFocus
-            />
-            
-            <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
-              <View style={{ flex: 1 }}>
-                <Button
-                  text="Cancel"
-                  onPress={() => {
-                    setShowCreateModal(false);
-                    setNewBudgetName('');
-                  }}
-                  disabled={isCreating}
-                  variant="outline"
-                />
+            <View style={{
+              backgroundColor: currentColors.backgroundAlt,
+              borderRadius: 16,
+              padding: 24,
+              margin: 20,
+              width: '90%',
+              maxWidth: 400,
+              borderWidth: 1,
+              borderColor: currentColors.border,
+            }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <Text style={[themedStyles.subtitle, { marginBottom: 0, fontSize: 20 }]}>Create New Budget</Text>
+                <TouchableOpacity onPress={() => {
+                  setShowCreateModal(false);
+                  setNewBudgetName('');
+                }}>
+                  <Icon name="close" size={24} color={currentColors.text} />
+                </TouchableOpacity>
               </View>
-              <View style={{ flex: 1 }}>
-                <Button
-                  text={isCreating ? 'Creating...' : 'Create'}
-                  onPress={handleCreateBudget}
-                  disabled={!newBudgetName.trim() || isCreating}
-                  variant="primary"
-                />
+
+              <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
+                Budget Name:
+              </Text>
+              
+              <TextInput
+                style={themedStyles.input}
+                placeholder="Enter budget name"
+                placeholderTextColor={currentColors.textSecondary}
+                value={newBudgetName}
+                onChangeText={setNewBudgetName}
+                editable={!isCreating}
+                autoFocus
+              />
+              
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    text="Cancel"
+                    onPress={() => {
+                      setShowCreateModal(false);
+                      setNewBudgetName('');
+                    }}
+                    disabled={isCreating}
+                    variant="outline"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    text={isCreating ? 'Creating...' : 'Create'}
+                    onPress={handleCreateBudget}
+                    disabled={!newBudgetName.trim() || isCreating}
+                    variant="primary"
+                  />
+                </View>
               </View>
             </View>
           </View>
-        </View>
-      )}
-
-      {/* Dropdown Overlay - positioned behind dropdown menu */}
-      {dropdownBudgetId && (
-        <Pressable
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 1000,
-          }}
-          onPress={() => {
-            console.log('Dropdown overlay pressed, closing dropdown');
-            setDropdownBudgetId(null);
-          }}
-        />
+        </Modal>
       )}
     </View>
   );
