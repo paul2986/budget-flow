@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useBudgetData } from '../hooks/useBudgetData';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Text, View, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
@@ -24,7 +24,6 @@ export default function AddExpenseScreen() {
   
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
-  const [notes, setNotes] = useState('');
   const [category, setCategory] = useState<'household' | 'personal'>('household');
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
   const [personId, setPersonId] = useState<string>('');
@@ -47,16 +46,23 @@ export default function AddExpenseScreen() {
   const [newCustomName, setNewCustomName] = useState('');
   const [customError, setCustomError] = useState<string | null>(null);
 
+  const scrollViewRef = useRef<ScrollView>(null);
+
   const isEditMode = !!params.id;
   const origin = params.origin || 'expenses'; // Default to expenses if no origin specified
   const expenseToEdit = isEditMode ? data.expenses.find(e => e.id === params.id) : null;
 
-  // Load custom categories initially
+  // Load custom categories initially and scroll to top
   useEffect(() => {
     (async () => {
       const list = await getCustomExpenseCategories();
       setCustomCategories(list);
     })();
+    
+    // Scroll to top when component mounts
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+    }, 100);
   }, []);
 
   // Load expense data for editing
@@ -68,10 +74,6 @@ export default function AddExpenseScreen() {
       setCategory(expenseToEdit.category || 'household');
       setFrequency((expenseToEdit.frequency as 'daily' | 'weekly' | 'monthly' | 'yearly') || 'monthly');
       setPersonId(expenseToEdit.personId || '');
-      
-      // Safely handle notes property - check if it exists and is a string
-      const expenseNotes = expenseToEdit.notes;
-      setNotes((expenseNotes && typeof expenseNotes === 'string') ? expenseNotes : '');
       
       const normalized = normalizeCategoryName((expenseToEdit.categoryTag as ExpenseCategory) || 'Misc');
       setCategoryTag(normalized || 'Misc');
@@ -101,7 +103,6 @@ export default function AddExpenseScreen() {
       setFrequency('monthly');
       // Auto-select first person if only one exists
       setPersonId(data.people.length === 1 ? data.people[0].id : '');
-      setNotes('');
       setCategoryTag('Misc');
       setStartDateYMD(toYMD(new Date()));
       setEndDateYMD('');
@@ -113,13 +114,9 @@ export default function AddExpenseScreen() {
     
     // Small delay to ensure state is updated before navigation
     setTimeout(() => {
-      if (origin === 'home') {
-        router.replace('/');
-      } else {
-        router.replace('/expenses');
-      }
+      router.replace('/expenses');
     }, 100);
-  }, [origin]);
+  }, []);
 
   const handleSaveExpense = useCallback(async () => {
     if (!description.trim()) {
@@ -153,8 +150,13 @@ export default function AddExpenseScreen() {
 
     // All expenses must be assigned to a person
     if (!personId) {
-      Alert.alert('Error', 'Please select a person to assign this expense to');
-      return;
+      if (category === 'household' && data.people.length > 0) {
+        // Auto-assign household expenses to first person
+        setPersonId(data.people[0].id);
+      } else {
+        Alert.alert('Error', 'Please select a person to assign this expense to');
+        return;
+      }
     }
 
     const normalizedTag = normalizeCategoryName(categoryTag || 'Misc');
@@ -183,7 +185,7 @@ export default function AddExpenseScreen() {
         frequency,
         personId: personId, // Always assign to a person
         date: isEditMode ? expenseToEdit!.date : new Date(startDateYMD + 'T00:00:00Z').toISOString(),
-        notes: notes.trim(), // Always include notes, even if empty string
+        notes: '', // Always include notes as empty string
         categoryTag: normalizedTag,
         endDate: isRecurring && endVal ? endVal : undefined,
       };
@@ -214,7 +216,7 @@ export default function AddExpenseScreen() {
       console.error('AddExpenseScreen: Error saving expense:', error);
       Alert.alert('Error', 'Failed to save expense. Please try again.');
     }
-  }, [description, amount, notes, category, frequency, personId, categoryTag, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin, startDateYMD, endDateYMD]);
+  }, [description, amount, category, frequency, personId, categoryTag, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin, startDateYMD, endDateYMD]);
 
   const handleDeleteExpense = useCallback(async () => {
     if (!isEditMode || !expenseToEdit) {
@@ -263,7 +265,7 @@ export default function AddExpenseScreen() {
   }, [isEditMode, expenseToEdit, removeExpense, navigateToOrigin]);
 
   const handleGoBack = useCallback(() => {
-    router.back();
+    router.replace('/expenses');
   }, []);
 
   const OwnershipPicker = useCallback(() => (
@@ -284,7 +286,10 @@ export default function AddExpenseScreen() {
           ]}
           onPress={() => {
             setCategory('household');
-            setPersonId('');
+            // For household expenses, assign to first person for tracking but don't show picker
+            if (data.people.length > 0) {
+              setPersonId(data.people[0].id);
+            }
           }}
           disabled={saving || deleting}
         >
@@ -327,10 +332,10 @@ export default function AddExpenseScreen() {
         </TouchableOpacity>
       </View>
     </View>
-  ), [category, currentColors, saving, deleting, themedStyles]);
+  ), [category, currentColors, saving, deleting, themedStyles, data.people]);
 
   const PersonPicker = useCallback(() => {
-    if (data.people.length === 0) return null;
+    if (data.people.length === 0 || category === 'household') return null;
 
     return (
       <View style={themedStyles.section}>
@@ -368,10 +373,7 @@ export default function AddExpenseScreen() {
           ))}
         </View>
         <Text style={[themedStyles.textSecondary, { fontSize: 12, marginTop: 4 }]}>
-          {category === 'household' 
-            ? 'Select who this household expense should be assigned to for tracking purposes.'
-            : 'Select the person this personal expense belongs to.'
-          }
+          Select the person this personal expense belongs to.
         </Text>
       </View>
     );
@@ -509,6 +511,7 @@ export default function AddExpenseScreen() {
       setCustomCategories(next);
       setCategoryTag(normalized);
       setShowCustomModal(false);
+      // Don't reset the form when creating a new category
     } catch (e) {
       console.log('Error saving custom category', e);
       setCustomError('Failed to save category. Try again.');
@@ -530,7 +533,11 @@ export default function AddExpenseScreen() {
         })()}
       />
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16, paddingTop: 16 }]}>
+      <ScrollView 
+        ref={scrollViewRef}
+        style={themedStyles.content} 
+        contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16, paddingTop: 16 }]}
+      >
         <View style={themedStyles.section}>
           <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Description</Text>
           <TextInput
@@ -541,23 +548,6 @@ export default function AddExpenseScreen() {
             placeholderTextColor={currentColors.textSecondary}
             editable={!saving && !deleting}
           />
-        </View>
-
-        <View style={themedStyles.section}>
-          <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Notes (optional)</Text>
-          <TextInput
-            style={[themedStyles.input, { minHeight: 84, paddingTop: 12, textAlignVertical: 'top' }]}
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Add extra details about this expense..."
-            placeholderTextColor={currentColors.textSecondary}
-            editable={!saving && !deleting}
-            multiline
-            maxLength={500}
-          />
-          <Text style={[themedStyles.textSecondary, { textAlign: 'right', marginTop: 4, fontSize: 11 }]}>
-            {notes.length}/500
-          </Text>
         </View>
 
         <View style={themedStyles.section}>

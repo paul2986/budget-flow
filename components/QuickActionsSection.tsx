@@ -17,7 +17,10 @@ export default function QuickActionsSection() {
       subtitle: 'Track new spending',
       icon: 'add-circle',
       color: currentColors.primary,
-      onPress: () => router.push('/add-expense'),
+      onPress: () => {
+        router.push('/add-expense');
+        // Scroll to top will be handled by the add-expense screen itself
+      },
     },
     {
       id: 'manage-people',

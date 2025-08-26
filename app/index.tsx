@@ -40,6 +40,7 @@ export default function HomeScreen() {
   const [budgetName, setBudgetName] = useState('');
   const [creatingBudget, setCreatingBudget] = useState(false);
   const appState = useRef(AppState.currentState);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const budgetLocked = useMemo(() => {
     // Can't be locked if no budgets exist or no active budget
@@ -171,9 +172,9 @@ export default function HomeScreen() {
       if (result.success) {
         showToast('Budget created successfully!', 'success');
         setShowBudgetNaming(false);
-        setShowBudgetReady(true); // Show the "Budget Ready" page
         setBudgetName('');
         // The useBudgetData hook will automatically refresh and set the new budget as active
+        // No need to show intermediate "Budget Ready" screen
       } else {
         showToast('Failed to create budget', 'error');
       }
@@ -219,20 +220,22 @@ export default function HomeScreen() {
         />
         
         <ScrollView 
+          ref={scrollViewRef}
           style={themedStyles.content} 
           contentContainerStyle={[
             themedStyles.scrollContent,
             {
               paddingHorizontal: 24,
-              paddingTop: 40,
-              paddingBottom: 40, // Ensure bottom content is visible
-              justifyContent: 'center',
+              paddingTop: 20,
+              paddingBottom: 120, // Ensure bottom content is visible above nav bar
+              justifyContent: 'flex-start',
               flexGrow: 1,
             }
           ]}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <View style={{ alignItems: 'center', marginBottom: 40 }}>
+          <View style={{ alignItems: 'center', marginBottom: 32, marginTop: 20 }}>
             <Icon name="wallet-outline" size={80} style={{ color: currentColors.primary, marginBottom: 24 }} />
             <Text style={[themedStyles.title, { textAlign: 'center', marginBottom: 12 }]}>
               Welcome to Budget Flow!
@@ -278,9 +281,15 @@ export default function HomeScreen() {
               onChangeText={setBudgetName}
               placeholder="Enter budget name..."
               placeholderTextColor={currentColors.textSecondary}
-              autoFocus={true}
+              autoFocus={false}
               selectTextOnFocus={true}
               maxLength={50}
+              onFocus={() => {
+                // Scroll up when keyboard appears
+                setTimeout(() => {
+                  scrollViewRef.current?.scrollTo({ y: 100, animated: true });
+                }, 300);
+              }}
             />
 
             <View style={{ gap: 12 }}>
@@ -338,8 +347,8 @@ export default function HomeScreen() {
             themedStyles.scrollContent,
             {
               paddingHorizontal: 24,
-              paddingTop: 40,
-              paddingBottom: 40, // Ensure bottom content is visible above nav bar
+              paddingTop: 20,
+              paddingBottom: 120, // Ensure bottom content is visible above nav bar
               flexGrow: 1,
             }
           ]}
@@ -632,7 +641,7 @@ export default function HomeScreen() {
             {
               paddingHorizontal: 24,
               paddingTop: 40,
-              paddingBottom: 40, // Ensure bottom content is visible above nav bar
+              paddingBottom: 120, // Ensure bottom content is visible above nav bar
               justifyContent: 'center',
               flexGrow: 1,
             }
@@ -741,7 +750,7 @@ export default function HomeScreen() {
             {
               paddingHorizontal: 24,
               paddingTop: 32,
-              paddingBottom: 40, // Ensure bottom content is visible above nav bar
+              paddingBottom: 120, // Ensure bottom content is visible above nav bar
             }
           ]}
           showsVerticalScrollIndicator={false}
@@ -880,7 +889,7 @@ export default function HomeScreen() {
           {
             paddingHorizontal: 0,
             paddingTop: 16,
-            paddingBottom: 40, // Ensure bottom content is visible above nav bar
+            paddingBottom: 120, // Ensure bottom content is visible above nav bar
           }
         ]}
         showsVerticalScrollIndicator={false}
@@ -984,7 +993,7 @@ export default function HomeScreen() {
             </View>
 
             {/* 4. Quick Actions Section */}
-            <View style={{ marginBottom: 0 }}>
+            <View style={{ marginBottom: 100 }}>
               <View style={{ 
                 flexDirection: 'row', 
                 alignItems: 'center', 

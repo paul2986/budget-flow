@@ -18,10 +18,12 @@ export type ExpenseCategory = string;
 export const DEFAULT_CATEGORIES: string[] = [
   'Groceries',
   'Rent',
+  'Mortgage',
   'Utilities',
   'Transport',
   'Entertainment',
   'Healthcare',
+  'Clothing',
   'Misc',
 ];
 
