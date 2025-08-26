@@ -1,159 +1,108 @@
 
-import { useCallback, useMemo, useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Pressable, Modal, Share, KeyboardAvoidingView, Platform } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
-import { useBudgetData } from '../hooks/useBudgetData';
-import { useTheme } from '../hooks/useTheme';
-import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useToast } from '../hooks/useToast';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Pressable, Modal, Share, KeyboardAvoidingView, Platform } from 'react-native';
+import { useBudgetData } from '../hooks/useBudgetData';
+import { router, useFocusEffect } from 'expo-router';
 import { useBudgetLock } from '../hooks/useBudgetLock';
-import { Budget } from '../types/budget';
-import { buildOfflinePayload, createShareLink } from '../utils/shareLink';
-import { loadAppData, saveAppData } from '../utils/storage';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
-import Icon from '../components/Icon';
 import StandardHeader from '../components/StandardHeader';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import Button from '../components/Button';
+import { buildOfflinePayload, createShareLink } from '../utils/shareLink';
+import { useTheme } from '../hooks/useTheme';
+import { Budget } from '../types/budget';
+import { loadAppData, saveAppData } from '../utils/storage';
+import { useThemedStyles } from '../hooks/useThemedStyles';
+import { createBackup, shareBackupFile, cleanupOldBackups } from '../utils/backup';
+import Icon from '../components/Icon';
 
-// Helper function to format dates nicely
 const formatDate = (timestamp: number): string => {
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
-  if (diffDays === 0) {
-    return 'Today';
-  } else if (diffDays === 1) {
-    return 'Yesterday';
-  } else if (diffDays < 7) {
-    return `${diffDays} days ago`;
-  } else if (diffDays < 30) {
-    const weeks = Math.floor(diffDays / 7);
-    return weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
-  } else if (diffDays < 365) {
-    const months = Math.floor(diffDays / 30);
-    return months === 1 ? '1 month ago' : `${months} months ago`;
-  } else {
-    const years = Math.floor(diffDays / 365);
-    return years === 1 ? '1 year ago' : `${years} years ago`;
-  }
+  return new Date(timestamp).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
 };
 
 export default function BudgetsScreen() {
-  const { appData, activeBudget, addBudget, renameBudget, deleteBudget, duplicateBudget, setActiveBudget, loading, saving, refreshData } = useBudgetData();
+  const { appData, activeBudget, addBudget, renameBudget, deleteBudget, duplicateBudget, setActiveBudget, refreshData } = useBudgetData();
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
   const { showToast } = useToast();
   const { isLocked } = useBudgetLock();
   
-  const [showAddBudget, setShowAddBudget] = useState(false);
-  const [showAddBudgetOptions, setShowAddBudgetOptions] = useState(false);
-  const [newBudgetName, setNewBudgetName] = useState('');
-  const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
-  const [editingBudgetName, setEditingBudgetName] = useState('');
-  const [openBudgetId, setOpenBudgetId] = useState<string | null>(null);
-  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
-  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [shareModalBudget, setShareModalBudget] = useState<Budget | null>(null);
-  const [shareData, setShareData] = useState<{ url: string; code?: string; expiresAt?: string } | null>(null);
-  const [isGeneratingShare, setIsGeneratingShare] = useState(false);
-  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
-  const [duplicateBudgetId, setDuplicateBudgetId] = useState<string | null>(null);
-  const [duplicateBudgetName, setDuplicateBudgetName] = useState('');
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [shareLink, setShareLink] = useState('');
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [newBudgetName, setNewBudgetName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [dropdownBudgetId, setDropdownBudgetId] = useState<string | null>(null);
+  const [isBackingUp, setIsBackingUp] = useState(false);
 
-  // Refresh data when screen comes into focus to ensure we show any newly imported budgets
+  // Refresh data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       console.log('BudgetsScreen: Screen focused, refreshing data');
-      refreshData(true); // Force refresh when screen comes into focus
+      refreshData(true);
     }, [refreshData])
   );
 
-  // Manual refresh function
-  const handleManualRefresh = useCallback(async () => {
-    console.log('BudgetsScreen: Manual refresh triggered');
-    setIsRefreshing(true);
-    try {
-      await refreshData(true);
-      showToast('Budget list refreshed', 'success');
-    } catch (error) {
-      console.error('BudgetsScreen: Manual refresh error:', error);
-      showToast('Failed to refresh budget list', 'error');
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [refreshData, showToast]);
+  const budgets = useMemo(() => {
+    return appData.budgets || [];
+  }, [appData.budgets]);
 
-  // Sort budgets by creation date only (newest first) - no special ordering for active budget
-  const sortedBudgets = useMemo(() => {
-    const budgets = appData.budgets || [];
-    console.log('BudgetsScreen: Sorting budgets:', {
-      budgetsCount: budgets.length,
-      budgetNames: budgets.map(b => b.name),
-      activeBudgetId: appData.activeBudgetId
-    });
-    
-    return [...budgets].sort((a, b) => {
-      // Sort by creation date (newest first)
-      return b.createdAt - a.createdAt;
-    });
-  }, [appData.budgets, appData.activeBudgetId]);
-
-  const handleAddBudget = useCallback(async () => {
+  const handleCreateBudget = useCallback(async () => {
     if (!newBudgetName.trim()) {
-      Alert.alert('Error', 'Please enter a budget name');
+      showToast('Please enter a budget name', 'error');
       return;
     }
 
+    setIsCreating(true);
     try {
       const result = await addBudget(newBudgetName.trim());
       if (result.success) {
-        setNewBudgetName('');
-        setShowAddBudget(false);
         showToast('Budget created successfully', 'success');
+        setNewBudgetName('');
       } else {
-        Alert.alert('Error', 'Failed to create budget. Please try again.');
+        showToast(result.error?.message || 'Failed to create budget', 'error');
       }
     } catch (error) {
       console.error('Error creating budget:', error);
-      Alert.alert('Error', 'Failed to create budget. Please try again.');
+      showToast('Failed to create budget', 'error');
+    } finally {
+      setIsCreating(false);
     }
   }, [newBudgetName, addBudget, showToast]);
 
   const handleRenameBudget = useCallback(async (budgetId: string) => {
-    if (!editingBudgetName.trim()) {
-      Alert.alert('Error', 'Please enter a budget name');
+    if (!editingName.trim()) {
+      showToast('Please enter a budget name', 'error');
       return;
     }
 
     try {
-      const result = await renameBudget(budgetId, editingBudgetName.trim());
+      const result = await renameBudget(budgetId, editingName.trim());
       if (result.success) {
-        setEditingBudgetId(null);
-        setEditingBudgetName('');
-        setOpenBudgetId(null);
         showToast('Budget renamed successfully', 'success');
+        setEditingBudgetId(null);
+        setEditingName('');
       } else {
-        Alert.alert('Error', 'Failed to rename budget. Please try again.');
+        showToast(result.error?.message || 'Failed to rename budget', 'error');
       }
     } catch (error) {
       console.error('Error renaming budget:', error);
-      Alert.alert('Error', 'Failed to rename budget. Please try again.');
+      showToast('Failed to rename budget', 'error');
     }
-  }, [editingBudgetName, renameBudget, showToast]);
+  }, [editingName, renameBudget, showToast]);
 
-  const handleDeleteBudget = useCallback((budget: Budget) => {
-    if (sortedBudgets.length <= 1) {
-      Alert.alert('Cannot Delete', 'You must have at least one budget.');
-      return;
-    }
-
+  const handleDeleteBudget = useCallback(async (budgetId: string, budgetName: string) => {
     Alert.alert(
       'Delete Budget',
-      `Are you sure you want to delete "${budget.name}"? This action cannot be undone.`,
+      `Are you sure you want to delete "${budgetName}"? This action cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -161,402 +110,320 @@ export default function BudgetsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              setOpenBudgetId(null); // Close menu
-              setMenuPosition(null);
-              const result = await deleteBudget(budget.id);
+              const result = await deleteBudget(budgetId);
               if (result.success) {
                 showToast('Budget deleted successfully', 'success');
               } else {
-                Alert.alert('Error', 'Failed to delete budget. Please try again.');
+                showToast(result.error?.message || 'Failed to delete budget', 'error');
               }
             } catch (error) {
               console.error('Error deleting budget:', error);
-              Alert.alert('Error', 'Failed to delete budget. Please try again.');
+              showToast('Failed to delete budget', 'error');
             }
           },
         },
       ]
     );
-  }, [sortedBudgets.length, deleteBudget, showToast]);
+  }, [deleteBudget, showToast]);
 
-  const handleDuplicateBudget = useCallback((budget: Budget) => {
-    setOpenBudgetId(null); // Close menu
-    setMenuPosition(null);
-    setDuplicateBudgetId(budget.id);
-    setDuplicateBudgetName(`${budget.name} (Copy)`);
-    setShowDuplicateModal(true);
-  }, []);
-
-  const handleConfirmDuplicate = useCallback(async () => {
-    if (!duplicateBudgetName.trim()) {
-      Alert.alert('Error', 'Please enter a name for the duplicated budget');
-      return;
-    }
-
-    if (!duplicateBudgetId) {
-      Alert.alert('Error', 'No budget selected for duplication');
-      return;
-    }
-
+  const handleDuplicateBudget = useCallback(async (budgetId: string, budgetName: string) => {
     try {
-      console.log('Duplicating budget with ID:', duplicateBudgetId, 'and name:', duplicateBudgetName.trim());
-      
-      // Duplicate with the custom name directly
-      const result = await duplicateBudget(duplicateBudgetId, duplicateBudgetName.trim());
-      
-      console.log('Duplicate result:', result);
-      
+      const result = await duplicateBudget(budgetId, `${budgetName} (Copy)`);
       if (result.success) {
-        setShowDuplicateModal(false);
-        setDuplicateBudgetId(null);
-        setDuplicateBudgetName('');
         showToast('Budget duplicated successfully', 'success');
       } else {
-        console.error('Error duplicating budget:', result.error);
-        Alert.alert('Error', `Failed to duplicate budget: ${result.error?.message || 'Unknown error'}`);
+        showToast(result.error?.message || 'Failed to duplicate budget', 'error');
       }
     } catch (error) {
       console.error('Error duplicating budget:', error);
-      Alert.alert('Error', `Failed to duplicate budget: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showToast('Failed to duplicate budget', 'error');
     }
-  }, [duplicateBudgetName, duplicateBudgetId, duplicateBudget, showToast]);
+  }, [duplicateBudget, showToast]);
 
   const handleSetActiveBudget = useCallback(async (budgetId: string) => {
-    if (budgetId === activeBudget?.id) return;
-
     try {
       const result = await setActiveBudget(budgetId);
       if (result.success) {
-        // No toast notification when activating budgets
-        console.log('Budget activated successfully');
+        showToast('Active budget changed', 'success');
       } else {
-        Alert.alert('Error', 'Failed to activate budget. Please try again.');
+        showToast(result.error?.message || 'Failed to set active budget', 'error');
       }
     } catch (error) {
-      console.error('Error activating budget:', error);
-      Alert.alert('Error', 'Failed to activate budget. Please try again.');
+      console.error('Error setting active budget:', error);
+      showToast('Failed to set active budget', 'error');
     }
-  }, [activeBudget?.id, setActiveBudget]);
+  }, [setActiveBudget, showToast]);
 
   const handleShareBudget = useCallback(async (budget: Budget) => {
-    setOpenBudgetId(null); // Close menu
-    setMenuPosition(null);
     setShareModalBudget(budget);
-    setShareModalVisible(true);
-    setIsGeneratingShare(true);
-    setShareData(null);
+    setIsGeneratingLink(true);
+    setShowShareModal(true);
 
     try {
-      const result = await createShareLink(budget);
-      setShareData(result);
+      const payload = buildOfflinePayload(budget);
+      const link = createShareLink(payload);
+      setShareLink(link);
     } catch (error) {
-      console.error('Error creating share link:', error);
-      showToast('Failed to create share link', 'error');
-      setShareModalVisible(false);
+      console.error('Error generating share link:', error);
+      showToast('Failed to generate share link', 'error');
+      setShowShareModal(false);
     } finally {
-      setIsGeneratingShare(false);
+      setIsGeneratingLink(false);
     }
   }, [showToast]);
 
-  const handleCopyShareData = useCallback(async () => {
-    if (!shareData) return;
-
+  // Handle backup creation
+  const handleCreateBackup = useCallback(async (budgetId?: string) => {
+    setIsBackingUp(true);
     try {
-      await Clipboard.setStringAsync(shareData.url);
-      showToast('Share data copied to clipboard', 'success');
+      const result = await createBackup(budgetId);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create backup');
+      }
+      
+      if (result.filePath) {
+        // Share the backup file
+        const shareResult = await shareBackupFile(result.filePath);
+        
+        if (shareResult.success) {
+          const budgetName = budgetId 
+            ? budgets.find(b => b.id === budgetId)?.name || 'Unknown'
+            : 'All Budgets';
+          showToast(`Backup created for ${budgetName}`, 'success');
+          
+          // Clean up old backup files in the background
+          cleanupOldBackups().catch(error => {
+            console.warn('Failed to cleanup old backups:', error);
+          });
+        } else {
+          throw new Error(shareResult.error || 'Failed to share backup file');
+        }
+      }
     } catch (error) {
-      console.error('Error copying to clipboard:', error);
-      showToast('Failed to copy to clipboard', 'error');
+      console.error('Error creating backup:', error);
+      showToast(
+        error instanceof Error ? error.message : 'Failed to create backup',
+        'error'
+      );
+    } finally {
+      setIsBackingUp(false);
     }
-  }, [shareData, showToast]);
-
-  const handleNativeShare = useCallback(async () => {
-    if (!shareData || !shareModalBudget) return;
-
-    try {
-      await Share.share({
-        message: `Check out my budget "${shareModalBudget.name}"! Import this QR code data into your budget app: ${shareData.url}`,
-        title: `Budget: ${shareModalBudget.name}`,
-      });
-    } catch (error) {
-      console.error('Error sharing:', error);
-      showToast('Failed to share', 'error');
-    }
-  }, [shareData, shareModalBudget, showToast]);
-
-  // Handle budget card tap - activate if not already active
-  const handleBudgetCardPress = useCallback((budget: Budget) => {
-    console.log('Budget card pressed:', budget.name, 'isActive:', budget.id === activeBudget?.id);
-    if (budget.id !== activeBudget?.id) {
-      handleSetActiveBudget(budget.id);
-    }
-  }, [activeBudget?.id, handleSetActiveBudget]);
-
-  // Close menu when tapping outside
-  const closeMenu = useCallback(() => {
-    console.log('Closing menu');
-    setOpenBudgetId(null);
-    setMenuPosition(null);
-  }, []);
+  }, [budgets, showToast]);
 
   const renderShareModalContent = () => {
     if (!shareModalBudget) return null;
 
     return (
-      <View style={[themedStyles.card, { margin: 20, maxHeight: '80%' }]}>
-        <View style={[themedStyles.row, { marginBottom: 16 }]}>
-          <Text style={[themedStyles.subtitle, { marginBottom: 0 }]}>
-            Share "{shareModalBudget.name}"
-          </Text>
-          <TouchableOpacity onPress={() => setShareModalVisible(false)}>
-            <Icon name="close" size={24} style={{ color: currentColors.text }} />
-          </TouchableOpacity>
-        </View>
-
-        {isGeneratingShare ? (
-          <View style={[themedStyles.centerContent, { paddingVertical: 40 }]}>
-            <ActivityIndicator size="large" color={currentColors.primary} />
-            <Text style={[themedStyles.textSecondary, { marginTop: 16 }]}>
-              Generating QR code...
-            </Text>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <View style={[themedStyles.modalContent, { maxHeight: '90%' }]}>
+          <View style={[themedStyles.modalHeader, { marginBottom: 20 }]}>
+            <Text style={themedStyles.modalTitle}>Share Budget</Text>
+            <TouchableOpacity onPress={() => setShowShareModal(false)}>
+              <Icon name="close" size={24} color={currentColors.text} />
+            </TouchableOpacity>
           </View>
-        ) : shareData ? (
+
           <ScrollView showsVerticalScrollIndicator={false}>
-            <View style={[themedStyles.centerContent, { marginBottom: 20 }]}>
-              <View style={{ 
-                backgroundColor: 'white', 
-                padding: 16, 
-                borderRadius: 12,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 4,
-                elevation: 3,
-              }}>
+            <Text style={[themedStyles.subtitle, { marginBottom: 8 }]}>
+              {shareModalBudget.name}
+            </Text>
+            <Text style={[themedStyles.textSecondary, { marginBottom: 20 }]}>
+              Share this budget with others by showing them the QR code or sending the link.
+            </Text>
+
+            {isGeneratingLink ? (
+              <View style={[themedStyles.centerContent, { height: 200 }]}>
+                <ActivityIndicator size="large" color={currentColors.primary} />
+                <Text style={[themedStyles.textSecondary, { marginTop: 16 }]}>
+                  Generating share link...
+                </Text>
+              </View>
+            ) : (
+              <View style={[themedStyles.card, { alignItems: 'center', marginBottom: 20 }]}>
                 <QRCode
-                  value={shareData.url}
+                  value={shareLink}
                   size={200}
-                  backgroundColor="white"
-                  color="black"
+                  color={currentColors.text}
+                  backgroundColor={currentColors.background}
                 />
               </View>
-            </View>
-
-            <Text style={[themedStyles.text, { textAlign: 'center', marginBottom: 16 }]}>
-              Scan this QR code to import the budget into another device
-            </Text>
-
-            <Text style={[themedStyles.textSecondary, { fontSize: 12, textAlign: 'center', marginBottom: 20 }]}>
-              This app is fully offline - no internet connection required for sharing!
-            </Text>
+            )}
 
             <View style={{ gap: 12 }}>
               <Button
-                text="Copy QR Data"
-                onPress={handleCopyShareData}
-                variant="primary"
-              />
-
-              <Button
-                text="Share via Apps"
-                onPress={handleNativeShare}
+                text="Copy Link"
+                onPress={async () => {
+                  await Clipboard.setStringAsync(shareLink);
+                  showToast('Link copied to clipboard', 'success');
+                }}
+                disabled={isGeneratingLink}
                 variant="outline"
               />
+              
+              <Button
+                text="Share Link"
+                onPress={async () => {
+                  try {
+                    await Share.share({
+                      message: `Check out my budget: ${shareLink}`,
+                      title: 'Budget Share',
+                    });
+                  } catch (error) {
+                    console.error('Error sharing:', error);
+                  }
+                }}
+                disabled={isGeneratingLink}
+                variant="primary"
+              />
+            </View>
+
+            <View style={[themedStyles.card, { backgroundColor: currentColors.primary + '10', marginTop: 20 }]}>
+              <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 4 }]}>
+                Fully Offline
+              </Text>
+              <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
+                This QR code contains all your budget data. No internet connection is required for sharing or importing.
+              </Text>
             </View>
           </ScrollView>
-        ) : (
-          <View style={[themedStyles.centerContent, { paddingVertical: 40 }]}>
-            <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
-              Failed to generate share data
-            </Text>
-          </View>
+        </View>
+      </KeyboardAvoidingView>
+    );
+  };
+
+  const DropdownMenu = ({ budget }: { budget: Budget }) => {
+    const isActive = activeBudget?.id === budget.id;
+    
+    return (
+      <View style={[
+        themedStyles.card,
+        {
+          position: 'absolute',
+          top: 40,
+          right: 0,
+          zIndex: 1000,
+          minWidth: 200,
+          backgroundColor: currentColors.backgroundAlt,
+          borderWidth: 1,
+          borderColor: currentColors.border,
+          shadowColor: currentColors.text,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 5,
+        }
+      ]}>
+        {!isActive && (
+          <TouchableOpacity
+            style={[themedStyles.dropdownItem]}
+            onPress={() => {
+              handleSetActiveBudget(budget.id);
+              setDropdownBudgetId(null);
+            }}
+          >
+            <Icon name="check-circle" size={16} color={currentColors.success} />
+            <Text style={[themedStyles.text, { marginLeft: 8 }]}>Set as Active</Text>
+          </TouchableOpacity>
+        )}
+        
+        <TouchableOpacity
+          style={[themedStyles.dropdownItem]}
+          onPress={() => {
+            setEditingBudgetId(budget.id);
+            setEditingName(budget.name);
+            setDropdownBudgetId(null);
+          }}
+        >
+          <Icon name="edit" size={16} color={currentColors.text} />
+          <Text style={[themedStyles.text, { marginLeft: 8 }]}>Rename</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[themedStyles.dropdownItem]}
+          onPress={() => {
+            handleDuplicateBudget(budget.id, budget.name);
+            setDropdownBudgetId(null);
+          }}
+        >
+          <Icon name="copy" size={16} color={currentColors.text} />
+          <Text style={[themedStyles.text, { marginLeft: 8 }]}>Duplicate</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[themedStyles.dropdownItem]}
+          onPress={() => {
+            handleShareBudget(budget);
+            setDropdownBudgetId(null);
+          }}
+        >
+          <Icon name="share" size={16} color={currentColors.text} />
+          <Text style={[themedStyles.text, { marginLeft: 8 }]}>Share QR Code</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[themedStyles.dropdownItem]}
+          onPress={() => {
+            handleCreateBackup(budget.id);
+            setDropdownBudgetId(null);
+          }}
+          disabled={isBackingUp}
+        >
+          <Icon name="download" size={16} color={currentColors.text} />
+          <Text style={[themedStyles.text, { marginLeft: 8 }]}>
+            {isBackingUp ? 'Creating Backup...' : 'Create Backup'}
+          </Text>
+        </TouchableOpacity>
+        
+        {budgets.length > 1 && (
+          <TouchableOpacity
+            style={[themedStyles.dropdownItem]}
+            onPress={() => {
+              handleDeleteBudget(budget.id, budget.name);
+              setDropdownBudgetId(null);
+            }}
+          >
+            <Icon name="trash" size={16} color={currentColors.error} />
+            <Text style={[themedStyles.text, { marginLeft: 8, color: currentColors.error }]}>Delete</Text>
+          </TouchableOpacity>
         )}
       </View>
     );
   };
 
-  const DropdownMenu = ({ budget }: { budget: Budget }) => {
-    const isActive = budget.id === activeBudget?.id;
-    const isMenuOpen = openBudgetId === budget.id;
-
-    const handleMenuToggle = (event: any) => {
-      event.stopPropagation(); // Prevent event bubbling to parent
-      console.log('Menu toggle pressed for budget:', budget.name);
-      
-      if (isMenuOpen) {
-        closeMenu();
-      } else {
-        // Measure the button position to position the menu correctly
-        event.target.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-          console.log('Menu button position:', { pageX, pageY, width, height });
-          setMenuPosition({ x: pageX, y: pageY + height + 4 });
-          setOpenBudgetId(budget.id);
-        });
-      }
-    };
-
-    return (
-      <View style={{ zIndex: 10 }}>
-        <TouchableOpacity
-          onPress={handleMenuToggle}
-          style={{
-            padding: 8,
-            borderRadius: 8,
-            backgroundColor: isMenuOpen ? currentColors.primary + '20' : currentColors.border + '40',
-          }}
-          disabled={saving}
-        >
-          <Icon name="ellipsis-vertical" size={16} style={{ color: currentColors.text }} />
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  // Render the dropdown menu as an overlay
   const renderDropdownOverlay = () => {
-    if (!openBudgetId || !menuPosition) return null;
-
-    const budget = sortedBudgets.find(b => b.id === openBudgetId);
-    if (!budget) return null;
-
-    const isActive = budget.id === activeBudget?.id;
-
-    const handleMenuItemPress = (action: () => void) => {
-      console.log('Menu item pressed, executing action');
-      action();
-    };
-
+    if (!dropdownBudgetId) return null;
+    
     return (
-      <Modal
-        visible={true}
-        transparent
-        animationType="none"
-        onRequestClose={closeMenu}
-      >
-        <Pressable
-          style={{
-            flex: 1,
-            backgroundColor: 'transparent',
-          }}
-          onPress={closeMenu}
-        >
-          <View
-            style={{
-              position: 'absolute',
-              top: menuPosition.y,
-              right: 20, // Fixed position from right edge
-              backgroundColor: currentColors.backgroundAlt,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: currentColors.border,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.25,
-              shadowRadius: 8,
-              elevation: 15,
-              zIndex: 9999,
-              minWidth: 150,
-            }}
-          >
-            {!isActive && (
-              <TouchableOpacity
-                style={{
-                  padding: 12,
-                  borderBottomWidth: 1,
-                  borderBottomColor: currentColors.border,
-                }}
-                onPress={() => handleMenuItemPress(() => {
-                  console.log('Set as Active pressed');
-                  closeMenu();
-                  handleSetActiveBudget(budget.id);
-                })}
-                disabled={saving}
-                activeOpacity={0.7}
-              >
-                <Text style={[themedStyles.text, { fontSize: 14 }]}>Set as Active</Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              style={{
-                padding: 12,
-                borderBottomWidth: 1,
-                borderBottomColor: currentColors.border,
-              }}
-              onPress={() => handleMenuItemPress(() => {
-                console.log('Rename pressed');
-                closeMenu();
-                setEditingBudgetId(budget.id);
-                setEditingBudgetName(budget.name);
-              })}
-              disabled={saving}
-              activeOpacity={0.7}
-            >
-              <Text style={[themedStyles.text, { fontSize: 14 }]}>Rename</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={{
-                padding: 12,
-                borderBottomWidth: 1,
-                borderBottomColor: currentColors.border,
-              }}
-              onPress={() => handleMenuItemPress(() => {
-                console.log('Duplicate pressed');
-                handleDuplicateBudget(budget);
-              })}
-              disabled={saving}
-              activeOpacity={0.7}
-            >
-              <Text style={[themedStyles.text, { fontSize: 14 }]}>Duplicate</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={{
-                padding: 12,
-                borderBottomWidth: 1,
-                borderBottomColor: currentColors.border,
-              }}
-              onPress={() => handleMenuItemPress(() => {
-                console.log('Share pressed');
-                handleShareBudget(budget);
-              })}
-              disabled={saving}
-              activeOpacity={0.7}
-            >
-              <Text style={[themedStyles.text, { fontSize: 14 }]}>Share</Text>
-            </TouchableOpacity>
-
-            {sortedBudgets.length > 1 && (
-              <TouchableOpacity
-                style={{
-                  padding: 12,
-                }}
-                onPress={() => handleMenuItemPress(() => {
-                  console.log('Delete pressed');
-                  handleDeleteBudget(budget);
-                })}
-                disabled={saving}
-                activeOpacity={0.7}
-              >
-                <Text style={[themedStyles.text, { fontSize: 14, color: currentColors.error }]}>
-                  Delete
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </Pressable>
-      </Modal>
+      <Pressable
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 999,
+        }}
+        onPress={() => setDropdownBudgetId(null)}
+      />
     );
   };
 
-  if (loading) {
+  if (isLocked) {
     return (
       <View style={themedStyles.container}>
         <StandardHeader title="Budgets" showLeftIcon={false} showRightIcon={false} />
         <View style={[themedStyles.centerContent, { flex: 1 }]}>
-          <ActivityIndicator size="large" color={currentColors.primary} />
-          <Text style={[themedStyles.textSecondary, { marginTop: 16 }]}>Loading budgets...</Text>
+          <Icon name="lock" size={48} color={currentColors.textSecondary} />
+          <Text style={[themedStyles.text, { marginTop: 16, textAlign: 'center' }]}>
+            Budget is locked
+          </Text>
+          <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginTop: 8 }]}>
+            Unlock to view and manage your budgets
+          </Text>
         </View>
       </View>
     );
@@ -564,336 +431,194 @@ export default function BudgetsScreen() {
 
   return (
     <View style={themedStyles.container}>
-      <StandardHeader
-        title="Budgets"
-        showLeftIcon={false}
-        rightIcon="add"
-        onRightPress={() => setShowAddBudgetOptions(true)}
-        loading={saving || loading}
+      <StandardHeader 
+        title="Budgets" 
+        showLeftIcon={false} 
+        showRightIcon={false}
       />
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0, paddingTop: 16 }]}>
-        {/* Add Budget Form */}
-        {showAddBudget && (
-          <View style={[themedStyles.card, { backgroundColor: currentColors.primary + '10' }]}>
-            <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Create New Budget</Text>
-            
-            <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
-              Budget Name:
-            </Text>
-            <TextInput
-              style={themedStyles.input}
-              placeholder="Enter budget name"
-              placeholderTextColor={currentColors.textSecondary}
-              value={newBudgetName}
-              onChangeText={setNewBudgetName}
-              autoFocus
-              editable={!saving}
-            />
-            
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                <Button
-                  text="Cancel"
-                  onPress={() => {
-                    setShowAddBudget(false);
-                    setNewBudgetName('');
-                  }}
-                  disabled={saving}
-                  variant="outline"
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Button
-                  text={saving ? 'Creating...' : 'Create'}
-                  onPress={handleAddBudget}
-                  disabled={saving}
-                  variant="primary"
-                />
-              </View>
-            </View>
-          </View>
-        )}
+      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
+        {/* Create New Budget */}
+        <View style={themedStyles.card}>
+          <Text style={[themedStyles.subtitle, { marginBottom: 16 }]}>
+            Create New Budget
+          </Text>
+          
+          <TextInput
+            style={themedStyles.input}
+            placeholder="Budget name"
+            placeholderTextColor={currentColors.textSecondary}
+            value={newBudgetName}
+            onChangeText={setNewBudgetName}
+            editable={!isCreating}
+          />
+          
+          <Button
+            text={isCreating ? 'Creating...' : 'Create Budget'}
+            onPress={handleCreateBudget}
+            disabled={!newBudgetName.trim() || isCreating}
+            variant="primary"
+          />
+        </View>
 
-        {/* Manual Refresh Button */}
-        {sortedBudgets.length > 0 && (
-          <View style={[themedStyles.card, { backgroundColor: currentColors.backgroundAlt }]}>
-            <Button
-              text={isRefreshing ? 'Refreshing...' : 'Refresh Budget List'}
-              onPress={handleManualRefresh}
-              disabled={isRefreshing || saving}
-              variant="outline"
-              textStyle={{ fontSize: 14 }}
-            />
-          </View>
-        )}
+        {/* Import Budget */}
+        <View style={themedStyles.card}>
+          <Text style={[themedStyles.subtitle, { marginBottom: 8 }]}>
+            Import Budget
+          </Text>
+          <Text style={[themedStyles.textSecondary, { marginBottom: 16 }]}>
+            Import a budget from QR code or backup file.
+          </Text>
+          
+          <Button
+            text="Import Budget"
+            onPress={() => router.push('/import-budget')}
+            variant="outline"
+          />
+        </View>
 
-        {/* Budgets List */}
-        {sortedBudgets.length === 0 ? (
+        {/* Backup All Budgets */}
+        {budgets.length > 0 && (
           <View style={themedStyles.card}>
-            <View style={themedStyles.centerContent}>
-              <Icon name="folder-outline" size={48} style={{ color: currentColors.primary, marginBottom: 12 }} />
-              <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>
-                No Budgets Yet
-              </Text>
-              <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 16 }]}>
-                Create your first budget to get started
-              </Text>
-              <Button
-                text="Create First Budget"
-                onPress={() => setShowAddBudgetOptions(true)}
-                disabled={saving}
-                variant="primary"
-              />
-            </View>
+            <Text style={[themedStyles.subtitle, { marginBottom: 8 }]}>
+              Backup All Budgets
+            </Text>
+            <Text style={[themedStyles.textSecondary, { marginBottom: 16 }]}>
+              Create a backup file containing all your budgets.
+            </Text>
+            
+            <Button
+              text={isBackingUp ? 'Creating Backup...' : 'Create Full Backup'}
+              onPress={() => handleCreateBackup()}
+              disabled={isBackingUp}
+              variant="outline"
+            />
           </View>
-        ) : (
-          sortedBudgets.map((budget) => {
-            const isActive = budget.id === activeBudget?.id;
-            const isEditing = editingBudgetId === budget.id;
+        )}
 
-            return (
-              <TouchableOpacity
-                key={budget.id}
-                style={[
-                  themedStyles.card,
-                  isActive && {
-                    borderColor: currentColors.primary,
-                    borderWidth: 2,
-                    backgroundColor: currentColors.primary + '10',
-                  },
-                ]}
-                onPress={() => handleBudgetCardPress(budget)}
-                disabled={saving || isEditing}
-                activeOpacity={isActive ? 1 : 0.7}
-              >
-                {isEditing ? (
-                  <View>
-                    <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
-                      Budget Name:
-                    </Text>
-                    <TextInput
-                      style={themedStyles.input}
-                      value={editingBudgetName}
-                      onChangeText={setEditingBudgetName}
-                      autoFocus
-                      editable={!saving}
-                    />
-                    
-                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
-                      <View style={{ flex: 1 }}>
-                        <Button
-                          text="Cancel"
-                          onPress={() => {
-                            setEditingBudgetId(null);
-                            setEditingBudgetName('');
-                            setOpenBudgetId(null);
-                          }}
-                          disabled={saving}
-                          variant="outline"
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Button
-                          text={saving ? 'Saving...' : 'Save'}
-                          onPress={() => handleRenameBudget(budget.id)}
-                          disabled={saving}
-                          variant="primary"
-                        />
-                      </View>
-                    </View>
-                  </View>
-                ) : (
-                  <>
-                    <View style={[themedStyles.row, { marginBottom: 8 }]}>
-                      <View style={[themedStyles.flex1, { flexDirection: 'row', alignItems: 'center' }]}>
-                        {isActive && (
-                          <View style={[
-                            themedStyles.badge, 
-                            { 
-                              backgroundColor: currentColors.primary, 
-                              marginRight: 12,
-                              paddingHorizontal: 8,
-                              paddingVertical: 4,
-                              borderRadius: 12,
-                            }
-                          ]}>
-                            <Text style={[themedStyles.badgeText, { color: currentColors.backgroundAlt, fontSize: 12 }]}>
-                              Active
+        {/* Existing Budgets */}
+        {budgets.length > 0 && (
+          <View style={themedStyles.card}>
+            <Text style={[themedStyles.subtitle, { marginBottom: 16 }]}>
+              Your Budgets ({budgets.length})
+            </Text>
+            
+            {budgets.map((budget) => {
+              const isActive = activeBudget?.id === budget.id;
+              const isEditing = editingBudgetId === budget.id;
+              
+              return (
+                <View key={budget.id} style={{ position: 'relative' }}>
+                  <View style={[
+                    themedStyles.listItem,
+                    isActive && { backgroundColor: currentColors.primary + '10', borderColor: currentColors.primary }
+                  ]}>
+                    <View style={{ flex: 1 }}>
+                      {isEditing ? (
+                        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                          <TextInput
+                            style={[themedStyles.input, { flex: 1, marginBottom: 0 }]}
+                            value={editingName}
+                            onChangeText={setEditingName}
+                            autoFocus
+                            selectTextOnFocus
+                          />
+                          <TouchableOpacity
+                            onPress={() => handleRenameBudget(budget.id)}
+                            style={{ padding: 8 }}
+                          >
+                            <Icon name="check" size={20} color={currentColors.success} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => {
+                              setEditingBudgetId(null);
+                              setEditingName('');
+                            }}
+                            style={{ padding: 8 }}
+                          >
+                            <Icon name="close" size={20} color={currentColors.error} />
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          onPress={() => !isActive && handleSetActiveBudget(budget.id)}
+                          style={{ flex: 1 }}
+                        >
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                            <Text style={[
+                              themedStyles.text,
+                              { fontWeight: isActive ? '600' : '400', flex: 1 }
+                            ]}>
+                              {budget.name}
+                            </Text>
+                            {isActive && (
+                              <View style={[themedStyles.badge, { backgroundColor: currentColors.success }]}>
+                                <Text style={[themedStyles.badgeText, { color: currentColors.background }]}>
+                                  Active
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                          
+                          <View style={{ flexDirection: 'row', gap: 16 }}>
+                            <Text style={themedStyles.textSecondary}>
+                              {budget.people?.length || 0} people
+                            </Text>
+                            <Text style={themedStyles.textSecondary}>
+                              {budget.expenses?.length || 0} expenses
+                            </Text>
+                            <Text style={themedStyles.textSecondary}>
+                              {formatDate(budget.modifiedAt)}
                             </Text>
                           </View>
-                        )}
-                        <Text style={[themedStyles.subtitle, { marginBottom: 0 }]}>
-                          {budget.name}
-                        </Text>
-                      </View>
-                      <DropdownMenu budget={budget} />
+                        </TouchableOpacity>
+                      )}
                     </View>
+                    
+                    {!isEditing && (
+                      <TouchableOpacity
+                        onPress={() => setDropdownBudgetId(dropdownBudgetId === budget.id ? null : budget.id)}
+                        style={{ padding: 8, marginLeft: 8 }}
+                      >
+                        <Icon name="more-vertical" size={20} color={currentColors.textSecondary} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  
+                  {dropdownBudgetId === budget.id && <DropdownMenu budget={budget} />}
+                </View>
+              );
+            })}
+          </View>
+        )}
 
-                    {/* Date Information */}
-                    <View style={{ marginBottom: 12 }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
-                          Created: {formatDate(budget.createdAt)}
-                        </Text>
-                        <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
-                          Modified: {formatDate(budget.modifiedAt)}
-                        </Text>
-                      </View>
-                    </View>
-                  </>
-                )}
-              </TouchableOpacity>
-            );
-          })
+        {budgets.length === 0 && (
+          <View style={[themedStyles.card, themedStyles.centerContent]}>
+            <Icon name="folder" size={48} color={currentColors.textSecondary} />
+            <Text style={[themedStyles.text, { marginTop: 16, textAlign: 'center' }]}>
+              No budgets yet
+            </Text>
+            <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginTop: 8 }]}>
+              Create your first budget or import one from a friend
+            </Text>
+          </View>
         )}
       </ScrollView>
 
-      {/* Dropdown Menu Overlay */}
-      {renderDropdownOverlay()}
-
-      {/* Add Budget Options Modal */}
-      <Modal
-        visible={showAddBudgetOptions}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowAddBudgetOptions(false)}
-      >
-        <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}>
-          <View style={[themedStyles.card, { margin: 20, maxWidth: 300 }]}>
-            <View style={[themedStyles.row, { marginBottom: 16 }]}>
-              <Text style={[themedStyles.subtitle, { marginBottom: 0 }]}>
-                Add Budget
-              </Text>
-              <TouchableOpacity onPress={() => setShowAddBudgetOptions(false)}>
-                <Icon name="close" size={24} style={{ color: currentColors.text }} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={[themedStyles.textSecondary, { marginBottom: 20, textAlign: 'center' }]}>
-              Choose how you'd like to add a new budget
-            </Text>
-
-            <View style={{ gap: 12 }}>
-              <Button
-                text="Create New Budget"
-                onPress={() => {
-                  setShowAddBudgetOptions(false);
-                  setShowAddBudget(true);
-                }}
-                variant="primary"
-              />
-
-              <Button
-                text="Import Budget"
-                onPress={() => {
-                  setShowAddBudgetOptions(false);
-                  router.push('/import-link');
-                }}
-                variant="outline"
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Duplicate Budget Modal */}
-      <Modal
-        visible={showDuplicateModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowDuplicateModal(false)}
-      >
-        <KeyboardAvoidingView 
-          style={{ flex: 1 }} 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <View style={{
-            flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            justifyContent: 'flex-start',
-            alignItems: 'center',
-            paddingTop: 100, // Position modal higher up to avoid keyboard
-          }}>
-            <View style={[themedStyles.card, { margin: 20, maxWidth: 350, width: '90%' }]}>
-              <View style={[themedStyles.row, { marginBottom: 16 }]}>
-                <Text style={[themedStyles.subtitle, { marginBottom: 0 }]}>
-                  Duplicate Budget
-                </Text>
-                <TouchableOpacity onPress={() => {
-                  setShowDuplicateModal(false);
-                  setDuplicateBudgetId(null);
-                  setDuplicateBudgetName('');
-                }}>
-                  <Icon name="close" size={24} style={{ color: currentColors.text }} />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={[themedStyles.textSecondary, { marginBottom: 16, textAlign: 'center' }]}>
-                Enter a name for the duplicated budget
-              </Text>
-
-              <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
-                Budget Name:
-              </Text>
-              <TextInput
-                style={themedStyles.input}
-                placeholder="Enter budget name"
-                placeholderTextColor={currentColors.textSecondary}
-                value={duplicateBudgetName}
-                onChangeText={setDuplicateBudgetName}
-                autoFocus
-                editable={!saving}
-              />
-
-              <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-                <View style={{ flex: 1 }}>
-                  <Button
-                    text="Cancel"
-                    onPress={() => {
-                      setShowDuplicateModal(false);
-                      setDuplicateBudgetId(null);
-                      setDuplicateBudgetName('');
-                    }}
-                    disabled={saving}
-                    variant="outline"
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Button
-                    text={saving ? 'Duplicating...' : 'Duplicate'}
-                    onPress={handleConfirmDuplicate}
-                    disabled={saving}
-                    variant="primary"
-                  />
-                </View>
-              </View>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
       {/* Share Modal */}
       <Modal
-        visible={shareModalVisible}
+        visible={showShareModal}
         transparent
-        animationType="fade"
-        onRequestClose={() => setShareModalVisible(false)}
+        animationType="slide"
+        onRequestClose={() => setShowShareModal(false)}
       >
-        <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}>
+        <View style={themedStyles.modalOverlay}>
           {renderShareModalContent()}
         </View>
       </Modal>
+
+      {/* Dropdown Overlay */}
+      {renderDropdownOverlay()}
     </View>
   );
 }
