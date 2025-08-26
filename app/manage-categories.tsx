@@ -199,32 +199,32 @@ export default function ManageCategoriesScreen() {
                       <TouchableOpacity
                         onPress={() => handleRename(c)}
                         style={{
-                          paddingVertical: 8,
-                          paddingHorizontal: 12,
-                          borderRadius: 12,
+                          padding: 10,
+                          borderRadius: 8,
                           backgroundColor: currentColors.primary + '15',
                           marginRight: 8,
                         }}
+                        accessibilityLabel={`Rename ${c}`}
+                        accessibilityRole="button"
                       >
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <Icon name="pencil-outline" size={18} style={{ color: currentColors.primary, marginRight: 6 }} />
-                          <Text style={[themedStyles.text, { color: currentColors.primary, fontWeight: '700' }]}>Rename</Text>
-                        </View>
+                        <Icon name="pencil-outline" size={20} style={{ color: currentColors.primary }} />
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => handleDelete(c)}
                         disabled={used}
                         style={{
-                          paddingVertical: 8,
-                          paddingHorizontal: 12,
-                          borderRadius: 12,
+                          padding: 10,
+                          borderRadius: 8,
                           backgroundColor: used ? currentColors.border : currentColors.error + '15',
                         }}
+                        accessibilityLabel={`Delete ${c}`}
+                        accessibilityRole="button"
                       >
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <Icon name="trash-outline" size={18} style={{ color: used ? currentColors.textSecondary : currentColors.error, marginRight: 6 }} />
-                          <Text style={[themedStyles.text, { color: used ? currentColors.textSecondary : currentColors.error, fontWeight: '700' }]}>Delete</Text>
-                        </View>
+                        <Icon 
+                          name="trash-outline" 
+                          size={20} 
+                          style={{ color: used ? currentColors.textSecondary : currentColors.error }} 
+                        />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -260,17 +260,45 @@ export default function ManageCategoriesScreen() {
                 maxWidth: 400,
                 padding: 24,
                 borderRadius: 16,
+                backgroundColor: currentColors.background,
               }
             ]}>
-              <Text style={[themedStyles.title, { marginBottom: 8, textAlign: 'center' }]}>
+              <Text style={[
+                themedStyles.title, 
+                { 
+                  marginBottom: 8, 
+                  textAlign: 'center',
+                  color: currentColors.text,
+                  fontSize: 20,
+                  fontWeight: '700'
+                }
+              ]}>
                 Rename Category
               </Text>
-              <Text style={[themedStyles.textSecondary, { marginBottom: 20, textAlign: 'center' }]}>
+              <Text style={[
+                themedStyles.textSecondary, 
+                { 
+                  marginBottom: 20, 
+                  textAlign: 'center',
+                  color: currentColors.textSecondary,
+                  fontSize: 14
+                }
+              ]}>
                 Enter a new name for "{categoryToRename}"
               </Text>
 
               <View style={{ marginBottom: 24 }}>
-                <Text style={[themedStyles.label, { marginBottom: 8 }]}>Category Name</Text>
+                <Text style={[
+                  themedStyles.label, 
+                  { 
+                    marginBottom: 8,
+                    color: currentColors.text,
+                    fontSize: 16,
+                    fontWeight: '600'
+                  }
+                ]}>
+                  Category Name
+                </Text>
                 <TextInput
                   style={[
                     themedStyles.input,
@@ -295,19 +323,18 @@ export default function ManageCategoriesScreen() {
                 />
               </View>
 
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
                 <Button
-                  title="Cancel"
+                  text="Cancel"
                   onPress={handleRenameCancel}
-                  variant="secondary"
-                  style={{ flex: 1, marginRight: 8 }}
+                  variant="outline"
+                  style={{ flex: 1 }}
                 />
                 <Button
-                  title="Rename"
+                  text={renaming ? "Renaming..." : "Rename"}
                   onPress={handleRenameSubmit}
-                  loading={renaming}
-                  disabled={!newCategoryName.trim() || newCategoryName.trim() === categoryToRename}
-                  style={{ flex: 1, marginLeft: 8 }}
+                  disabled={!newCategoryName.trim() || newCategoryName.trim() === categoryToRename || renaming}
+                  style={{ flex: 1 }}
                 />
               </View>
             </View>

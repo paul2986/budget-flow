@@ -1,44 +1,51 @@
 
 import React from 'react';
-import { Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, View } from 'react-native';
+import { Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, View, ActivityIndicator } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 
 interface ButtonProps {
-  text: string;
+  text?: string;
+  title?: string; // For backward compatibility
   onPress: () => void;
   style?: ViewStyle | ViewStyle[];
   textStyle?: TextStyle;
   disabled?: boolean;
+  loading?: boolean;
   icon?: React.ReactNode;
   variant?: 'primary' | 'secondary' | 'outline' | 'danger';
 }
 
 export default function Button({ 
   text, 
+  title,
   onPress, 
   style, 
   textStyle, 
   disabled, 
+  loading,
   icon, 
   variant = 'primary' 
 }: ButtonProps) {
   const { currentColors, isDarkMode } = useTheme();
 
-  console.log('Button: Rendering button with text:', text, 'disabled:', disabled, 'variant:', variant);
+  // Use text prop first, then title for backward compatibility
+  const buttonText = text || title || '';
+
+  console.log('Button: Rendering button with text:', buttonText, 'disabled:', disabled, 'loading:', loading, 'variant:', variant);
 
   const handlePress = () => {
-    console.log('Button: Button pressed:', text, 'disabled:', disabled);
-    if (!disabled && onPress) {
-      console.log('Button: Calling onPress for:', text);
+    console.log('Button: Button pressed:', buttonText, 'disabled:', disabled, 'loading:', loading);
+    if (!disabled && !loading && onPress) {
+      console.log('Button: Calling onPress for:', buttonText);
       onPress();
     } else {
-      console.log('Button: onPress not called - disabled:', disabled, 'onPress exists:', !!onPress);
+      console.log('Button: onPress not called - disabled:', disabled, 'loading:', loading, 'onPress exists:', !!onPress);
     }
   };
 
   // Get button colors based on variant and theme
   const getButtonColors = () => {
-    if (disabled) {
+    if (disabled || loading) {
       return {
         backgroundColor: currentColors.textSecondary + '40',
         borderColor: currentColors.textSecondary + '40',
@@ -89,24 +96,32 @@ export default function Button({
         { 
           backgroundColor: buttonColors.backgroundColor,
           borderColor: buttonColors.borderColor,
-          opacity: disabled ? 0.6 : 1,
+          opacity: (disabled || loading) ? 0.6 : 1,
         },
         style
       ]}
       onPress={handlePress}
-      disabled={disabled}
+      disabled={disabled || loading}
       activeOpacity={0.8}
       accessible={true}
       accessibilityRole="button"
-      accessibilityLabel={text}
+      accessibilityLabel={buttonText}
     >
       <View style={styles.content}>
-        {icon && (
-          <View style={styles.iconContainer}>
-            {icon}
-          </View>
+        {loading ? (
+          <ActivityIndicator 
+            size="small" 
+            color={buttonColors.textColor} 
+            style={buttonText ? styles.loadingWithText : undefined}
+          />
+        ) : (
+          icon && (
+            <View style={styles.iconContainer}>
+              {icon}
+            </View>
+          )
         )}
-        {text ? (
+        {buttonText ? (
           <Text 
             style={[
               styles.text, 
@@ -116,7 +131,7 @@ export default function Button({
               textStyle
             ]}
           >
-            {text}
+            {buttonText}
           </Text>
         ) : null}
       </View>
@@ -145,6 +160,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconContainer: {
+    marginRight: 8,
+  },
+  loadingWithText: {
     marginRight: 8,
   },
   text: {
