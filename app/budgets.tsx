@@ -157,6 +157,19 @@ export default function BudgetsScreen() {
     }
   }, [setActiveBudget, showToast]);
 
+  const handleDropdownAction = useCallback((action: () => void | Promise<void>) => {
+    console.log('Dropdown action triggered');
+    // Execute the action
+    if (typeof action === 'function') {
+      const result = action();
+      if (result instanceof Promise) {
+        result.catch(error => {
+          console.error('Dropdown action error:', error);
+        });
+      }
+    }
+  }, []);
+
   const DropdownMenu = ({ budget }: { budget: Budget }) => {
     const isActive = activeBudget?.id === budget.id;
     
@@ -166,7 +179,7 @@ export default function BudgetsScreen() {
           position: 'absolute',
           top: 50,
           right: 8,
-          zIndex: 1000,
+          zIndex: 1001,
           minWidth: 180,
           backgroundColor: currentColors.backgroundAlt,
           borderRadius: 12,
@@ -188,10 +201,11 @@ export default function BudgetsScreen() {
               paddingHorizontal: 16,
               paddingVertical: 12,
             }}
-            onPress={(e) => {
-              e.stopPropagation();
-              handleSetActiveBudget(budget.id);
+            onPress={() => {
+              console.log('Set as Active pressed for budget:', budget.id);
+              handleDropdownAction(() => handleSetActiveBudget(budget.id));
             }}
+            activeOpacity={0.7}
           >
             <Icon name="checkmark-circle" size={18} color={currentColors.success} />
             <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Set as Active</Text>
@@ -205,12 +219,15 @@ export default function BudgetsScreen() {
             paddingHorizontal: 16,
             paddingVertical: 12,
           }}
-          onPress={(e) => {
-            e.stopPropagation();
-            setEditingBudgetId(budget.id);
-            setEditingName(budget.name);
-            setDropdownBudgetId(null);
+          onPress={() => {
+            console.log('Rename pressed for budget:', budget.id);
+            handleDropdownAction(() => {
+              setEditingBudgetId(budget.id);
+              setEditingName(budget.name);
+              setDropdownBudgetId(null);
+            });
           }}
+          activeOpacity={0.7}
         >
           <Icon name="create" size={18} color={currentColors.text} />
           <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Rename</Text>
@@ -223,10 +240,11 @@ export default function BudgetsScreen() {
             paddingHorizontal: 16,
             paddingVertical: 12,
           }}
-          onPress={(e) => {
-            e.stopPropagation();
-            handleDuplicateBudget(budget.id, budget.name);
+          onPress={() => {
+            console.log('Duplicate pressed for budget:', budget.id);
+            handleDropdownAction(() => handleDuplicateBudget(budget.id, budget.name));
           }}
+          activeOpacity={0.7}
         >
           <Icon name="copy" size={18} color={currentColors.text} />
           <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Duplicate</Text>
@@ -241,11 +259,14 @@ export default function BudgetsScreen() {
               paddingVertical: 12,
               opacity: isActive ? 0.5 : 1, // Visual indication that active budget cannot be deleted
             }}
-            onPress={(e) => {
-              e.stopPropagation();
-              handleDeleteBudget(budget.id, budget.name);
+            onPress={() => {
+              console.log('Delete pressed for budget:', budget.id);
+              if (!isActive) {
+                handleDropdownAction(() => handleDeleteBudget(budget.id, budget.name));
+              }
             }}
             disabled={isActive} // Disable delete button for active budget
+            activeOpacity={0.7}
           >
             <Icon name="trash" size={18} color={isActive ? currentColors.textSecondary : currentColors.error} />
             <Text style={[themedStyles.text, { 
@@ -258,24 +279,6 @@ export default function BudgetsScreen() {
           </TouchableOpacity>
         )}
       </View>
-    );
-  };
-
-  const renderDropdownOverlay = () => {
-    if (!dropdownBudgetId) return null;
-    
-    return (
-      <Pressable
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 999,
-        }}
-        onPress={() => setDropdownBudgetId(null)}
-      />
     );
   };
 
@@ -407,8 +410,8 @@ export default function BudgetsScreen() {
                 
                 {!isEditing && (
                   <TouchableOpacity
-                    onPress={(e) => {
-                      e.stopPropagation();
+                    onPress={() => {
+                      console.log('Three dots menu pressed for budget:', budget.id);
                       setDropdownBudgetId(dropdownBudgetId === budget.id ? null : budget.id);
                     }}
                     style={{ 
@@ -417,6 +420,7 @@ export default function BudgetsScreen() {
                       borderRadius: 8,
                       backgroundColor: currentColors.background + '80'
                     }}
+                    activeOpacity={0.7}
                   >
                     <Icon name="ellipsis-vertical" size={20} color={currentColors.text} />
                   </TouchableOpacity>
@@ -513,8 +517,23 @@ export default function BudgetsScreen() {
         </View>
       )}
 
-      {/* Dropdown Overlay */}
-      {renderDropdownOverlay()}
+      {/* Dropdown Overlay - positioned behind dropdown menu */}
+      {dropdownBudgetId && (
+        <Pressable
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 1000,
+          }}
+          onPress={() => {
+            console.log('Dropdown overlay pressed, closing dropdown');
+            setDropdownBudgetId(null);
+          }}
+        />
+      )}
     </View>
   );
 }
