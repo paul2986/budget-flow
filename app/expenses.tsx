@@ -445,19 +445,23 @@ export default function ExpensesScreen() {
             </Text>
           </View>
         ) : (
-          <View style={{ gap: 8, paddingHorizontal: 20 }}>
+          <View style={{ gap: 8 }}>
             {filteredExpenses.map((expense) => {
               console.log('ExpensesScreen: Rendering expense:', { 
                 id: expense.id, 
                 description: expense.description, 
                 category: expense.category,
-                personId: expense.personId 
+                personId: expense.personId,
+                frequency: expense.frequency
               });
               const person = expense.personId ? data.people.find((p) => p.id === expense.personId) : null;
               const monthlyAmount = calculateMonthlyAmount(expense.amount, expense.frequency);
               const isDeleting = deletingExpenseId === expense.id;
               const tag = normalizeCategoryName((expense as any).categoryTag || 'Misc');
               const isHousehold = expense.category === 'household';
+              
+              // Only show monthly value if the expense was not added as monthly
+              const shouldShowMonthlyValue = expense.frequency !== 'monthly';
 
               return (
                 <TouchableOpacity 
@@ -508,9 +512,10 @@ export default function ExpensesScreen() {
                         </Text>
                       </View>
 
-                      {/* Person and frequency */}
+                      {/* Person and frequency - conditionally show person for household expenses */}
                       <Text style={[themedStyles.textSecondary, { fontSize: 11, lineHeight: 14 }]}>
-                        {person ? person.name : 'Unassigned'} • {expense.frequency}
+                        {isHousehold && !person ? '' : (person ? person.name : 'Unassigned')}
+                        {isHousehold && !person ? expense.frequency : ` • ${expense.frequency}`}
                       </Text>
                     </View>
 
@@ -523,14 +528,16 @@ export default function ExpensesScreen() {
                             fontWeight: '700',
                             fontSize: 16,
                             color: isHousehold ? currentColors.household : currentColors.personal,
-                            marginBottom: 2,
+                            marginBottom: shouldShowMonthlyValue ? 2 : 0,
                           },
                         ]}>
                           {formatCurrency(expense.amount)}
                         </Text>
-                        <Text style={[themedStyles.textSecondary, { fontSize: 10 }]}>
-                          {formatCurrency(monthlyAmount)}/mo
-                        </Text>
+                        {shouldShowMonthlyValue && (
+                          <Text style={[themedStyles.textSecondary, { fontSize: 10 }]}>
+                            {formatCurrency(monthlyAmount)}/mo
+                          </Text>
+                        )}
                       </View>
                       
                       {/* Delete button */}
