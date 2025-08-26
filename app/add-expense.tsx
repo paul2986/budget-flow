@@ -70,7 +70,7 @@ export default function AddExpenseScreen() {
     return `${y}-${m}-${day}`;
   };
   const [startDateYMD, setStartDateYMD] = useState<string>(toYMD(new Date()));
-  const [endDateYMD, setEndDateYMD] = useState<string | ''>('');
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [showEndPicker, setShowEndPicker] = useState(false);
 
   const [customCategories, setCustomCategories] = useState<string[]>([]);
@@ -190,8 +190,21 @@ export default function AddExpenseScreen() {
       } catch (e) {
         console.log('Invalid start date in expense');
       }
-      const eY = (expenseToEdit as any).endDate ? String((expenseToEdit as any).endDate).slice(0, 10) : '';
-      setEndDateYMD(eY as any);
+      
+      // Handle end date
+      const endDateValue = (expenseToEdit as any).endDate;
+      if (endDateValue) {
+        try {
+          const endDateObj = new Date(endDateValue + 'T00:00:00');
+          if (!isNaN(endDateObj.getTime())) {
+            setEndDate(endDateObj);
+          }
+        } catch (e) {
+          console.log('Invalid end date in expense');
+        }
+      } else {
+        setEndDate(null);
+      }
 
       // Ensure custom category is in the list if not default
       if (normalized && !DEFAULT_CATEGORIES.includes(normalized) && !customCategories.includes(normalized)) {
@@ -214,7 +227,7 @@ export default function AddExpenseScreen() {
       setPersonId('');
       setCategoryTag('Misc');
       setStartDateYMD(toYMD(new Date()));
-      setEndDateYMD('');
+      setEndDate(null);
       // Clear temporary entities for new expense
       setTempPeople([]);
       setTempCategories([]);
@@ -288,10 +301,9 @@ export default function AddExpenseScreen() {
 
     // Validate end date rules for recurring only
     const isRecurring = ['daily', 'weekly', 'monthly', 'yearly'].includes(frequency);
-    const endVal = (endDateYMD || '').slice(0, 10);
-    if (isRecurring && endVal) {
-      const startVal = (startDateYMD || '').slice(0, 10);
-      if (endVal < startVal) {
+    if (isRecurring && endDate) {
+      const startVal = new Date(startDateYMD + 'T00:00:00');
+      if (endDate < startVal) {
         Alert.alert('Invalid end date', 'End date cannot be earlier than the start date');
         return;
       }
@@ -365,7 +377,7 @@ export default function AddExpenseScreen() {
         date: isEditMode ? expenseToEdit!.date : new Date(startDateYMD + 'T00:00:00Z').toISOString(),
         notes: '', // Always include notes as empty string
         categoryTag: normalizedTag,
-        endDate: isRecurring && endVal ? endVal : undefined,
+        endDate: isRecurring && endDate ? toYMD(endDate) : undefined,
       };
 
       console.log('AddExpenseScreen: Final expense data before save:', {
@@ -409,7 +421,7 @@ export default function AddExpenseScreen() {
       // Reset local saving state
       setIsSaving(false);
     }
-  }, [description, amount, category, frequency, personId, categoryTag, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin, startDateYMD, endDateYMD, getAllPeople, tempPeople, tempCategories, customCategories, addPerson]);
+  }, [description, amount, category, frequency, personId, categoryTag, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin, startDateYMD, endDate, getAllPeople, tempPeople, tempCategories, customCategories, addPerson]);
 
   const handleDeleteExpense = useCallback(async () => {
     if (!isEditMode || !expenseToEdit) {
@@ -455,7 +467,7 @@ export default function AddExpenseScreen() {
         },
       ]
     );
-  }, [amount, category, description, endDateYMD, frequency, personId, startDateYMD, isEditMode, expenseToEdit, removeExpense, navigateToOrigin]);
+  }, [amount, category, description, endDate, frequency, personId, startDateYMD, isEditMode, expenseToEdit, removeExpense, navigateToOrigin]);
 
   const handleGoBack = useCallback(() => {
     try {
@@ -564,7 +576,7 @@ export default function AddExpenseScreen() {
         categoryTag, 
         frequency, 
         startDateYMD, 
-        endDateYMD 
+        endDate 
       });
       
       // Add to temporary people list
@@ -592,7 +604,7 @@ export default function AddExpenseScreen() {
         categoryTag,
         frequency,
         startDateYMD,
-        endDateYMD,
+        endDate,
         selectedPersonId: tempPerson.id,
         tempPeopleCount: tempPeople.length + 1
       });
@@ -602,7 +614,7 @@ export default function AddExpenseScreen() {
     } finally {
       setAddingPerson(false);
     }
-  }, [newPersonName, description, amount, category, categoryTag, frequency, startDateYMD, endDateYMD, tempPeople]);
+  }, [newPersonName, description, amount, category, categoryTag, frequency, startDateYMD, endDate, tempPeople]);
 
   const PersonPicker = useCallback(() => {
     // Don't show person picker for household expenses
@@ -637,7 +649,7 @@ export default function AddExpenseScreen() {
                     categoryTag, 
                     frequency, 
                     startDateYMD, 
-                    endDateYMD 
+                    endDate 
                   });
                   setShowAddPersonModal(true);
                 }}
@@ -780,7 +792,7 @@ export default function AddExpenseScreen() {
                 frequency, 
                 personId, 
                 startDateYMD, 
-                endDateYMD 
+                endDate 
               });
               setCustomError(null);
               setNewCustomName('');
@@ -902,45 +914,31 @@ export default function AddExpenseScreen() {
   }, [newCustomName, customCategories, tempCategories, description, amount, category, frequency, personId]);
 
   // Format date for display
-  const formatDateForDisplay = useCallback((dateString: string) => {
-    if (!dateString) return '';
-    try {
-      const date = new Date(dateString + 'T00:00:00');
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
-      });
-    } catch (error) {
-      return dateString;
-    }
+  const formatDateForDisplay = useCallback((date: Date) => {
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
   }, []);
 
   // Handle end date change from DateTimePicker
   const handleEndDateChange = useCallback((event: any, selectedDate?: Date) => {
     console.log('AddExpenseScreen: End date picker event:', event.type, selectedDate);
     
-    if (Platform.OS === 'android') {
-      // On Android, hide the picker first
-      setShowEndPicker(false);
-    }
+    // Always hide the picker first
+    setShowEndPicker(false);
     
     if (event.type === 'set' && selectedDate) {
-      const ymd = toYMD(selectedDate);
-      console.log('AddExpenseScreen: Setting end date to:', ymd);
-      setEndDateYMD(ymd);
-    }
-    
-    if (Platform.OS === 'ios') {
-      // On iOS, hide the picker after selection
-      setShowEndPicker(false);
+      console.log('AddExpenseScreen: Setting end date to:', selectedDate);
+      setEndDate(selectedDate);
     }
   }, []);
 
   // Calculate loading state - only show spinner when actually saving/deleting or when there's a date validation error
   const isLoading = (() => {
     const isRecurring = ['daily', 'weekly', 'monthly', 'yearly'].includes(frequency);
-    const hasDateError = isRecurring && !!endDateYMD && endDateYMD < startDateYMD;
+    const hasDateError = isRecurring && endDate && endDate < new Date(startDateYMD + 'T00:00:00');
     return saving || deleting || isSaving || hasDateError;
   })();
 
@@ -1018,20 +1016,20 @@ export default function AddExpenseScreen() {
               <Text style={[
                 themedStyles.text,
                 { 
-                  color: endDateYMD ? currentColors.text : currentColors.textSecondary,
+                  color: endDate ? currentColors.text : currentColors.textSecondary,
                   flex: 1,
                 }
               ]}>
-                {endDateYMD ? formatDateForDisplay(endDateYMD) : 'Select end date'}
+                {endDate ? formatDateForDisplay(endDate) : 'Select end date'}
               </Text>
               
               {/* Clear button when date is selected */}
-              {endDateYMD ? (
+              {endDate ? (
                 <TouchableOpacity
                   onPress={(e) => {
                     e.stopPropagation();
                     console.log('AddExpenseScreen: Clearing end date');
-                    setEndDateYMD('');
+                    setEndDate(null);
                   }}
                   disabled={saving || deleting || isSaving}
                   style={{
@@ -1054,20 +1052,7 @@ export default function AddExpenseScreen() {
               )}
             </TouchableOpacity>
             
-            {/* Show DateTimePicker directly when showEndPicker is true */}
-            {showEndPicker && (
-              <View style={{ marginTop: 16 }}>
-                <DateTimePicker
-                  value={endDateYMD ? new Date(endDateYMD + 'T00:00:00') : new Date()}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'compact' : 'default'}
-                  onChange={handleEndDateChange}
-                  minimumDate={new Date(startDateYMD + 'T00:00:00')}
-                />
-              </View>
-            )}
-            
-            {endDateYMD && endDateYMD < startDateYMD ? (
+            {endDate && endDate < new Date(startDateYMD + 'T00:00:00') ? (
               <Text style={[themedStyles.textSecondary, { color: currentColors.error, marginTop: 6 }]}>
                 End date cannot be earlier than start date
               </Text>
@@ -1099,6 +1084,100 @@ export default function AddExpenseScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* DateTimePicker Modal for End Date */}
+      {showEndPicker && (
+        <Modal
+          visible={showEndPicker}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowEndPicker(false)}
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}>
+            <View style={[
+              themedStyles.card,
+              {
+                margin: 20,
+                padding: 20,
+                backgroundColor: currentColors.background,
+                borderRadius: 12,
+                minWidth: 300,
+              }
+            ]}>
+              <Text style={[themedStyles.subtitle, { marginBottom: 16, textAlign: 'center' }]}>
+                Select End Date
+              </Text>
+              
+              <DateTimePicker
+                value={endDate || new Date()}
+                mode="date"
+                display="default"
+                onChange={handleEndDateChange}
+                minimumDate={new Date(startDateYMD + 'T00:00:00')}
+              />
+              
+              <View style={[themedStyles.row, { marginTop: 16, justifyContent: 'space-between' }]}>
+                <TouchableOpacity
+                  onPress={() => setShowEndPicker(false)}
+                  style={[
+                    themedStyles.badge,
+                    { 
+                      backgroundColor: currentColors.border,
+                      paddingHorizontal: 20,
+                      paddingVertical: 12,
+                      borderRadius: 20,
+                      flex: 1,
+                      marginRight: 8,
+                    }
+                  ]}
+                >
+                  <Text style={[
+                    themedStyles.badgeText,
+                    { 
+                      color: currentColors.text,
+                      fontWeight: '600',
+                      textAlign: 'center',
+                    }
+                  ]}>
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  onPress={() => setShowEndPicker(false)}
+                  style={[
+                    themedStyles.badge,
+                    { 
+                      backgroundColor: currentColors.primary,
+                      paddingHorizontal: 20,
+                      paddingVertical: 12,
+                      borderRadius: 20,
+                      flex: 1,
+                      marginLeft: 8,
+                    }
+                  ]}
+                >
+                  <Text style={[
+                    themedStyles.badgeText,
+                    { 
+                      color: '#FFFFFF',
+                      fontWeight: '600',
+                      textAlign: 'center',
+                    }
+                  ]}>
+                    Done
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
 
       {/* Custom Category Modal */}
       <Modal visible={showCustomModal} animationType="slide" transparent onRequestClose={() => {
@@ -1179,7 +1258,7 @@ export default function AddExpenseScreen() {
           categoryTag, 
           frequency, 
           startDateYMD, 
-          endDateYMD 
+          endDate 
         });
         setShowAddPersonModal(false);
         setNewPersonName('');
@@ -1215,7 +1294,7 @@ export default function AddExpenseScreen() {
                     categoryTag, 
                     frequency, 
                     startDateYMD, 
-                    endDateYMD 
+                    endDate 
                   });
                   setShowAddPersonModal(false);
                   setNewPersonName('');
