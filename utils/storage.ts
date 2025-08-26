@@ -637,14 +637,11 @@ export const clearAllAppData = async (): Promise<{ success: boolean; error?: Err
     console.log('storage: Clearing all app data - deleting all budgets, people, expenses, and custom categories');
     
     // Clear all related storage items including custom categories and filters FIRST
-    await Promise.all([
-      AsyncStorage.removeItem(STORAGE_KEYS.CUSTOM_EXPENSE_CATEGORIES),
-      AsyncStorage.removeItem(STORAGE_KEYS.EXPENSES_FILTERS),
-      // Also clear any legacy data that might exist
-      AsyncStorage.removeItem(STORAGE_KEYS.BUDGET_DATA),
-      // Clear the main app data
-      AsyncStorage.removeItem(STORAGE_KEYS.APP_DATA_V2),
-    ]);
+    // Use sequential clearing to ensure each item is properly removed
+    await AsyncStorage.removeItem(STORAGE_KEYS.CUSTOM_EXPENSE_CATEGORIES);
+    await AsyncStorage.removeItem(STORAGE_KEYS.EXPENSES_FILTERS);
+    await AsyncStorage.removeItem(STORAGE_KEYS.BUDGET_DATA); // Legacy data
+    await AsyncStorage.removeItem(STORAGE_KEYS.APP_DATA_V2); // Main app data
     
     console.log('storage: Cleared custom categories, filters, legacy data, and main app data from AsyncStorage');
     
@@ -668,11 +665,19 @@ export const clearAllAppData = async (): Promise<{ success: boolean; error?: Err
     if (result.success) {
       console.log('storage: All app data cleared successfully - returning to first-time user state');
       
-      // Double-check that custom categories are cleared after save
+      // Triple-check that custom categories are cleared after save
       const finalVerifyCustomCategories = await AsyncStorage.getItem(STORAGE_KEYS.CUSTOM_EXPENSE_CATEGORIES);
       if (finalVerifyCustomCategories) {
         console.warn('storage: Custom categories still exist after clearing, forcing final removal');
         await AsyncStorage.removeItem(STORAGE_KEYS.CUSTOM_EXPENSE_CATEGORIES);
+        
+        // Final verification
+        const ultimateVerify = await AsyncStorage.getItem(STORAGE_KEYS.CUSTOM_EXPENSE_CATEGORIES);
+        if (ultimateVerify) {
+          console.error('storage: Custom categories STILL exist after multiple removal attempts');
+        } else {
+          console.log('storage: Custom categories finally cleared successfully');
+        }
       }
     } else {
       console.error('storage: Failed to clear all app data:', result.error);

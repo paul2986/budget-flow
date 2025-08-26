@@ -15,6 +15,18 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 const EXPENSE_CATEGORIES: ExpenseCategory[] = DEFAULT_CATEGORIES;
 
+// Types for temporary entities that will be created on save
+type TempPerson = {
+  id: string;
+  name: string;
+  isTemp: true;
+};
+
+type TempCategory = {
+  name: string;
+  isTemp: true;
+};
+
 export default function AddExpenseScreen() {
   const { data, addExpense, updateExpense, removeExpense, addPerson, saving, refreshTrigger } = useBudgetData();
   const { currentColors } = useTheme();
@@ -29,6 +41,10 @@ export default function AddExpenseScreen() {
   const [personId, setPersonId] = useState<string>('');
   const [categoryTag, setCategoryTag] = useState<ExpenseCategory>('Misc');
   const [deleting, setDeleting] = useState(false);
+
+  // Temporary entities that will be created on save
+  const [tempPeople, setTempPeople] = useState<TempPerson[]>([]);
+  const [tempCategories, setTempCategories] = useState<TempCategory[]>([]);
 
   // Dates
   const toYMD = (d: Date): string => {
@@ -78,21 +94,22 @@ export default function AddExpenseScreen() {
       console.log('AddExpenseScreen: Reloaded custom categories after data change:', list);
       
       // Check if current categoryTag is still valid before updating the list
-      const currentCategoryStillValid = DEFAULT_CATEGORIES.includes(categoryTag) || list.includes(categoryTag);
+      const currentCategoryStillValid = DEFAULT_CATEGORIES.includes(categoryTag) || list.includes(categoryTag) || tempCategories.some(tc => tc.name === categoryTag);
       
       setCustomCategories(list);
       
-      // If current categoryTag is not in the updated list and not a default, reset to 'Misc'
+      // If current categoryTag is not in the updated list and not a default and not a temp category, reset to 'Misc'
       if (categoryTag && !currentCategoryStillValid) {
         console.log('AddExpenseScreen: Current category tag not found in updated list, resetting to Misc:', {
           currentCategoryTag: categoryTag,
           availableDefaults: DEFAULT_CATEGORIES,
-          availableCustom: list
+          availableCustom: list,
+          tempCategories: tempCategories.map(tc => tc.name)
         });
         setCategoryTag('Misc');
       }
     })();
-  }, [data.people.length, data.expenses.length, refreshTrigger, categoryTag]); // Include categoryTag to properly check validity
+  }, [data.people.length, data.expenses.length, refreshTrigger, categoryTag, tempCategories]);
 
   // Load expense data for editing
   useEffect(() => {
@@ -135,6 +152,9 @@ export default function AddExpenseScreen() {
       setCategoryTag('Misc');
       setStartDateYMD(toYMD(new Date()));
       setEndDateYMD('');
+      // Clear temporary entities for new expense
+      setTempPeople([]);
+      setTempCategories([]);
     }
   }, [isEditMode, expenseToEdit, data.people, params.id, customCategories]);
 
@@ -146,6 +166,17 @@ export default function AddExpenseScreen() {
       router.replace('/expenses');
     }, 100);
   }, []);
+
+  // Get combined list of people (existing + temporary)
+  const getAllPeople = useCallback(() => {
+    return [...data.people, ...tempPeople];
+  }, [data.people, tempPeople]);
+
+  // Get combined list of categories (existing + temporary)
+  const getAllCategories = useCallback(() => {
+    const tempCategoryNames = tempCategories.map(tc => tc.name);
+    return [...EXPENSE_CATEGORIES, ...customCategories, ...tempCategoryNames];
+  }, [customCategories, tempCategories]);
 
   const handleSaveExpense = useCallback(async () => {
     if (!description.trim()) {
@@ -159,8 +190,9 @@ export default function AddExpenseScreen() {
       return;
     }
 
-    // Check if no people exist at all
-    if (data.people.length === 0) {
+    // Check if no people exist at all (including temp people)
+    const allPeople = getAllPeople();
+    if (allPeople.length === 0) {
       Alert.alert(
         'No People Added', 
         'You must add at least one person before creating expenses. All expenses must be assigned to someone.',
@@ -181,8 +213,8 @@ export default function AddExpenseScreen() {
     let finalPersonId = personId;
     
     // Auto-assign household expenses to first person if not already assigned
-    if (category === 'household' && !finalPersonId && data.people.length > 0) {
-      finalPersonId = data.people[0].id;
+    if (category === 'household' && !finalPersonId && allPeople.length > 0) {
+      finalPersonId = allPeople[0].id;
     }
     
     // Validate that we have a person assigned
@@ -213,13 +245,60 @@ export default function AddExpenseScreen() {
     }
 
     try {
+      console.log('AddExpenseScreen: Starting save process with temp entities:', {
+        tempPeople: tempPeople.length,
+        tempCategories: tempCategories.length,
+        selectedPersonId: finalPersonId,
+        selectedCategory: normalizedTag
+      });
+
+      // Step 1: Create any new people first
+      let actualPersonId = finalPersonId;
+      for (const tempPerson of tempPeople) {
+        if (tempPerson.id === finalPersonId) {
+          console.log('AddExpenseScreen: Creating temp person:', tempPerson);
+          const newPerson: Person = {
+            id: `person_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            name: tempPerson.name,
+            income: [],
+          };
+          
+          const result = await addPerson(newPerson);
+          if (!result.success) {
+            throw new Error(`Failed to create person: ${result.error?.message || 'Unknown error'}`);
+          }
+          
+          actualPersonId = newPerson.id;
+          console.log('AddExpenseScreen: Created person successfully:', newPerson.id);
+          break;
+        }
+      }
+
+      // Step 2: Create any new custom categories
+      if (tempCategories.length > 0) {
+        const newCustomCategories = [...customCategories];
+        for (const tempCategory of tempCategories) {
+          if (!newCustomCategories.includes(tempCategory.name)) {
+            newCustomCategories.push(tempCategory.name);
+            console.log('AddExpenseScreen: Adding temp category to list:', tempCategory.name);
+          }
+        }
+        
+        if (newCustomCategories.length > customCategories.length) {
+          await saveCustomExpenseCategories(newCustomCategories);
+          setCustomCategories(newCustomCategories);
+          console.log('AddExpenseScreen: Saved new custom categories:', newCustomCategories);
+        }
+      }
+
+      // Step 3: Create the expense with all the data
       const expenseData: Expense = {
         id: isEditMode ? expenseToEdit!.id : `expense_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         description: description.trim(),
         amount: numAmount,
         category,
         frequency,
-        personId: finalPersonId, // Always assign to a person
+        personId: actualPersonId, // Use the actual person ID (either existing or newly created)
         date: isEditMode ? expenseToEdit!.date : new Date(startDateYMD + 'T00:00:00Z').toISOString(),
         notes: '', // Always include notes as empty string
         categoryTag: normalizedTag,
@@ -242,7 +321,10 @@ export default function AddExpenseScreen() {
       }
 
       if (result && result.success) {
-        console.log('AddExpenseScreen: Expense saved successfully, navigating back to origin');
+        console.log('AddExpenseScreen: Expense saved successfully, clearing temp entities and navigating back');
+        // Clear temporary entities since they've been created
+        setTempPeople([]);
+        setTempCategories([]);
         navigateToOrigin();
       } else {
         console.error('AddExpenseScreen: Expense save failed:', result?.error);
@@ -252,7 +334,7 @@ export default function AddExpenseScreen() {
       console.error('AddExpenseScreen: Error saving expense:', error);
       Alert.alert('Error', 'Failed to save expense. Please try again.');
     }
-  }, [description, amount, category, frequency, personId, categoryTag, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin, startDateYMD, endDateYMD, data.people.length]);
+  }, [description, amount, category, frequency, personId, categoryTag, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin, startDateYMD, endDateYMD, getAllPeople, tempPeople, tempCategories, customCategories, addPerson]);
 
   const handleDeleteExpense = useCallback(async () => {
     if (!isEditMode || !expenseToEdit) {
@@ -323,8 +405,9 @@ export default function AddExpenseScreen() {
           onPress={() => {
             setCategory('household');
             // For household expenses, assign to first person for tracking but don't show picker
-            if (data.people.length > 0) {
-              setPersonId(data.people[0].id);
+            const allPeople = getAllPeople();
+            if (allPeople.length > 0) {
+              setPersonId(allPeople[0].id);
             } else {
               setPersonId(''); // Clear personId if no people exist
             }
@@ -374,7 +457,7 @@ export default function AddExpenseScreen() {
         </TouchableOpacity>
       </View>
     </View>
-  ), [category, currentColors, saving, deleting, themedStyles, data.people]);
+  ), [category, currentColors, saving, deleting, themedStyles, getAllPeople]);
 
   const handleAddPersonFromExpense = useCallback(async () => {
     if (!newPersonName.trim()) {
@@ -384,14 +467,16 @@ export default function AddExpenseScreen() {
 
     try {
       setAddingPerson(true);
-      const person: Person = {
-        id: `person_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      
+      // Create a temporary person that will be created when the expense is saved
+      const tempPerson: TempPerson = {
+        id: `temp_person_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         name: newPersonName.trim(),
-        income: [],
+        isTemp: true,
       };
 
-      console.log('AddExpenseScreen: Adding new person from expense screen:', person);
-      console.log('AddExpenseScreen: Current form state before person creation:', { 
+      console.log('AddExpenseScreen: Adding temporary person (will be created on save):', tempPerson);
+      console.log('AddExpenseScreen: Current form state preserved:', { 
         description, 
         amount, 
         category, 
@@ -401,52 +486,51 @@ export default function AddExpenseScreen() {
         endDateYMD 
       });
       
-      const result = await addPerson(person);
-      console.log('AddExpenseScreen: Person added result:', result);
+      // Add to temporary people list
+      setTempPeople(prev => [...prev, tempPerson]);
       
-      if (result.success) {
-        // Clear modal state
-        setNewPersonName('');
-        setShowAddPersonModal(false);
-        
-        // Auto-select the newly created person
-        setPersonId(person.id);
-        
-        // If we're adding a person and the category is household, switch to personal
-        // since the user explicitly wanted to add a person for assignment
-        if (category === 'household') {
-          setCategory('personal');
-          console.log('AddExpenseScreen: Switched to personal category since user added a person');
-        }
-        
-        // All form state (description, amount, categoryTag, frequency, dates, etc.) is preserved - no reset
-        console.log('AddExpenseScreen: Person added successfully and auto-selected, all form state preserved:', { 
-          description, 
-          amount, 
-          category: category === 'household' ? 'personal' : category, 
-          categoryTag,
-          frequency,
-          startDateYMD,
-          endDateYMD,
-          selectedPersonId: person.id 
-        });
-      } else {
-        Alert.alert('Error', 'Failed to add person. Please try again.');
+      // Clear modal state
+      setNewPersonName('');
+      setShowAddPersonModal(false);
+      
+      // Auto-select the newly created temporary person
+      setPersonId(tempPerson.id);
+      
+      // If we're adding a person and the category is household, switch to personal
+      // since the user explicitly wanted to add a person for assignment
+      if (category === 'household') {
+        setCategory('personal');
+        console.log('AddExpenseScreen: Switched to personal category since user added a person');
       }
+      
+      // All form state (description, amount, categoryTag, frequency, dates, etc.) is preserved
+      console.log('AddExpenseScreen: Temporary person added and auto-selected, all form state preserved:', { 
+        description, 
+        amount, 
+        category: category === 'household' ? 'personal' : category, 
+        categoryTag,
+        frequency,
+        startDateYMD,
+        endDateYMD,
+        selectedPersonId: tempPerson.id,
+        tempPeopleCount: tempPeople.length + 1
+      });
     } catch (error) {
-      console.error('AddExpenseScreen: Error adding person:', error);
+      console.error('AddExpenseScreen: Error adding temporary person:', error);
       Alert.alert('Error', 'Failed to add person. Please try again.');
     } finally {
       setAddingPerson(false);
     }
-  }, [newPersonName, addPerson, description, amount, category, categoryTag, frequency, startDateYMD, endDateYMD]);
+  }, [newPersonName, description, amount, category, categoryTag, frequency, startDateYMD, endDateYMD, tempPeople]);
 
   const PersonPicker = useCallback(() => {
     // Don't show person picker for household expenses
     if (category === 'household') return null;
 
+    const allPeople = getAllPeople();
+
     // Show message when personal is selected but no people exist
-    if (category === 'personal' && data.people.length === 0) {
+    if (category === 'personal' && allPeople.length === 0) {
       return (
         <View style={themedStyles.section}>
           <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
@@ -495,44 +579,49 @@ export default function AddExpenseScreen() {
     }
 
     // Only show person picker for personal expenses when people exist
-    if (category === 'personal' && data.people.length > 0) {
+    if (category === 'personal' && allPeople.length > 0) {
       return (
         <View style={themedStyles.section}>
           <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
             Assign to Person <Text style={{ color: currentColors.error }}>*</Text>
           </Text>
           <View style={[themedStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
-            {data.people.map((person) => (
-              <TouchableOpacity
-                key={person.id}
-                style={[
-                  themedStyles.badge,
-                  { 
-                    backgroundColor: personId === person.id ? currentColors.secondary : currentColors.border,
-                    marginRight: 8,
-                    marginBottom: 8,
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    borderRadius: 20,
-                  }
-                ]}
-                onPress={() => setPersonId(person.id)}
-                disabled={saving || deleting}
-              >
-                <Text style={[
-                  themedStyles.badgeText,
-                  { 
-                    color: personId === person.id ? '#FFFFFF' : currentColors.text,
-                    fontWeight: '600',
-                  }
-                ]}>
-                  {person.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {allPeople.map((person) => {
+              const isTemp = 'isTemp' in person && person.isTemp;
+              return (
+                <TouchableOpacity
+                  key={person.id}
+                  style={[
+                    themedStyles.badge,
+                    { 
+                      backgroundColor: personId === person.id ? currentColors.secondary : currentColors.border,
+                      marginRight: 8,
+                      marginBottom: 8,
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderRadius: 20,
+                      borderWidth: isTemp ? 2 : 0,
+                      borderColor: isTemp ? currentColors.primary : 'transparent',
+                    }
+                  ]}
+                  onPress={() => setPersonId(person.id)}
+                  disabled={saving || deleting}
+                >
+                  <Text style={[
+                    themedStyles.badgeText,
+                    { 
+                      color: personId === person.id ? '#FFFFFF' : currentColors.text,
+                      fontWeight: '600',
+                    }
+                  ]}>
+                    {person.name}{isTemp ? ' (new)' : ''}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
           <Text style={[themedStyles.textSecondary, { fontSize: 12, marginTop: 4 }]}>
-            Select the person this personal expense belongs to.
+            Select the person this personal expense belongs to. {tempPeople.length > 0 ? 'New people will be created when you save.' : ''}
           </Text>
         </View>
       );
@@ -540,45 +629,50 @@ export default function AddExpenseScreen() {
 
     // Return null for all other cases (household or personal with no people)
     return null;
-  }, [data.people, personId, currentColors, saving, deleting, themedStyles, category]);
+  }, [getAllPeople, personId, currentColors, saving, deleting, themedStyles, category, tempPeople]);
 
   const CategoryTagPicker = useCallback(() => {
-    const allCategories = [...EXPENSE_CATEGORIES, ...customCategories];
+    const allCategories = getAllCategories();
 
     return (
       <View style={themedStyles.section}>
         <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Category</Text>
         <View style={[themedStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
-          {allCategories.map((tag) => (
-            <TouchableOpacity
-              key={tag}
-              style={[
-                themedStyles.badge,
-                { 
-                  backgroundColor: categoryTag === tag ? currentColors.secondary : currentColors.border,
-                  marginRight: 8,
-                  marginBottom: 8,
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 20,
-                }
-              ]}
-              onPress={() => setCategoryTag(tag)}
-              disabled={saving || deleting}
-              accessibilityHint="Applies a category to this expense"
-              accessibilityLabel={`Select category ${tag}${categoryTag === tag ? ', selected' : ''}`}
-            >
-              <Text style={[
-                themedStyles.badgeText,
-                { 
-                  color: categoryTag === tag ? '#FFFFFF' : currentColors.text,
-                  fontWeight: '600',
-                }
-              ]}>
-                {tag}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {allCategories.map((tag) => {
+            const isTemp = tempCategories.some(tc => tc.name === tag);
+            return (
+              <TouchableOpacity
+                key={tag}
+                style={[
+                  themedStyles.badge,
+                  { 
+                    backgroundColor: categoryTag === tag ? currentColors.secondary : currentColors.border,
+                    marginRight: 8,
+                    marginBottom: 8,
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 20,
+                    borderWidth: isTemp ? 2 : 0,
+                    borderColor: isTemp ? currentColors.primary : 'transparent',
+                  }
+                ]}
+                onPress={() => setCategoryTag(tag)}
+                disabled={saving || deleting}
+                accessibilityHint="Applies a category to this expense"
+                accessibilityLabel={`Select category ${tag}${categoryTag === tag ? ', selected' : ''}`}
+              >
+                <Text style={[
+                  themedStyles.badgeText,
+                  { 
+                    color: categoryTag === tag ? '#FFFFFF' : currentColors.text,
+                    fontWeight: '600',
+                  }
+                ]}>
+                  {tag}{isTemp ? ' (new)' : ''}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
 
           {/* Add custom chip */}
           <TouchableOpacity
@@ -624,9 +718,14 @@ export default function AddExpenseScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+        {tempCategories.length > 0 && (
+          <Text style={[themedStyles.textSecondary, { fontSize: 12, marginTop: 4 }]}>
+            New categories will be created when you save.
+          </Text>
+        )}
       </View>
     );
-  }, [categoryTag, currentColors, saving, deleting, themedStyles, customCategories]);
+  }, [categoryTag, currentColors, saving, deleting, themedStyles, getAllCategories, tempCategories]);
 
   const FrequencyPicker = useCallback(() => (
     <View style={themedStyles.section}>
@@ -671,22 +770,31 @@ export default function AddExpenseScreen() {
       setCustomError('Please enter a valid name (letters, numbers and spaces)');
       return;
     }
-    // Check duplicates (case-insensitive)
+    
+    // Check duplicates (case-insensitive) in existing categories
     const existsInDefaults = DEFAULT_CATEGORIES.some((c) => c.toLowerCase() === normalized.toLowerCase());
     const existsInCustom = customCategories.some((c) => c.toLowerCase() === normalized.toLowerCase());
-    if (existsInDefaults || existsInCustom) {
+    const existsInTemp = tempCategories.some((tc) => tc.name.toLowerCase() === normalized.toLowerCase());
+    
+    if (existsInDefaults || existsInCustom || existsInTemp) {
       setCustomError('That category already exists');
       return;
     }
+    
     try {
-      console.log('AddExpenseScreen: Creating custom category:', normalized);
-      console.log('AddExpenseScreen: Current form state before category creation:', { description, amount, category, frequency, personId });
+      console.log('AddExpenseScreen: Adding temporary custom category (will be created on save):', normalized);
+      console.log('AddExpenseScreen: Current form state preserved:', { description, amount, category, frequency, personId });
       
-      const next = [...customCategories, normalized];
-      await saveCustomExpenseCategories(next);
-      setCustomCategories(next);
+      // Create temporary category
+      const tempCategory: TempCategory = {
+        name: normalized,
+        isTemp: true,
+      };
       
-      // Automatically select the newly created category
+      // Add to temporary categories list
+      setTempCategories(prev => [...prev, tempCategory]);
+      
+      // Automatically select the newly created temporary category
       setCategoryTag(normalized);
       
       // Close modal and clear modal state
@@ -694,20 +802,21 @@ export default function AddExpenseScreen() {
       setNewCustomName('');
       setCustomError(null);
       
-      // Form state (description, amount, category, frequency, personId, etc.) is preserved - no reset
-      console.log('AddExpenseScreen: Custom category created and auto-selected, form state preserved:', { 
+      // Form state (description, amount, category, frequency, personId, etc.) is preserved
+      console.log('AddExpenseScreen: Temporary custom category added and auto-selected, form state preserved:', { 
         description, 
         amount, 
         category, 
         frequency, 
         personId,
-        selectedCategoryTag: normalized 
+        selectedCategoryTag: normalized,
+        tempCategoriesCount: tempCategories.length + 1
       });
     } catch (e) {
-      console.error('AddExpenseScreen: Error saving custom category', e);
-      setCustomError('Failed to save category. Try again.');
+      console.error('AddExpenseScreen: Error adding temporary custom category', e);
+      setCustomError('Failed to add category. Try again.');
     }
-  }, [newCustomName, customCategories, description, amount, category, frequency, personId]);
+  }, [newCustomName, customCategories, tempCategories, description, amount, category, frequency, personId]);
 
   // Calculate loading state - only show spinner when actually saving/deleting or when there's a date validation error
   const isLoading = (() => {
@@ -862,6 +971,9 @@ export default function AddExpenseScreen() {
         }}>
           <View style={[themedStyles.card, { width: '100%', maxWidth: 480 }]}>
             <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>New Category</Text>
+            <Text style={[themedStyles.textSecondary, { marginBottom: 16 }]}>
+              This category will be created when you save the expense.
+            </Text>
             <TextInput
               style={themedStyles.input}
               value={newCustomName}
@@ -899,7 +1011,7 @@ export default function AddExpenseScreen() {
                 onPress={handleCreateCustomCategory}
                 style={[themedStyles.badge, { backgroundColor: currentColors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 }]}
               >
-                <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontWeight: '700' }]}>Save</Text>
+                <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontWeight: '700' }]}>Add</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -930,7 +1042,7 @@ export default function AddExpenseScreen() {
           <View style={[themedStyles.card, { width: '100%', maxWidth: 480 }]}>
             <Text style={[themedStyles.subtitle, { marginBottom: 12 }]}>Add Person</Text>
             <Text style={[themedStyles.textSecondary, { marginBottom: 16 }]}>
-              Add a person to assign this expense to. Your expense data will be preserved.
+              This person will be created when you save the expense. Your form data will be preserved.
             </Text>
             <TextInput
               style={themedStyles.input}
@@ -969,7 +1081,7 @@ export default function AddExpenseScreen() {
                 {addingPerson ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontWeight: '700' }]}>Add Person</Text>
+                  <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontWeight: '700' }]}>Add</Text>
                 )}
               </TouchableOpacity>
             </View>
