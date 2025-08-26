@@ -228,8 +228,8 @@ export default function HomeScreen() {
           contentContainerStyle={[
             themedStyles.scrollContent,
             {
-              paddingHorizontal: 24,
-              paddingTop: showBudgetNaming && appData && appData.budgets && appData.budgets.length > 0 ? 20 : 60, // More top padding for first-time users without header
+              paddingHorizontal: 16, // Reduced from 24 to match other pages
+              paddingTop: showBudgetNaming && appData && appData.budgets && appData.budgets.length > 0 ? 20 : 20, // Reduced top padding for first-time users
               paddingBottom: 120, // Ensure bottom content is visible above nav bar
               justifyContent: 'flex-start',
               flexGrow: 1,
@@ -349,7 +349,7 @@ export default function HomeScreen() {
           contentContainerStyle={[
             themedStyles.scrollContent,
             {
-              paddingHorizontal: 24,
+              paddingHorizontal: 16, // Reduced from 24 to match other pages
               paddingTop: 20,
               paddingBottom: 120, // Ensure bottom content is visible above nav bar
               flexGrow: 1,
@@ -642,10 +642,10 @@ export default function HomeScreen() {
           contentContainerStyle={[
             themedStyles.scrollContent,
             {
-              paddingHorizontal: 24,
-              paddingTop: 40,
+              paddingHorizontal: 16, // Reduced from 24 to match other pages
+              paddingTop: 20, // Reduced from 40 to bring content to top
               paddingBottom: 120, // Ensure bottom content is visible above nav bar
-              justifyContent: 'center',
+              justifyContent: 'flex-start', // Changed from center to flex-start to align to top
               flexGrow: 1,
             }
           ]}
@@ -751,7 +751,7 @@ export default function HomeScreen() {
           contentContainerStyle={[
             themedStyles.scrollContent,
             {
-              paddingHorizontal: 24,
+              paddingHorizontal: 16, // Reduced from 24 to match other pages
               paddingTop: 32,
               paddingBottom: 120, // Ensure bottom content is visible above nav bar
             }
