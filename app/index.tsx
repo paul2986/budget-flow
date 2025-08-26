@@ -31,7 +31,7 @@ export default function HomeScreen() {
   const { formatCurrency } = useCurrency();
   const { themedStyles } = useThemedStyles();
   const { showToast } = useToast();
-  const { data, loading, activeBudget, refreshTrigger, refreshData, addBudget } = useBudgetData();
+  const { data, loading, activeBudget, appData, refreshTrigger, refreshData, addBudget } = useBudgetData();
   const { isLocked, authenticateForBudget } = useBudgetLock();
   
   const [authenticating, setAuthenticating] = useState(false);
@@ -42,11 +42,19 @@ export default function HomeScreen() {
   const appState = useRef(AppState.currentState);
 
   const budgetLocked = useMemo(() => {
-    return activeBudget ? isLocked(activeBudget) : false;
-  }, [activeBudget, isLocked]);
+    // Can't be locked if no budgets exist or no active budget
+    if (!appData || !appData.budgets || appData.budgets.length === 0 || !activeBudget) return false;
+    return isLocked(activeBudget);
+  }, [appData, activeBudget, isLocked]);
 
-  // Check if this is a first-time user or if they need guidance
+  // Check if this is a first-time user (no budgets exist) or if they need guidance
   const isFirstTimeUser = useMemo(() => {
+    // First check if no budgets exist at all (true first-time user)
+    if (!appData || !appData.budgets || appData.budgets.length === 0) {
+      return true;
+    }
+    
+    // If budget exists but no active budget, still first-time user
     if (!activeBudget || !data) return true;
     
     const people = data && data.people && Array.isArray(data.people) ? data.people : [];
@@ -54,17 +62,18 @@ export default function HomeScreen() {
     
     // First time if no people and no expenses
     return people.length === 0 && expenses.length === 0;
-  }, [activeBudget, data]);
+  }, [appData, activeBudget, data]);
 
   const shouldShowFullDashboard = useMemo(() => {
-    if (!activeBudget || !data) return false;
+    // Can't show dashboard if no budgets exist or no active budget
+    if (!appData || !appData.budgets || appData.budgets.length === 0 || !activeBudget || !data) return false;
     
     const people = data && data.people && Array.isArray(data.people) ? data.people : [];
     const expenses = data && data.expenses && Array.isArray(data.expenses) ? data.expenses : [];
     
     // Show full dashboard only if both people and expenses exist
     return people.length > 0 && expenses.length > 0;
-  }, [activeBudget, data]);
+  }, [appData, activeBudget, data]);
 
   // Check lock status when app becomes active
   const handleAppStateChange = useCallback((nextAppState: string) => {
@@ -85,8 +94,14 @@ export default function HomeScreen() {
   );
 
   const calculations = useMemo(() => {
-    if (!activeBudget || !data) {
-      console.log('HomeScreen: Missing activeBudget or data for calculations:', { activeBudget: !!activeBudget, data: !!data });
+    // Can't calculate if no budgets exist or no active budget
+    if (!appData || !appData.budgets || appData.budgets.length === 0 || !activeBudget || !data) {
+      console.log('HomeScreen: Missing appData, budgets, activeBudget or data for calculations:', { 
+        hasAppData: !!appData, 
+        budgetsCount: appData?.budgets?.length || 0,
+        activeBudget: !!activeBudget, 
+        data: !!data 
+      });
       return null;
     }
 
@@ -116,10 +131,10 @@ export default function HomeScreen() {
       personalExpenses,
       remaining,
     };
-  }, [activeBudget, data, refreshTrigger]);
+  }, [appData, activeBudget, data, refreshTrigger]);
 
   const handleUnlock = useCallback(async () => {
-    if (!activeBudget) return;
+    if (!appData || !appData.budgets || appData.budgets.length === 0 || !activeBudget) return;
     
     setAuthenticating(true);
     try {
@@ -133,7 +148,7 @@ export default function HomeScreen() {
     } finally {
       setAuthenticating(false);
     }
-  }, [activeBudget, authenticateForBudget, showToast]);
+  }, [appData, activeBudget, authenticateForBudget, showToast]);
 
   const handleBackToBudgets = useCallback(() => {
     router.push('/budgets');
@@ -190,8 +205,8 @@ export default function HomeScreen() {
     );
   }
 
-  // Step 1: Budget naming interface (first-time user: No budget found)
-  if (!activeBudget || showBudgetNaming) {
+  // Step 1: Budget naming interface (first-time user: No budgets exist or explicitly showing naming)
+  if ((!appData || !appData.budgets || appData.budgets.length === 0) || showBudgetNaming) {
     return (
       <KeyboardAvoidingView 
         style={[themedStyles.container, { backgroundColor: currentColors.background }]}
@@ -350,7 +365,7 @@ export default function HomeScreen() {
               Your Budget is Ready!
             </Text>
             <Text style={[themedStyles.textSecondary, { textAlign: 'center', fontSize: 18, lineHeight: 26 }]}>
-              "{activeBudget?.name}" has been created successfully
+              "{activeBudget?.name || 'Your budget'}" has been created successfully
             </Text>
           </View>
 
@@ -474,7 +489,7 @@ export default function HomeScreen() {
   if (budgetLocked) {
     return (
       <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
-        <StandardHeader title={activeBudget.name} />
+        <StandardHeader title={activeBudget?.name || 'Budget'} />
         
         <View style={{ flex: 1, position: 'relative' }}>
           <View style={{ flex: 1, opacity: 0.3 }}>
@@ -534,7 +549,7 @@ export default function HomeScreen() {
               </Text>
 
               <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 24 }]}>
-                "{activeBudget.name}" requires authentication to view
+                "{activeBudget?.name || 'This budget'}" requires authentication to view
               </Text>
 
               <View style={{ width: '100%', gap: 12 }}>
@@ -605,7 +620,7 @@ export default function HomeScreen() {
     return (
       <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
         <StandardHeader 
-          title={activeBudget.name}
+          title={activeBudget?.name || 'Budget'}
           rightIcon="wallet-outline"
           onRightPress={() => router.push('/budgets')}
         />
@@ -714,7 +729,7 @@ export default function HomeScreen() {
     return (
       <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
         <StandardHeader 
-          title={activeBudget.name}
+          title={activeBudget?.name || 'Budget'}
           rightIcon="wallet-outline"
           onRightPress={() => router.push('/budgets')}
         />

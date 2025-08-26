@@ -215,9 +215,8 @@ const validateLegacyBudgetData = (data: any): LegacyBudgetData => {
 const validateAppData = (data: any): AppDataV2 => {
   console.log('storage: Validating AppDataV2...');
   if (!data || typeof data !== 'object') {
-    console.log('storage: No data or invalid data, creating default budget');
-    const initialBudget = createEmptyBudget('My Budget');
-    return { version: 2, budgets: [initialBudget], activeBudgetId: initialBudget.id };
+    console.log('storage: No data or invalid data, returning empty state for first-time user');
+    return { version: 2, budgets: [], activeBudgetId: '' };
   }
 
   const makeSafeBudget = (b: any): Budget => {
@@ -252,11 +251,13 @@ const validateAppData = (data: any): AppDataV2 => {
     };
   };
 
-  const budgets: Budget[] =
-    Array.isArray(data.budgets) && data.budgets.length > 0 ? data.budgets.map((b: any) => makeSafeBudget(b)) : [createEmptyBudget('My Budget')];
+  // Allow empty budgets array for first-time users
+  const budgets: Budget[] = Array.isArray(data.budgets) ? data.budgets.map((b: any) => makeSafeBudget(b)) : [];
 
-  let activeBudgetId = typeof data.activeBudgetId === 'string' ? data.activeBudgetId : budgets[0].id;
-  if (!budgets.find((b) => b.id === activeBudgetId)) activeBudgetId = budgets[0].id;
+  let activeBudgetId = typeof data.activeBudgetId === 'string' ? data.activeBudgetId : '';
+  if (budgets.length > 0 && !budgets.find((b) => b.id === activeBudgetId)) {
+    activeBudgetId = budgets[0].id;
+  }
 
   console.log('storage: AppDataV2 validation complete', {
     budgetsCount: budgets.length,
@@ -287,8 +288,8 @@ export const loadAppData = async (): Promise<AppDataV2> => {
       try {
         legacyParsed = JSON.parse(legacyRaw);
       } catch (e) {
-        console.error('storage: Failed to parse legacy data, creating new default', e);
-        legacyParsed = { people: [], expenses: [], householdSettings: { distributionMethod: 'even' } };
+        console.error('storage: Failed to parse legacy data, returning empty state for first-time user', e);
+        return { version: 2, budgets: [], activeBudgetId: '' };
       }
       const legacy = validateLegacyBudgetData(legacyParsed);
       const now = Date.now();
@@ -308,16 +309,12 @@ export const loadAppData = async (): Promise<AppDataV2> => {
       return appData;
     }
 
-    // No data at all, create default
-    console.log('storage: No existing data found, creating default budget');
-    const initialBudget = createEmptyBudget('My Budget');
-    const appData: AppDataV2 = { version: 2, budgets: [initialBudget], activeBudgetId: initialBudget.id };
-    await saveAppData(appData);
-    return appData;
+    // No data at all, return empty state for first-time user
+    console.log('storage: No existing data found, returning empty state for first-time user');
+    return { version: 2, budgets: [], activeBudgetId: '' };
   } catch (error) {
     console.error('storage: Error loading AppDataV2:', error);
-    const initialBudget = createEmptyBudget('My Budget');
-    return { version: 2, budgets: [initialBudget], activeBudgetId: initialBudget.id };
+    return { version: 2, budgets: [], activeBudgetId: '' };
   }
 };
 
@@ -347,7 +344,11 @@ const performAppSave = async (data: AppDataV2): Promise<void> => {
   const verification = await AsyncStorage.getItem(STORAGE_KEYS.APP_DATA_V2);
   if (!verification) throw new Error('Save verification failed - no data found');
   const verified = validateAppData(JSON.parse(verification));
-  if (!verified.budgets.length) throw new Error('Save verification failed - empty budgets');
+  // Allow empty budgets for first-time user state - don't throw error
+  console.log('storage: Save verification complete:', {
+    budgetsCount: verified.budgets.length,
+    activeBudgetId: verified.activeBudgetId
+  });
 };
 
 export const saveAppData = async (data: AppDataV2): Promise<{ success: boolean; error?: Error }> => {
@@ -360,18 +361,16 @@ export const saveAppData = async (data: AppDataV2): Promise<{ success: boolean; 
   }
 };
 
-export const getActiveBudget = (appData: AppDataV2): Budget => {
+export const getActiveBudget = (appData: AppDataV2): Budget | null => {
   // Add better null checks and logging
   if (!appData) {
     console.error('storage: getActiveBudget called with null/undefined appData');
-    const defaultBudget = createEmptyBudget('My Budget');
-    return defaultBudget;
+    return null;
   }
 
   if (!appData.budgets || !Array.isArray(appData.budgets) || appData.budgets.length === 0) {
-    console.log('storage: no budgets available, creating default');
-    const defaultBudget = createEmptyBudget('My Budget');
-    return defaultBudget;
+    console.log('storage: no budgets available, returning null for first-time user flow');
+    return null;
   }
   
   const active = appData.budgets.find((b) => b && b.id === appData.activeBudgetId);
@@ -611,6 +610,13 @@ export const markBudgetUnlocked = async (budgetId: string): Promise<{ success: b
 export const clearActiveBudgetData = async (): Promise<void> => {
   const appData = await loadAppData();
   const active = getActiveBudget(appData);
+  
+  // If no active budget exists, there's nothing to clear
+  if (!active) {
+    console.log('storage: No active budget to clear');
+    return;
+  }
+  
   const cleared: Budget = { 
     ...active, 
     people: [], 
@@ -630,12 +636,11 @@ export const clearAllAppData = async (): Promise<{ success: boolean; error?: Err
   try {
     console.log('storage: Clearing all app data - deleting all budgets, people, and expenses');
     
-    // Create a fresh app with a single empty budget
-    const initialBudget = createEmptyBudget('My Budget');
+    // Create a completely empty app state with no budgets (first-time user state)
     const freshAppData: AppDataV2 = { 
       version: 2, 
-      budgets: [initialBudget], 
-      activeBudgetId: initialBudget.id 
+      budgets: [], 
+      activeBudgetId: '' 
     };
     
     // Also clear custom categories and filters
@@ -646,7 +651,7 @@ export const clearAllAppData = async (): Promise<{ success: boolean; error?: Err
     const result = await saveAppData(freshAppData);
     
     if (result.success) {
-      console.log('storage: All app data cleared successfully');
+      console.log('storage: All app data cleared successfully - returning to first-time user state');
     } else {
       console.error('storage: Failed to clear all app data:', result.error);
     }

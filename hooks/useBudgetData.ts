@@ -49,13 +49,22 @@ export const useBudgetData = () => {
       });
       setAppData(loadedApp);
       const active = getActiveBudget(loadedApp);
-      console.log('useBudgetData: active budget:', {
-        id: active.id,
-        name: active.name,
-        peopleCount: active.people?.length || 0,
-        expensesCount: active.expenses?.length || 0
-      });
-      setData({ people: active.people, expenses: active.expenses, householdSettings: active.householdSettings });
+      if (active) {
+        console.log('useBudgetData: active budget:', {
+          id: active.id,
+          name: active.name,
+          peopleCount: active.people?.length || 0,
+          expensesCount: active.expenses?.length || 0
+        });
+        setData({ people: active.people, expenses: active.expenses, householdSettings: active.householdSettings });
+      } else {
+        console.log('useBudgetData: no active budget found - first-time user state');
+        setData({
+          people: [],
+          expenses: [],
+          householdSettings: { distributionMethod: 'even' },
+        });
+      }
     } catch (error) {
       console.error('useBudgetData: Error in refreshFromStorage:', error);
     }
@@ -67,6 +76,14 @@ export const useBudgetData = () => {
     try {
       const loadedApp = await loadAppData();
       const active = getActiveBudget(loadedApp);
+      if (!active) {
+        console.log('useBudgetData: No active budget found, returning empty data');
+        return {
+          people: [],
+          expenses: [],
+          householdSettings: { distributionMethod: 'even' },
+        };
+      }
       const freshData: BudgetSlice = {
         people: active.people,
         expenses: active.expenses,
@@ -203,7 +220,7 @@ export const useBudgetData = () => {
         const baseApp = appData.budgets.length > 0 ? appData : await loadAppData();
         const active = getActiveBudget(baseApp);
         if (!active || !active.id) {
-          throw new Error('Active budget not available');
+          throw new Error('Active budget not available - cannot save data without a budget');
         }
 
         // Create updated active budget object and persist via storage v2 API
