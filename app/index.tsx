@@ -25,6 +25,7 @@ import OverviewSection from '../components/OverviewSection';
 import IndividualBreakdownsSection from '../components/IndividualBreakdownsSection';
 import ExpiringSection from '../components/ExpiringSection';
 import QuickActionsSection from '../components/QuickActionsSection';
+import ExpenseBreakdownSection from '../components/ExpenseBreakdownSection';
 import Button from '../components/Button';
 
 export default function HomeScreen() {
@@ -995,7 +996,31 @@ export default function HomeScreen() {
               />
             </View>
 
-            {/* 3. Ending/Expiring Section */}
+            {/* 3. NEW: Expense Breakdown Section */}
+            <View style={{ marginBottom: 24 }}>
+              <View style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                marginBottom: 16,
+                minHeight: 32,
+              }}>
+                <Icon 
+                  name="pie-chart-outline" 
+                  size={24} 
+                  style={{ 
+                    color: currentColors.primary, 
+                    marginRight: 12,
+                    marginTop: -2,
+                  }} 
+                />
+                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0 }]}>
+                  Expense Breakdown
+                </Text>
+              </View>
+              <ExpenseBreakdownSection expenses={expenses} />
+            </View>
+
+            {/* 4. Ending/Expiring Section */}
             <View style={{ marginBottom: 24 }}>
               <View style={{ 
                 flexDirection: 'row', 
@@ -1026,7 +1051,7 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            {/* 4. Quick Actions Section */}
+            {/* 5. Quick Actions Section */}
             <View style={{ marginBottom: 100 }}>
               <View style={{ 
                 flexDirection: 'row', 
