@@ -62,6 +62,35 @@ export default function ExpensesScreen() {
     }
   }, []);
 
+  // Helper function to format expiration date
+  const formatExpirationDate = useCallback((endDate: string) => {
+    const date = new Date(endDate);
+    const now = new Date();
+    const diffTime = date.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    const options: Intl.DateTimeFormatOptions = { 
+      month: 'short', 
+      day: 'numeric',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+    };
+    const formattedDate = date.toLocaleDateString('en-US', options);
+    
+    if (diffDays < 0) {
+      return { text: `Expired ${formattedDate}`, isExpired: true, isExpiringSoon: false };
+    } else if (diffDays === 0) {
+      return { text: `Expires today`, isExpired: false, isExpiringSoon: true };
+    } else if (diffDays === 1) {
+      return { text: `Expires tomorrow`, isExpired: false, isExpiringSoon: true };
+    } else if (diffDays <= 7) {
+      return { text: `Expires in ${diffDays} days`, isExpired: false, isExpiringSoon: true };
+    } else if (diffDays <= 30) {
+      return { text: `Expires ${formattedDate}`, isExpired: false, isExpiringSoon: false };
+    } else {
+      return { text: `Expires ${formattedDate}`, isExpired: false, isExpiringSoon: false };
+    }
+  }, []);
+
   // Load custom categories and persisted filters
   useEffect(() => {
     (async () => {
@@ -452,7 +481,8 @@ export default function ExpensesScreen() {
                 description: expense.description, 
                 category: expense.category,
                 personId: expense.personId,
-                frequency: expense.frequency
+                frequency: expense.frequency,
+                endDate: expense.endDate
               });
               const person = expense.personId ? data.people.find((p) => p.id === expense.personId) : null;
               const monthlyAmount = calculateMonthlyAmount(expense.amount, expense.frequency);
@@ -462,6 +492,10 @@ export default function ExpensesScreen() {
               
               // Only show monthly value if the expense was not added as monthly
               const shouldShowMonthlyValue = expense.frequency !== 'monthly';
+
+              // Check if expense has expiration date
+              const hasExpirationDate = expense.endDate && expense.frequency !== 'one-time';
+              const expirationInfo = hasExpirationDate ? formatExpirationDate(expense.endDate) : null;
 
               return (
                 <TouchableOpacity 
@@ -477,6 +511,15 @@ export default function ExpensesScreen() {
                       borderLeftWidth: 3,
                       borderLeftColor: isHousehold ? currentColors.household : currentColors.personal,
                       marginBottom: 8,
+                      // Add subtle border for expired/expiring expenses
+                      ...(expirationInfo?.isExpired && {
+                        borderWidth: 1,
+                        borderColor: currentColors.error + '40',
+                      }),
+                      ...(expirationInfo?.isExpiringSoon && !expirationInfo?.isExpired && {
+                        borderWidth: 1,
+                        borderColor: '#FF9500' + '40',
+                      }),
                     }
                   ]}
                 >
@@ -484,9 +527,27 @@ export default function ExpensesScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     {/* Left side - expense info */}
                     <View style={{ flex: 1, marginRight: 12 }}>
-                      <Text style={[themedStyles.text, { fontWeight: '600', fontSize: 16, marginBottom: 2, lineHeight: 20 }]}>
-                        {expense.description}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                        <Text style={[themedStyles.text, { fontWeight: '600', fontSize: 16, lineHeight: 20, flex: 1 }]}>
+                          {expense.description}
+                        </Text>
+                        {/* Expiration indicator icon */}
+                        {hasExpirationDate && (
+                          <View style={{ marginLeft: 8 }}>
+                            <Icon 
+                              name={expirationInfo?.isExpired ? "time" : "timer-outline"} 
+                              size={16} 
+                              style={{ 
+                                color: expirationInfo?.isExpired 
+                                  ? currentColors.error 
+                                  : expirationInfo?.isExpiringSoon 
+                                    ? '#FF9500' 
+                                    : currentColors.textSecondary 
+                              }} 
+                            />
+                          </View>
+                        )}
+                      </View>
                       
                       {/* Category and person info in one line */}
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
@@ -517,6 +578,36 @@ export default function ExpensesScreen() {
                         {isHousehold && !person ? '' : (person ? person.name : 'Unassigned')}
                         {isHousehold && !person ? expense.frequency : ` • ${expense.frequency}`}
                       </Text>
+
+                      {/* Expiration date display */}
+                      {hasExpirationDate && expirationInfo && (
+                        <View style={{ 
+                          flexDirection: 'row', 
+                          alignItems: 'center', 
+                          marginTop: 4,
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          backgroundColor: expirationInfo.isExpired 
+                            ? currentColors.error + '15' 
+                            : expirationInfo.isExpiringSoon 
+                              ? '#FF9500' + '15' 
+                              : currentColors.textSecondary + '15',
+                          borderRadius: 8,
+                          alignSelf: 'flex-start',
+                        }}>
+                          <Text style={{
+                            fontSize: 11,
+                            fontWeight: '600',
+                            color: expirationInfo.isExpired 
+                              ? currentColors.error 
+                              : expirationInfo.isExpiringSoon 
+                                ? '#FF9500' 
+                                : currentColors.textSecondary,
+                          }}>
+                            {expirationInfo.text}
+                          </Text>
+                        </View>
+                      )}
                     </View>
 
                     {/* Right side - amount and delete */}
