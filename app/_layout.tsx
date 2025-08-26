@@ -50,11 +50,12 @@ function CustomTabBar() {
       hasNoActiveBudget,
       isFirstTimeUser,
       budgetsCount: appData?.budgets?.length || 0,
-      activeBudgetId: activeBudget?.id || 'none'
+      activeBudgetId: activeBudget?.id || 'none',
+      pathname
     });
     
     return isFirstTimeUser;
-  }, [appData, activeBudget]);
+  }, [appData, activeBudget, pathname]);
 
   useEffect(() => {
     console.log('CustomTabBar: Theme updated', { isDarkMode, themeMode, currentColors });

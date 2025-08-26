@@ -213,20 +213,23 @@ export default function HomeScreen() {
         style={[themedStyles.container, { backgroundColor: currentColors.background }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <StandardHeader 
-          title="Budget Flow" 
-          showLeftIcon={false}
-          showRightIcon={false}
-        />
+        {/* Hide header for true first-time users (no budgets exist), show for explicit naming */}
+        {showBudgetNaming && appData && appData.budgets && appData.budgets.length > 0 && (
+          <StandardHeader 
+            title="Budget Flow" 
+            showLeftIcon={false}
+            showRightIcon={false}
+          />
+        )}
         
         <ScrollView 
           ref={scrollViewRef}
-          style={themedStyles.content} 
+          style={[themedStyles.content, { flex: 1 }]} 
           contentContainerStyle={[
             themedStyles.scrollContent,
             {
               paddingHorizontal: 24,
-              paddingTop: 20,
+              paddingTop: showBudgetNaming && appData && appData.budgets && appData.budgets.length > 0 ? 20 : 60, // More top padding for first-time users without header
               paddingBottom: 120, // Ensure bottom content is visible above nav bar
               justifyContent: 'flex-start',
               flexGrow: 1,

@@ -16,7 +16,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 const EXPENSE_CATEGORIES: ExpenseCategory[] = DEFAULT_CATEGORIES;
 
 export default function AddExpenseScreen() {
-  const { data, addExpense, updateExpense, removeExpense, addPerson, saving } = useBudgetData();
+  const { data, addExpense, updateExpense, removeExpense, addPerson, saving, refreshTrigger } = useBudgetData();
   const { currentColors } = useTheme();
   const { themedStyles, themedButtonStyles } = useThemedStyles();
   const { formatCurrency } = useCurrency();
@@ -76,15 +76,23 @@ export default function AddExpenseScreen() {
     (async () => {
       const list = await getCustomExpenseCategories();
       console.log('AddExpenseScreen: Reloaded custom categories after data change:', list);
+      
+      // Check if current categoryTag is still valid before updating the list
+      const currentCategoryStillValid = DEFAULT_CATEGORIES.includes(categoryTag) || list.includes(categoryTag);
+      
       setCustomCategories(list);
       
       // If current categoryTag is not in the updated list and not a default, reset to 'Misc'
-      if (categoryTag && !DEFAULT_CATEGORIES.includes(categoryTag) && !list.includes(categoryTag)) {
-        console.log('AddExpenseScreen: Current category tag not found in updated list, resetting to Misc');
+      if (categoryTag && !currentCategoryStillValid) {
+        console.log('AddExpenseScreen: Current category tag not found in updated list, resetting to Misc:', {
+          currentCategoryTag: categoryTag,
+          availableDefaults: DEFAULT_CATEGORIES,
+          availableCustom: list
+        });
         setCategoryTag('Misc');
       }
     })();
-  }, [data.people.length, data.expenses.length, categoryTag]); // Reload when core data changes
+  }, [data.people.length, data.expenses.length, refreshTrigger, categoryTag]); // Include categoryTag to properly check validity
 
   // Load expense data for editing
   useEffect(() => {
@@ -383,14 +391,24 @@ export default function AddExpenseScreen() {
       };
 
       console.log('AddExpenseScreen: Adding new person from expense screen:', person);
-      console.log('AddExpenseScreen: Current form state before person creation:', { description, amount, category, categoryTag });
+      console.log('AddExpenseScreen: Current form state before person creation:', { 
+        description, 
+        amount, 
+        category, 
+        categoryTag, 
+        frequency, 
+        startDateYMD, 
+        endDateYMD 
+      });
       
       const result = await addPerson(person);
       console.log('AddExpenseScreen: Person added result:', result);
       
       if (result.success) {
+        // Clear modal state
         setNewPersonName('');
         setShowAddPersonModal(false);
+        
         // Auto-select the newly created person
         setPersonId(person.id);
         
@@ -401,12 +419,15 @@ export default function AddExpenseScreen() {
           console.log('AddExpenseScreen: Switched to personal category since user added a person');
         }
         
-        // Form state (description, amount, categoryTag, etc.) is preserved - no reset
-        console.log('AddExpenseScreen: Person added successfully and auto-selected, form state preserved:', { 
+        // All form state (description, amount, categoryTag, frequency, dates, etc.) is preserved - no reset
+        console.log('AddExpenseScreen: Person added successfully and auto-selected, all form state preserved:', { 
           description, 
           amount, 
           category: category === 'household' ? 'personal' : category, 
           categoryTag,
+          frequency,
+          startDateYMD,
+          endDateYMD,
           selectedPersonId: person.id 
         });
       } else {
@@ -418,7 +439,7 @@ export default function AddExpenseScreen() {
     } finally {
       setAddingPerson(false);
     }
-  }, [newPersonName, addPerson, description, amount, category, categoryTag]);
+  }, [newPersonName, addPerson, description, amount, category, categoryTag, frequency, startDateYMD, endDateYMD]);
 
   const PersonPicker = useCallback(() => {
     // Don't show person picker for household expenses
@@ -442,7 +463,15 @@ export default function AddExpenseScreen() {
               </Text>
               <TouchableOpacity
                 onPress={() => {
-                  console.log('AddExpenseScreen: Opening add person modal, preserving form state:', { description, amount, category, categoryTag });
+                  console.log('AddExpenseScreen: Opening add person modal, preserving form state:', { 
+                    description, 
+                    amount, 
+                    category, 
+                    categoryTag, 
+                    frequency, 
+                    startDateYMD, 
+                    endDateYMD 
+                  });
                   setShowAddPersonModal(true);
                 }}
                 style={[
@@ -566,7 +595,16 @@ export default function AddExpenseScreen() {
               }
             ]}
             onPress={() => {
-              console.log('AddExpenseScreen: Opening custom category modal, preserving form state:', { description, amount });
+              console.log('AddExpenseScreen: Opening custom category modal, preserving form state:', { 
+                description, 
+                amount, 
+                category, 
+                categoryTag, 
+                frequency, 
+                personId, 
+                startDateYMD, 
+                endDateYMD 
+              });
               setCustomError(null);
               setNewCustomName('');
               setShowCustomModal(true);
@@ -642,23 +680,34 @@ export default function AddExpenseScreen() {
     }
     try {
       console.log('AddExpenseScreen: Creating custom category:', normalized);
-      console.log('AddExpenseScreen: Current form state before category creation:', { description, amount });
+      console.log('AddExpenseScreen: Current form state before category creation:', { description, amount, category, frequency, personId });
       
       const next = [...customCategories, normalized];
       await saveCustomExpenseCategories(next);
       setCustomCategories(next);
-      setCategoryTag(normalized); // Automatically select the newly created category
-      setShowCustomModal(false);
-      setNewCustomName(''); // Clear the modal input
-      setCustomError(null); // Clear any errors
       
-      // Form state (description, amount, etc.) is preserved - no reset
-      console.log('AddExpenseScreen: Custom category created and selected, form state preserved:', { description, amount });
+      // Automatically select the newly created category
+      setCategoryTag(normalized);
+      
+      // Close modal and clear modal state
+      setShowCustomModal(false);
+      setNewCustomName('');
+      setCustomError(null);
+      
+      // Form state (description, amount, category, frequency, personId, etc.) is preserved - no reset
+      console.log('AddExpenseScreen: Custom category created and auto-selected, form state preserved:', { 
+        description, 
+        amount, 
+        category, 
+        frequency, 
+        personId,
+        selectedCategoryTag: normalized 
+      });
     } catch (e) {
       console.error('AddExpenseScreen: Error saving custom category', e);
       setCustomError('Failed to save category. Try again.');
     }
-  }, [newCustomName, customCategories, description, amount]);
+  }, [newCustomName, customCategories, description, amount, category, frequency, personId]);
 
   // Calculate loading state - only show spinner when actually saving/deleting or when there's a date validation error
   const isLoading = (() => {
@@ -792,7 +841,14 @@ export default function AddExpenseScreen() {
 
       {/* Custom Category Modal */}
       <Modal visible={showCustomModal} animationType="slide" transparent onRequestClose={() => {
-        console.log('AddExpenseScreen: Custom category modal closed via back button, form state preserved:', { description, amount });
+        console.log('AddExpenseScreen: Custom category modal closed via back button, form state preserved:', { 
+          description, 
+          amount, 
+          category, 
+          categoryTag, 
+          frequency, 
+          personId 
+        });
         setShowCustomModal(false);
         setNewCustomName('');
         setCustomError(null);
@@ -823,7 +879,14 @@ export default function AddExpenseScreen() {
             <View style={[themedStyles.row]}>
               <TouchableOpacity
                 onPress={() => {
-                  console.log('AddExpenseScreen: Cancelling custom category modal, form state preserved:', { description, amount });
+                  console.log('AddExpenseScreen: Cancelling custom category modal, form state preserved:', { 
+                    description, 
+                    amount, 
+                    category, 
+                    categoryTag, 
+                    frequency, 
+                    personId 
+                  });
                   setShowCustomModal(false);
                   setNewCustomName('');
                   setCustomError(null);
@@ -845,7 +908,15 @@ export default function AddExpenseScreen() {
 
       {/* Add Person Modal */}
       <Modal visible={showAddPersonModal} animationType="slide" transparent onRequestClose={() => {
-        console.log('AddExpenseScreen: Add person modal closed via back button, form state preserved:', { description, amount, category, categoryTag });
+        console.log('AddExpenseScreen: Add person modal closed via back button, form state preserved:', { 
+          description, 
+          amount, 
+          category, 
+          categoryTag, 
+          frequency, 
+          startDateYMD, 
+          endDateYMD 
+        });
         setShowAddPersonModal(false);
         setNewPersonName('');
       }}>
@@ -873,7 +944,15 @@ export default function AddExpenseScreen() {
             <View style={[themedStyles.row, { marginTop: 16 }]}>
               <TouchableOpacity
                 onPress={() => {
-                  console.log('AddExpenseScreen: Cancelling add person modal, form state preserved:', { description, amount, category, categoryTag });
+                  console.log('AddExpenseScreen: Cancelling add person modal, form state preserved:', { 
+                    description, 
+                    amount, 
+                    category, 
+                    categoryTag, 
+                    frequency, 
+                    startDateYMD, 
+                    endDateYMD 
+                  });
                   setShowAddPersonModal(false);
                   setNewPersonName('');
                 }}

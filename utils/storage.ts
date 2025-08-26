@@ -636,14 +636,7 @@ export const clearAllAppData = async (): Promise<{ success: boolean; error?: Err
   try {
     console.log('storage: Clearing all app data - deleting all budgets, people, expenses, and custom categories');
     
-    // Create a completely empty app state with no budgets (first-time user state)
-    const freshAppData: AppDataV2 = { 
-      version: 2, 
-      budgets: [], 
-      activeBudgetId: '' 
-    };
-    
-    // Clear all related storage items including custom categories and filters
+    // Clear all related storage items including custom categories and filters FIRST
     await Promise.all([
       AsyncStorage.removeItem(STORAGE_KEYS.CUSTOM_EXPENSE_CATEGORIES),
       AsyncStorage.removeItem(STORAGE_KEYS.EXPENSES_FILTERS),
@@ -653,13 +646,34 @@ export const clearAllAppData = async (): Promise<{ success: boolean; error?: Err
       AsyncStorage.removeItem(STORAGE_KEYS.APP_DATA_V2),
     ]);
     
-    console.log('storage: Cleared custom categories, filters, legacy data, and main app data');
+    console.log('storage: Cleared custom categories, filters, legacy data, and main app data from AsyncStorage');
+    
+    // Verify that custom categories are actually cleared
+    const verifyCustomCategories = await AsyncStorage.getItem(STORAGE_KEYS.CUSTOM_EXPENSE_CATEGORIES);
+    if (verifyCustomCategories) {
+      console.error('storage: Custom categories were not properly cleared, forcing removal');
+      await AsyncStorage.removeItem(STORAGE_KEYS.CUSTOM_EXPENSE_CATEGORIES);
+    }
+    
+    // Create a completely empty app state with no budgets (first-time user state)
+    const freshAppData: AppDataV2 = { 
+      version: 2, 
+      budgets: [], 
+      activeBudgetId: '' 
+    };
     
     // Save the fresh app data (this will create a new empty state)
     const result = await saveAppData(freshAppData);
     
     if (result.success) {
       console.log('storage: All app data cleared successfully - returning to first-time user state');
+      
+      // Double-check that custom categories are cleared after save
+      const finalVerifyCustomCategories = await AsyncStorage.getItem(STORAGE_KEYS.CUSTOM_EXPENSE_CATEGORIES);
+      if (finalVerifyCustomCategories) {
+        console.warn('storage: Custom categories still exist after clearing, forcing final removal');
+        await AsyncStorage.removeItem(STORAGE_KEYS.CUSTOM_EXPENSE_CATEGORIES);
+      }
     } else {
       console.error('storage: Failed to clear all app data:', result.error);
     }
