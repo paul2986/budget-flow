@@ -567,10 +567,10 @@ export default function AddExpenseScreen() {
       const next = [...customCategories, normalized];
       await saveCustomExpenseCategories(next);
       setCustomCategories(next);
-      setCategoryTag(normalized);
+      setCategoryTag(normalized); // Automatically select the newly created category
       setShowCustomModal(false);
       // Form state is preserved - description and amount are not reset
-      console.log('AddExpenseScreen: Custom category created, form state preserved');
+      console.log('AddExpenseScreen: Custom category created and selected, form state preserved');
     } catch (e) {
       console.log('Error saving custom category', e);
       setCustomError('Failed to save category. Try again.');
@@ -663,36 +663,6 @@ export default function AddExpenseScreen() {
             {endDateYMD && endDateYMD < startDateYMD ? (
               <Text style={[themedStyles.textSecondary, { color: currentColors.error, marginTop: 6 }]}>End date cannot be earlier than start date</Text>
             ) : null}
-          </View>
-        )}
-
-        {data.people.length === 0 && (
-          <View style={themedStyles.card}>
-            <View style={themedStyles.centerContent}>
-              <Icon name="people-outline" size={48} style={{ color: currentColors.textSecondary, marginBottom: 12 }} />
-              <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>
-                No People Added
-              </Text>
-              <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 16 }]}>
-                You must add at least one person before creating expenses. All expenses must be assigned to someone.
-              </Text>
-              <TouchableOpacity
-                onPress={() => router.push('/people')}
-                style={[
-                  themedStyles.badge,
-                  { 
-                    backgroundColor: currentColors.primary,
-                    paddingHorizontal: 20,
-                    paddingVertical: 12,
-                    borderRadius: 24,
-                  }
-                ]}
-              >
-                <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontWeight: '600' }]}>
-                  Add People
-                </Text>
-              </TouchableOpacity>
-            </View>
           </View>
         )}
 
