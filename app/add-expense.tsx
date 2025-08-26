@@ -1034,25 +1034,6 @@ export default function AddExpenseScreen() {
                 End date cannot be earlier than start date
               </Text>
             ) : null}
-            
-            {/* Inline date picker when showEndPicker is true */}
-            {showEndPicker && (
-              <View style={{ marginTop: 16, backgroundColor: currentColors.card, borderRadius: 12, padding: 16 }}>
-                <DateTimePicker
-                  value={endDateYMD ? new Date(endDateYMD + 'T00:00:00') : new Date()}
-                  mode="date"
-                  display="default"
-                  onChange={(event: any, selected?: Date) => {
-                    setShowEndPicker(false);
-                    if (selected) {
-                      const ymd = toYMD(selected);
-                      setEndDateYMD(ymd);
-                    }
-                  }}
-                  style={{ alignSelf: 'center' }}
-                />
-              </View>
-            )}
           </View>
         )}
 
@@ -1080,6 +1061,44 @@ export default function AddExpenseScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* End Date Picker Modal */}
+      <Modal visible={showEndPicker} animationType="slide" transparent onRequestClose={() => setShowEndPicker(false)}>
+        <View style={{
+          flex: 1,
+          backgroundColor: '#00000055',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+        }}>
+          <View style={[themedStyles.card, { width: '100%', maxWidth: 400, padding: 24 }]}>
+            <Text style={[themedStyles.subtitle, { marginBottom: 16, textAlign: 'center' }]}>Select End Date</Text>
+            
+            <DateTimePicker
+              value={endDateYMD ? new Date(endDateYMD + 'T00:00:00') : new Date()}
+              mode="date"
+              display="default"
+              onChange={(event: any, selected?: Date) => {
+                if (selected) {
+                  const ymd = toYMD(selected);
+                  setEndDateYMD(ymd);
+                }
+                setShowEndPicker(false);
+              }}
+              style={{ alignSelf: 'center' }}
+            />
+            
+            <View style={[themedStyles.row, { marginTop: 24, justifyContent: 'center' }]}>
+              <TouchableOpacity
+                onPress={() => setShowEndPicker(false)}
+                style={[themedStyles.badge, { backgroundColor: currentColors.border, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20 }]}
+              >
+                <Text style={[themedStyles.badgeText, { color: currentColors.text, fontWeight: '600' }]}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Custom Category Modal */}
       <Modal visible={showCustomModal} animationType="slide" transparent onRequestClose={() => {
