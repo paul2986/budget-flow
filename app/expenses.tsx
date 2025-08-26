@@ -14,7 +14,8 @@ import ExpenseFilterModal from '../components/ExpenseFilterModal';
 import { DEFAULT_CATEGORIES } from '../types/budget';
 import { getCustomExpenseCategories, getExpensesFilters, saveExpensesFilters, normalizeCategoryName } from '../utils/storage';
 
-type SortOption = 'date' | 'highest' | 'lowest';
+type SortOption = 'date' | 'alphabetical' | 'cost';
+type SortOrder = 'asc' | 'desc';
 
 export default function ExpensesScreen() {
   const { data, removeExpense, saving, refreshData } = useBudgetData();
@@ -44,7 +45,10 @@ export default function ExpensesScreen() {
   const [searchTerm, setSearchTerm] = useState<string>(''); // debounced
 
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
+  
+  // Enhanced sorting state
   const [sortBy, setSortBy] = useState<SortOption>('date');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc'); // Default: newest first
 
   // Use ref to track if we've already refreshed on this focus
   const hasRefreshedOnFocus = useRef(false);
@@ -213,8 +217,72 @@ export default function ExpensesScreen() {
     announceFilter('All filters cleared');
   }, [announceFilter]);
 
+  // Enhanced sort button handler
+  const handleSortPress = useCallback((sortType: SortOption) => {
+    if (sortBy === sortType) {
+      // Toggle order if same sort type
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new sort type with appropriate default order
+      setSortBy(sortType);
+      if (sortType === 'date') {
+        setSortOrder('desc'); // Newest first for date
+      } else {
+        setSortOrder('asc'); // A-Z for alphabetical, lowest first for cost
+      }
+    }
+  }, [sortBy, sortOrder]);
+
+  const getSortIcon = useCallback((sortType: SortOption) => {
+    if (sortBy !== sortType) {
+      // Show default icon when not active
+      switch (sortType) {
+        case 'date': return 'calendar-outline';
+        case 'alphabetical': return 'text-outline';
+        case 'cost': return 'cash-outline';
+        default: return 'calendar-outline';
+      }
+    }
+    
+    // Show directional icon when active
+    switch (sortType) {
+      case 'date':
+        return sortOrder === 'desc' ? 'arrow-down-outline' : 'arrow-up-outline';
+      case 'alphabetical':
+        return sortOrder === 'asc' ? 'text-outline' : 'text-outline';
+      case 'cost':
+        return sortOrder === 'asc' ? 'trending-up-outline' : 'trending-down-outline';
+      default:
+        return 'calendar-outline';
+    }
+  }, [sortBy, sortOrder]);
+
+  const getSortLabel = useCallback((sortType: SortOption) => {
+    if (sortBy !== sortType) {
+      // Show simple label when not active
+      switch (sortType) {
+        case 'date': return 'Date Added';
+        case 'alphabetical': return 'Alphabetical';
+        case 'cost': return 'Cost';
+        default: return 'Date Added';
+      }
+    }
+    
+    // Show directional label when active
+    switch (sortType) {
+      case 'date':
+        return sortOrder === 'desc' ? 'Newest First' : 'Oldest First';
+      case 'alphabetical':
+        return sortOrder === 'asc' ? 'A to Z' : 'Z to A';
+      case 'cost':
+        return sortOrder === 'asc' ? 'Lowest Cost' : 'Highest Cost';
+      default:
+        return 'Date Added';
+    }
+  }, [sortBy, sortOrder]);
+
   const SortButton = useCallback(
-    ({ sortType, label, icon }: { sortType: SortOption; label: string; icon: string }) => (
+    ({ sortType }: { sortType: SortOption }) => (
       <TouchableOpacity
         style={[
           themedStyles.badge,
@@ -222,31 +290,39 @@ export default function ExpensesScreen() {
             backgroundColor: sortBy === sortType ? currentColors.secondary : currentColors.border,
             marginRight: 8,
             paddingHorizontal: 12,
-            paddingVertical: 6,
+            paddingVertical: 8,
             borderRadius: 16,
             flexDirection: 'row',
             alignItems: 'center',
+            minHeight: 36,
           },
         ]}
-        onPress={() => setSortBy(sortType)}
+        onPress={() => handleSortPress(sortType)}
         disabled={saving || deletingExpenseId !== null}
       >
-        <Icon name={icon as any} size={14} style={{ color: sortBy === sortType ? '#FFFFFF' : currentColors.text, marginRight: 4 }} />
+        <Icon 
+          name={getSortIcon(sortType) as any} 
+          size={16} 
+          style={{ 
+            color: sortBy === sortType ? '#FFFFFF' : currentColors.text, 
+            marginRight: 6 
+          }} 
+        />
         <Text
           style={[
             themedStyles.badgeText,
             {
               color: sortBy === sortType ? '#FFFFFF' : currentColors.text,
               fontWeight: '600',
-              fontSize: 12,
+              fontSize: 13,
             },
           ]}
         >
-          {label}
+          {getSortLabel(sortType)}
         </Text>
       </TouchableOpacity>
     ),
-    [sortBy, currentColors, saving, deletingExpenseId, themedStyles]
+    [sortBy, sortOrder, currentColors, saving, deletingExpenseId, themedStyles, handleSortPress, getSortIcon, getSortLabel]
   );
 
   // Apply filters
@@ -291,17 +367,25 @@ export default function ExpensesScreen() {
     filteredExpenses = filteredExpenses.filter((e) => e.description.toLowerCase().includes(q));
   }
 
-  // Sort
+  // Enhanced sorting logic
   filteredExpenses = filteredExpenses.sort((a, b) => {
+    let comparison = 0;
+    
     switch (sortBy) {
-      case 'highest':
-        return b.amount - a.amount;
-      case 'lowest':
-        return a.amount - b.amount;
       case 'date':
+        comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+        break;
+      case 'alphabetical':
+        comparison = a.description.toLowerCase().localeCompare(b.description.toLowerCase());
+        break;
+      case 'cost':
+        comparison = a.amount - b.amount;
+        break;
       default:
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
+        comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
     }
+    
+    return sortOrder === 'asc' ? comparison : -comparison;
   });
 
   const hasActiveFilters = !!categoryFilter || !!searchTerm || (filter !== 'all') || !!personFilter;
@@ -343,14 +427,14 @@ export default function ExpensesScreen() {
         loading={saving || deletingExpenseId !== null} 
       />
 
-      {/* Sort options - now more prominent */}
+      {/* Enhanced sort options */}
       <View style={[themedStyles.section, { paddingBottom: 0, paddingTop: 12, paddingHorizontal: 16 }]}>
-        <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Sort by</Text>
+        <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Sort by</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={{ paddingHorizontal: 4, flexDirection: 'row' }}>
-            <SortButton sortType="date" label="Date" icon="calendar-outline" />
-            <SortButton sortType="highest" label="Highest Cost" icon="trending-up-outline" />
-            <SortButton sortType="lowest" label="Lowest Cost" icon="trending-down-outline" />
+            <SortButton sortType="date" />
+            <SortButton sortType="alphabetical" />
+            <SortButton sortType="cost" />
           </View>
         </ScrollView>
       </View>
