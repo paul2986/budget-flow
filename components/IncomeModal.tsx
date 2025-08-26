@@ -141,13 +141,16 @@ export default function IncomeModal({
                   width: 44,
                   height: 44,
                   borderRadius: 22,
-                  backgroundColor: currentColors.border + '40',
+                  backgroundColor: currentColors.backgroundAlt,
                   justifyContent: 'center',
                   alignItems: 'center',
+                  boxShadow: '0px 2px 4px rgba(0,0,0,0.15)',
+                  borderWidth: 1,
+                  borderColor: currentColors.border,
                 }}
                 disabled={saving}
               >
-                <Icon name="close" size={24} style={{ color: currentColors.text }} />
+                <Icon name="arrow-back" size={24} style={{ color: currentColors.text }} />
               </TouchableOpacity>
             </View>
 
@@ -166,19 +169,22 @@ export default function IncomeModal({
                   borderRadius: 22,
                   backgroundColor: (!tempPersonId || !tempIncome.amount || !tempIncome.label.trim() || saving) 
                     ? currentColors.textSecondary + '40' 
-                    : currentColors.income + '40',
+                    : currentColors.primary,
                   justifyContent: 'center',
                   alignItems: 'center',
+                  boxShadow: '0px 2px 4px rgba(0,0,0,0.15)',
+                  borderWidth: 1,
+                  borderColor: 'transparent',
                 }}
                 disabled={!tempPersonId || !tempIncome.amount || !tempIncome.label.trim() || saving}
               >
                 <Icon 
-                  name="checkmark" 
+                  name="add" 
                   size={24} 
                   style={{ 
                     color: (!tempPersonId || !tempIncome.amount || !tempIncome.label.trim() || saving) 
                       ? currentColors.textSecondary 
-                      : currentColors.income 
+                      : '#FFFFFF'
                   }} 
                 />
               </TouchableOpacity>
