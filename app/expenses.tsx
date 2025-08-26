@@ -44,6 +44,9 @@ export default function ExpensesScreen() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>(''); // debounced
 
+  // New: End date filter
+  const [hasEndDateFilter, setHasEndDateFilter] = useState<boolean>(false);
+
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   
   // Enhanced sorting state
@@ -96,6 +99,7 @@ export default function ExpensesScreen() {
     (async () => {
       const [customs, filters] = await Promise.all([getCustomExpenseCategories(), getExpensesFilters()]);
       console.log('ExpensesScreen: Loaded custom categories:', customs);
+      console.log('ExpensesScreen: Loaded filters:', filters);
       setCustomCategories(customs);
       
       // Check if we have URL parameters from dashboard navigation
@@ -117,9 +121,10 @@ export default function ExpensesScreen() {
           setPersonFilter(params.personId);
         }
         
-        // Clear the search query when coming from dashboard
+        // Clear the search query and end date filter when coming from dashboard
         setSearchQuery('');
         setSearchTerm('');
+        setHasEndDateFilter(false);
         
         // Announce the applied filters for accessibility
         const filterMessages = [];
@@ -143,6 +148,7 @@ export default function ExpensesScreen() {
         setCategoryFilter(filters.category || null);
         setSearchQuery(filters.search || '');
         setSearchTerm(filters.search || '');
+        setHasEndDateFilter(filters.hasEndDate || false);
       }
     })();
   }, [params.filter, params.category, params.fromDashboard, params.personId, announceFilter, data.people]);
@@ -161,15 +167,15 @@ export default function ExpensesScreen() {
     })();
   }, [data.people.length, data.expenses.length, categoryFilter]); // Reload when core data changes
 
-  // Persist category + search with debounce (but not when coming from dashboard)
+  // Persist category + search + hasEndDate with debounce (but not when coming from dashboard)
   useEffect(() => {
     if (params.fromDashboard !== 'true') {
       const t = setTimeout(() => {
-        saveExpensesFilters({ category: categoryFilter, search: searchQuery });
+        saveExpensesFilters({ category: categoryFilter, search: searchQuery, hasEndDate: hasEndDateFilter });
       }, 300);
       return () => clearTimeout(t);
     }
-  }, [categoryFilter, searchQuery, params.fromDashboard]);
+  }, [categoryFilter, searchQuery, hasEndDateFilter, params.fromDashboard]);
 
   // Debounce search for filtering perf
   useEffect(() => {
@@ -243,6 +249,7 @@ export default function ExpensesScreen() {
     setSearchQuery('');
     setFilter('all');
     setPersonFilter(null);
+    setHasEndDateFilter(false);
     announceFilter('All filters cleared');
   }, [announceFilter]);
 
@@ -331,7 +338,8 @@ export default function ExpensesScreen() {
     description: e.description, 
     category: e.category, 
     amount: e.amount,
-    personId: e.personId 
+    personId: e.personId,
+    endDate: e.endDate
   })));
 
   if (filter === 'household') {
@@ -365,6 +373,15 @@ export default function ExpensesScreen() {
     filteredExpenses = filteredExpenses.filter((e) => e.description.toLowerCase().includes(q));
   }
 
+  // Apply end date filter
+  if (hasEndDateFilter) {
+    filteredExpenses = filteredExpenses.filter((e) => {
+      // Only include expenses that have an end date and are not one-time
+      return e.endDate && e.frequency !== 'one-time';
+    });
+    console.log('ExpensesScreen: Expenses after end date filter:', filteredExpenses.length);
+  }
+
   // Enhanced sorting logic
   filteredExpenses = filteredExpenses.sort((a, b) => {
     let comparison = 0;
@@ -386,7 +403,7 @@ export default function ExpensesScreen() {
     return sortOrder === 'asc' ? comparison : -comparison;
   });
 
-  const hasActiveFilters = !!categoryFilter || !!searchTerm || (filter !== 'all') || !!personFilter;
+  const hasActiveFilters = !!categoryFilter || !!searchTerm || (filter !== 'all') || !!personFilter || hasEndDateFilter;
 
   // Header buttons - filter button on left, add button on right
   const leftButtons = [
@@ -672,6 +689,8 @@ export default function ExpensesScreen() {
         setCategoryFilter={setCategoryFilter}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        hasEndDateFilter={hasEndDateFilter}
+        setHasEndDateFilter={setHasEndDateFilter}
         people={data.people}
         expenses={data.expenses}
         customCategories={customCategories}

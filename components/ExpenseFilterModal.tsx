@@ -19,6 +19,8 @@ interface ExpenseFilterModalProps {
   setCategoryFilter: (category: string | null) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  hasEndDateFilter: boolean;
+  setHasEndDateFilter: (hasEndDate: boolean) => void;
   // Data
   people: any[];
   expenses: any[];
@@ -39,6 +41,8 @@ export default function ExpenseFilterModal({
   setCategoryFilter,
   searchQuery,
   setSearchQuery,
+  hasEndDateFilter,
+  setHasEndDateFilter,
   people,
   expenses,
   customCategories,
@@ -53,6 +57,7 @@ export default function ExpenseFilterModal({
   const [tempPersonFilter, setTempPersonFilter] = useState<string | null>(null);
   const [tempCategoryFilters, setTempCategoryFilters] = useState<string[]>([]);
   const [tempSearchQuery, setTempSearchQuery] = useState<string>('');
+  const [tempHasEndDateFilter, setTempHasEndDateFilter] = useState<boolean>(false);
 
   // Initialize temp state when modal opens
   useEffect(() => {
@@ -61,8 +66,9 @@ export default function ExpenseFilterModal({
       setTempPersonFilter(personFilter);
       setTempCategoryFilters(categoryFilter ? [categoryFilter] : []);
       setTempSearchQuery(searchQuery);
+      setTempHasEndDateFilter(hasEndDateFilter);
     }
-  }, [visible, filter, personFilter, categoryFilter, searchQuery]);
+  }, [visible, filter, personFilter, categoryFilter, searchQuery, hasEndDateFilter]);
 
   const availableCategories = (() => {
     // Union of defaults + custom + any tag appearing in expenses (normalized)
@@ -75,7 +81,7 @@ export default function ExpenseFilterModal({
     return Array.from(combined);
   })().sort((a, b) => a.localeCompare(b));
 
-  const hasActiveFilters = tempCategoryFilters.length > 0 || !!tempSearchQuery.trim() || (tempFilter !== 'all') || !!tempPersonFilter;
+  const hasActiveFilters = tempCategoryFilters.length > 0 || !!tempSearchQuery.trim() || (tempFilter !== 'all') || !!tempPersonFilter || tempHasEndDateFilter;
 
   const handleCancel = () => {
     // Reset temp state to original values and close without applying
@@ -83,6 +89,7 @@ export default function ExpenseFilterModal({
     setTempPersonFilter(personFilter);
     setTempCategoryFilters(categoryFilter ? [categoryFilter] : []);
     setTempSearchQuery(searchQuery);
+    setTempHasEndDateFilter(hasEndDateFilter);
     onClose();
   };
 
@@ -95,6 +102,7 @@ export default function ExpenseFilterModal({
     // (since the current system only supports single category filter)
     setCategoryFilter(tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null);
     setSearchQuery(tempSearchQuery);
+    setHasEndDateFilter(tempHasEndDateFilter);
 
     let message = 'Filters applied';
     if (hasActiveFilters) {
@@ -106,6 +114,7 @@ export default function ExpenseFilterModal({
         const personName = people.find(p => p.id === tempPersonFilter)?.name || 'Unknown';
         activeFilters.push(`person: ${personName}`);
       }
+      if (tempHasEndDateFilter) activeFilters.push('has end date');
       message = `Filters applied: ${activeFilters.join(', ')}`;
     } else {
       message = 'No filters applied - showing all expenses';
@@ -119,6 +128,7 @@ export default function ExpenseFilterModal({
     setTempPersonFilter(null);
     setTempCategoryFilters([]);
     setTempSearchQuery('');
+    setTempHasEndDateFilter(false);
   };
 
   const handleCategoryToggle = (category: string) => {
@@ -226,6 +236,48 @@ export default function ExpenseFilterModal({
               <FilterButton filterType="household" label="Household" />
               <FilterButton filterType="personal" label="Personal" />
             </View>
+          </View>
+
+          {/* End Date Filter */}
+          <View style={[themedStyles.section, { paddingBottom: 0 }]}>
+            <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Expiration</Text>
+            <TouchableOpacity
+              style={[
+                themedStyles.badge,
+                {
+                  backgroundColor: tempHasEndDateFilter ? currentColors.primary : currentColors.border,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  borderRadius: 20,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'row',
+                  alignSelf: 'flex-start',
+                },
+              ]}
+              onPress={() => setTempHasEndDateFilter(!tempHasEndDateFilter)}
+            >
+              <Icon 
+                name={tempHasEndDateFilter ? "checkmark-circle" : "timer-outline"} 
+                size={16} 
+                style={{ 
+                  color: tempHasEndDateFilter ? '#FFFFFF' : currentColors.text,
+                  marginRight: 8 
+                }} 
+              />
+              <Text
+                style={[
+                  themedStyles.badgeText,
+                  {
+                    color: tempHasEndDateFilter ? '#FFFFFF' : currentColors.text,
+                    fontWeight: '600',
+                    fontSize: 14,
+                  },
+                ]}
+              >
+                Only expenses with end dates
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* Person filter - now available for all expense types */}
@@ -446,6 +498,29 @@ export default function ExpenseFilterModal({
                         <Icon name="person-outline" size={14} style={{ color: currentColors.personal, marginRight: 6 }} />
                         <Text style={[themedStyles.text, { color: currentColors.personal, fontSize: 12 }]}>
                           Person: {people.find(p => p.id === tempPersonFilter)?.name || 'Unknown'}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                  {tempHasEndDateFilter && (
+                    <View
+                      style={[
+                        themedStyles.badge,
+                        {
+                          backgroundColor: '#FF9500' + '20',
+                          borderRadius: 16,
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          marginRight: 8,
+                          borderWidth: 1,
+                          borderColor: '#FF9500',
+                        },
+                      ]}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Icon name="timer-outline" size={14} style={{ color: '#FF9500', marginRight: 6 }} />
+                        <Text style={[themedStyles.text, { color: '#FF9500', fontSize: 12 }]}>
+                          Has end date
                         </Text>
                       </View>
                     </View>

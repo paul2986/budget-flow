@@ -91,19 +91,21 @@ export const saveCustomExpenseCategories = async (categories: string[]): Promise
 export type ExpensesFilters = {
   category: string | null; // null means All
   search: string;
+  hasEndDate: boolean; // New filter for expenses with end dates
 };
 
 export const getExpensesFilters = async (): Promise<ExpensesFilters> => {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEYS.EXPENSES_FILTERS);
-    if (!raw) return { category: null, search: '' };
+    if (!raw) return { category: null, search: '', hasEndDate: false };
     const parsed = JSON.parse(raw);
     const category = parsed && typeof parsed.category === 'string' ? normalizeCategoryName(parsed.category) : null;
     const search = parsed && typeof parsed.search === 'string' ? parsed.search : '';
-    return { category, search };
+    const hasEndDate = parsed && typeof parsed.hasEndDate === 'boolean' ? parsed.hasEndDate : false;
+    return { category, search, hasEndDate };
   } catch (e) {
     console.error('storage: getExpensesFilters error', e);
-    return { category: null, search: '' };
+    return { category: null, search: '', hasEndDate: false };
   }
 };
 
@@ -112,6 +114,7 @@ export const saveExpensesFilters = async (filters: ExpensesFilters): Promise<voi
     const toSave: ExpensesFilters = {
       category: filters.category ? normalizeCategoryName(filters.category) : null,
       search: filters.search || '',
+      hasEndDate: filters.hasEndDate || false,
     };
     await AsyncStorage.setItem(STORAGE_KEYS.EXPENSES_FILTERS, JSON.stringify(toSave));
   } catch (e) {
