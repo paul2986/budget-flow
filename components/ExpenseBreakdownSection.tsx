@@ -139,7 +139,7 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
       // Delayed chart animations
       chartAnimations.value = withDelay(400, withTiming(1, { duration: 1200 }));
     }
-  }, [isVisible]);
+  }, [isVisible, chartAnimations, fadeAnim, scaleAnim, slideAnim]);
 
   // Trigger visibility when scrolled into view
   const handleLayout = () => {
@@ -189,7 +189,8 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
     );
   }
 
-  const renderTypeBreakdown = (breakdown: TypeBreakdown, index: number) => {
+  // Create animated components for type breakdown
+  const TypeBreakdownComponent = ({ breakdown, index }: { breakdown: TypeBreakdown; index: number }) => {
     const isHousehold = breakdown.type === 'household';
     const typeColor = isHousehold ? currentColors.household : currentColors.personal;
     const typeIcon = isHousehold ? 'home' : 'person';
@@ -267,94 +268,97 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
         {/* Categories */}
         <View style={{ gap: 12 }}>
           {breakdown.categories.map((category, categoryIndex) => {
-            const categoryAnimatedStyle = useAnimatedStyle(() => {
-              const categoryDelay = (index * 200) + (categoryIndex * 100) + 300;
-              const progress = interpolate(
-                chartAnimations.value,
-                [0, 1],
-                [0, 1],
-                Extrapolate.CLAMP
-              );
-              
-              return {
-                opacity: withDelay(categoryDelay, withTiming(progress, { duration: 400 })),
-                transform: [
-                  { 
-                    scale: withDelay(
-                      categoryDelay, 
-                      withSpring(interpolate(progress, [0, 1], [0.8, 1]), { damping: 12 })
-                    )
-                  },
-                ],
-              };
-            });
-
-            const barAnimatedStyle = useAnimatedStyle(() => {
-              const barDelay = (index * 200) + (categoryIndex * 100) + 500;
-              const progress = interpolate(
-                chartAnimations.value,
-                [0, 1],
-                [0, category.percentage],
-                Extrapolate.CLAMP
-              );
-              
-              return {
-                width: withDelay(barDelay, withTiming(`${progress}%`, { duration: 800 })),
-              };
-            });
-
-            return (
-              <Animated.View
-                key={category.category}
-                style={[
-                  {
-                    backgroundColor: currentColors.backgroundAlt,
-                    borderRadius: 12,
-                    padding: 16,
-                    borderWidth: 1,
-                    borderColor: currentColors.border,
-                  },
-                  categoryAnimatedStyle,
-                ]}
-              >
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <Text style={[themedStyles.text, { fontSize: 16, fontWeight: '600' }]}>
-                    {category.category}
-                  </Text>
-                  <Text style={[themedStyles.text, { fontSize: 14, fontWeight: '700', color: typeColor }]}>
-                    {formatCurrency(category.amount)}
-                  </Text>
-                </View>
+            const CategoryComponent = () => {
+              const categoryAnimatedStyle = useAnimatedStyle(() => {
+                const categoryDelay = (index * 200) + (categoryIndex * 100) + 300;
+                const progress = interpolate(
+                  chartAnimations.value,
+                  [0, 1],
+                  [0, 1],
+                  Extrapolate.CLAMP
+                );
                 
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
-                    {category.count} {category.count === 1 ? 'expense' : 'expenses'}
-                  </Text>
-                  <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
-                    {category.percentage.toFixed(1)}% of {breakdown.type}
-                  </Text>
-                </View>
+                return {
+                  opacity: withDelay(categoryDelay, withTiming(progress, { duration: 400 })),
+                  transform: [
+                    { 
+                      scale: withDelay(
+                        categoryDelay, 
+                        withSpring(interpolate(progress, [0, 1], [0.8, 1]), { damping: 12 })
+                      )
+                    },
+                  ],
+                };
+              });
 
-                {/* Progress Bar */}
-                <View style={{
-                  height: 6,
-                  backgroundColor: currentColors.border,
-                  borderRadius: 3,
-                  overflow: 'hidden',
-                }}>
-                  <Animated.View
-                    style={[
-                      {
-                        height: '100%',
-                        backgroundColor: typeColor,
-                        borderRadius: 3,
-                      },
-                      barAnimatedStyle,
-                    ]}
-                  />
-                </View>
-              </Animated.View>
-            );
+              const barAnimatedStyle = useAnimatedStyle(() => {
+                const barDelay = (index * 200) + (categoryIndex * 100) + 500;
+                const progress = interpolate(
+                  chartAnimations.value,
+                  [0, 1],
+                  [0, category.percentage],
+                  Extrapolate.CLAMP
+                );
+                
+                return {
+                  width: withDelay(barDelay, withTiming(`${progress}%`, { duration: 800 })),
+                };
+              });
+
+              return (
+                <Animated.View
+                  style={[
+                    {
+                      backgroundColor: currentColors.backgroundAlt,
+                      borderRadius: 12,
+                      padding: 16,
+                      borderWidth: 1,
+                      borderColor: currentColors.border,
+                    },
+                    categoryAnimatedStyle,
+                  ]}
+                >
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <Text style={[themedStyles.text, { fontSize: 16, fontWeight: '600' }]}>
+                      {category.category}
+                    </Text>
+                    <Text style={[themedStyles.text, { fontSize: 14, fontWeight: '700', color: typeColor }]}>
+                      {formatCurrency(category.amount)}
+                    </Text>
+                  </View>
+                  
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
+                      {category.count} {category.count === 1 ? 'expense' : 'expenses'}
+                    </Text>
+                    <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
+                      {category.percentage.toFixed(1)}% of {breakdown.type}
+                    </Text>
+                  </View>
+
+                  {/* Progress Bar */}
+                  <View style={{
+                    height: 6,
+                    backgroundColor: currentColors.border,
+                    borderRadius: 3,
+                    overflow: 'hidden',
+                  }}>
+                    <Animated.View
+                      style={[
+                        {
+                          height: '100%',
+                          backgroundColor: typeColor,
+                          borderRadius: 3,
+                        },
+                        barAnimatedStyle,
+                      ]}
+                    />
+                  </View>
+                </Animated.View>
+              );
+            };
+
+            return <CategoryComponent key={category.category} />;
           })}
         </View>
       </Animated.View>
@@ -423,8 +427,8 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
 
       {/* Type Breakdowns */}
       <View>
-        {breakdownData.household && renderTypeBreakdown(breakdownData.household, 0)}
-        {breakdownData.personal && renderTypeBreakdown(breakdownData.personal, 1)}
+        {breakdownData.household && <TypeBreakdownComponent breakdown={breakdownData.household} index={0} />}
+        {breakdownData.personal && <TypeBreakdownComponent breakdown={breakdownData.personal} index={1} />}
       </View>
     </Animated.View>
   );

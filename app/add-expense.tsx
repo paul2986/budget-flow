@@ -232,7 +232,7 @@ export default function AddExpenseScreen() {
         console.error('AddExpenseScreen: Error navigating back:', error);
       }
     }, 100);
-  }, []);
+  }, [origin]);
 
   const handleSaveExpense = useCallback(async () => {
     if (!description.trim()) {
@@ -455,7 +455,7 @@ export default function AddExpenseScreen() {
         },
       ]
     );
-  }, [isEditMode, expenseToEdit, removeExpense, navigateToOrigin]);
+  }, [amount, category, description, endDateYMD, frequency, personId, startDateYMD, isEditMode, expenseToEdit, removeExpense, navigateToOrigin]);
 
   const handleGoBack = useCallback(() => {
     try {
