@@ -332,29 +332,6 @@ export default function ExpensesScreen() {
         loading={saving || deletingExpenseId !== null} 
       />
 
-      {/* Show navigation breadcrumb when coming from dashboard */}
-      {params.fromDashboard === 'true' && (
-        <View style={[themedStyles.section, { paddingBottom: 0, paddingTop: 8, paddingHorizontal: 16 }]}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingVertical: 8,
-              paddingHorizontal: 12,
-              backgroundColor: currentColors.backgroundAlt,
-              borderRadius: 8,
-              alignSelf: 'flex-start',
-            }}
-          >
-            <Icon name="chevron-back" size={16} style={{ color: currentColors.primary, marginRight: 4 }} />
-            <Text style={[themedStyles.text, { color: currentColors.primary, fontSize: 14, fontWeight: '600' }]}>
-              Back to Dashboard
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       {/* Sort options - now more prominent */}
       <View style={[themedStyles.section, { paddingBottom: 0, paddingTop: 12, paddingHorizontal: 16 }]}>
         <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Sort by</Text>

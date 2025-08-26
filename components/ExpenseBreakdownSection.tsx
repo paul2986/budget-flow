@@ -1,15 +1,6 @@
 
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
-  withDelay,
-  interpolate,
-  Extrapolate,
-} from 'react-native-reanimated';
+import React, { useMemo } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { useCurrency } from '../hooks/useCurrency';
 import { useThemedStyles } from '../hooks/useThemedStyles';
@@ -41,13 +32,6 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
   const { themedStyles } = useThemedStyles();
-  
-  const [isVisible, setIsVisible] = useState(false);
-  
-  // Animation values
-  const fadeAnim = useSharedValue(0);
-  const slideAnim = useSharedValue(30);
-  const scaleAnim = useSharedValue(0.95);
 
   console.log('ExpenseBreakdownSection: Component rendered with expenses:', {
     expensesLength: expenses?.length || 0,
@@ -56,7 +40,7 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
   });
 
   // Calculate breakdown data
-  const breakdownData = React.useMemo(() => {
+  const breakdownData = useMemo(() => {
     console.log('ExpenseBreakdownSection: Processing expenses:', {
       expensesLength: expenses?.length || 0,
       expensesArray: Array.isArray(expenses),
@@ -177,36 +161,6 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
     };
   }, [expenses]);
 
-  // Auto-trigger animations when component mounts and has data
-  useEffect(() => {
-    if ((breakdownData.household || breakdownData.personal) && !isVisible) {
-      console.log('ExpenseBreakdownSection: Auto-triggering animations');
-      setIsVisible(true);
-    }
-  }, [breakdownData, isVisible]);
-
-  // Trigger animations when component becomes visible
-  useEffect(() => {
-    if (isVisible) {
-      console.log('ExpenseBreakdownSection: Starting animations');
-      // Main container animations
-      fadeAnim.value = withTiming(1, { duration: 600 });
-      slideAnim.value = withSpring(0, { damping: 15, stiffness: 100 });
-      scaleAnim.value = withSpring(1, { damping: 12, stiffness: 80 });
-    }
-  }, [isVisible]);
-
-  // Animated styles
-  const containerAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: fadeAnim.value,
-      transform: [
-        { translateY: slideAnim.value },
-        { scale: scaleAnim.value },
-      ],
-    };
-  });
-
   // Navigation handler for category taps
   const handleCategoryPress = (expenseType: 'household' | 'personal', categoryName: string) => {
     console.log('ExpenseBreakdownSection: Navigating to expenses with filters:', {
@@ -241,36 +195,14 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
 
   console.log('ExpenseBreakdownSection: Rendering breakdown with data');
 
-  // Type breakdown component with animations
-  const TypeBreakdownComponent = ({ breakdown, index }: { breakdown: TypeBreakdown; index: number }) => {
+  // Type breakdown component without animations
+  const TypeBreakdownComponent = ({ breakdown }: { breakdown: TypeBreakdown }) => {
     const isHousehold = breakdown.type === 'household';
     const typeColor = isHousehold ? currentColors.household : currentColors.personal;
     const typeIcon = isHousehold ? 'home' : 'person';
-    
-    const cardAnim = useSharedValue(0);
-    
-    useEffect(() => {
-      if (isVisible) {
-        cardAnim.value = withDelay(index * 200, withTiming(1, { duration: 500 }));
-      }
-    }, [isVisible, index]);
-
-    const cardAnimatedStyle = useAnimatedStyle(() => {
-      return {
-        opacity: cardAnim.value,
-        transform: [
-          { 
-            translateX: interpolate(cardAnim.value, [0, 1], [50, 0], Extrapolate.CLAMP)
-          },
-          { 
-            scale: interpolate(cardAnim.value, [0, 1], [0.95, 1], Extrapolate.CLAMP)
-          },
-        ],
-      };
-    });
 
     return (
-      <Animated.View
+      <View
         key={breakdown.type}
         style={[
           themedStyles.card,
@@ -280,7 +212,6 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
             borderWidth: 2,
             marginBottom: 16,
           },
-          cardAnimatedStyle,
         ]}
       >
         {/* Type Header */}
@@ -317,11 +248,11 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
           </View>
         </View>
 
-        {/* Categories - Now Interactive */}
+        {/* Categories - Interactive */}
         <View style={{ gap: 12 }}>
           {breakdown.categories.map((category, categoryIndex) => (
             <TouchableOpacity
-              key={category.category}
+              key={`${breakdown.type}-${category.category}-${categoryIndex}`}
               onPress={() => handleCategoryPress(breakdown.type, category.category)}
               activeOpacity={0.7}
               style={{
@@ -376,17 +307,17 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
             </TouchableOpacity>
           ))}
         </View>
-      </Animated.View>
+      </View>
     );
   };
 
   return (
-    <Animated.View style={[containerAnimatedStyle]}>
-      {/* Type Breakdowns - Removed the Summary Card */}
+    <View>
+      {/* Type Breakdowns */}
       <View>
-        {breakdownData.household && <TypeBreakdownComponent breakdown={breakdownData.household} index={0} />}
-        {breakdownData.personal && <TypeBreakdownComponent breakdown={breakdownData.personal} index={1} />}
+        {breakdownData.household && <TypeBreakdownComponent breakdown={breakdownData.household} />}
+        {breakdownData.personal && <TypeBreakdownComponent breakdown={breakdownData.personal} />}
       </View>
-    </Animated.View>
+    </View>
   );
 }

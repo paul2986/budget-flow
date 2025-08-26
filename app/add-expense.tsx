@@ -721,11 +721,11 @@ export default function AddExpenseScreen() {
       <View style={themedStyles.section}>
         <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Category</Text>
         <View style={[themedStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
-          {allCategories.map((tag) => {
+          {allCategories.map((tag, index) => {
             const isTemp = tempCategories.some(tc => tc.name === tag);
             return (
               <TouchableOpacity
-                key={tag}
+                key={`category-${tag}-${index}`}
                 style={[
                   themedStyles.badge,
                   { 
