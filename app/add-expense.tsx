@@ -63,12 +63,16 @@ export default function AddExpenseScreen() {
   useEffect(() => {
     if (isEditMode && expenseToEdit && data.people.length >= 0) {
       console.log('AddExpenseScreen: Loading expense for editing:', expenseToEdit);
-      setDescription(expenseToEdit.description);
-      setAmount(expenseToEdit.amount.toString());
-      setCategory(expenseToEdit.category);
-      setFrequency(expenseToEdit.frequency as 'daily' | 'weekly' | 'monthly' | 'yearly');
+      setDescription(expenseToEdit.description || '');
+      setAmount(expenseToEdit.amount?.toString() || '');
+      setCategory(expenseToEdit.category || 'household');
+      setFrequency((expenseToEdit.frequency as 'daily' | 'weekly' | 'monthly' | 'yearly') || 'monthly');
       setPersonId(expenseToEdit.personId || '');
-      setNotes(typeof expenseToEdit.notes === 'string' ? expenseToEdit.notes : '');
+      
+      // Safely handle notes property - check if it exists and is a string
+      const expenseNotes = expenseToEdit.notes;
+      setNotes((expenseNotes && typeof expenseNotes === 'string') ? expenseNotes : '');
+      
       const normalized = normalizeCategoryName((expenseToEdit.categoryTag as ExpenseCategory) || 'Misc');
       setCategoryTag(normalized || 'Misc');
 
@@ -179,7 +183,7 @@ export default function AddExpenseScreen() {
         frequency,
         personId: personId, // Always assign to a person
         date: isEditMode ? expenseToEdit!.date : new Date(startDateYMD + 'T00:00:00Z').toISOString(),
-        notes: notes.trim(),
+        notes: notes.trim(), // Always include notes, even if empty string
         categoryTag: normalizedTag,
         endDate: isRecurring && endVal ? endVal : undefined,
       };
