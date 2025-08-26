@@ -204,7 +204,8 @@ export default function ExpensesScreen() {
     id: e.id, 
     description: e.description, 
     category: e.category, 
-    amount: e.amount 
+    amount: e.amount,
+    personId: e.personId 
   })));
 
   if (filter === 'household') {
@@ -215,9 +216,17 @@ export default function ExpensesScreen() {
     console.log('ExpensesScreen: Personal expenses after filtering:', filteredExpenses.length);
   }
 
-  // Apply person filter to all expenses (both household and personal)
+  // Apply person filter - FIXED: Only filter by person for personal expenses OR household expenses that have a person assigned
   if (personFilter) {
-    filteredExpenses = filteredExpenses.filter((e) => e.personId === personFilter);
+    filteredExpenses = filteredExpenses.filter((e) => {
+      // For household expenses, only filter if they have a personId assigned
+      if (e.category === 'household') {
+        return e.personId === personFilter;
+      }
+      // For personal expenses, always filter by personId
+      return e.personId === personFilter;
+    });
+    console.log('ExpensesScreen: Expenses after person filter:', filteredExpenses.length);
   }
 
   if (categoryFilter) {
