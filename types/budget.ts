@@ -35,7 +35,7 @@ export interface Expense {
   description: string;
   category: 'household' | 'personal';
   frequency: Frequency;
-  personId: string; // Required for personal expenses, optional for household expenses (can be empty string)
+  personId?: string; // Optional for household expenses, required for personal expenses
   date: string; // ISO string for the start/added date
   notes?: string; // Optional notes for additional context
   categoryTag?: ExpenseCategory; // Optional category tag for filtering/reporting (default 'Misc')

@@ -216,7 +216,7 @@ export default function ExpensesScreen() {
     console.log('ExpensesScreen: Personal expenses after filtering:', filteredExpenses.length);
   }
 
-  // Apply person filter - FIXED: Only filter by person for personal expenses OR household expenses that have a person assigned
+  // Apply person filter - FIXED: Handle household expenses without personId correctly
   if (personFilter) {
     filteredExpenses = filteredExpenses.filter((e) => {
       // For household expenses, only filter if they have a personId assigned
@@ -498,7 +498,9 @@ export default function ExpensesScreen() {
                         ? 'Household • ' 
                         : person 
                           ? `${person.name} • ` 
-                          : 'Unknown Person • '
+                          : expense.category === 'household'
+                            ? 'Household • '
+                            : 'Unknown Person • '
                       }
                       {expense.frequency} • {new Date(expense.date).toLocaleDateString()}
                     </Text>

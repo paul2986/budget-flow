@@ -170,10 +170,29 @@ const validateLegacyBudgetData = (data: any): LegacyBudgetData => {
             e.date
         )
         .map((e: any) => {
-          // For legacy data, assign to first person if no personId exists
-          let personId = typeof e.personId === 'string' ? e.personId : '';
-          if (!personId && people.length > 0) {
-            personId = people[0].id;
+          // Handle personId based on expense category
+          let personId: string | undefined = typeof e.personId === 'string' ? e.personId : undefined;
+          
+          // For personal expenses, require a personId - assign to first person if missing
+          if (e.category === 'personal') {
+            if (!personId && people.length > 0) {
+              personId = people[0].id;
+              console.log('storage: Assigned personal expense to first person:', e.description);
+            }
+            // If still no personId for personal expense, skip this expense
+            if (!personId) {
+              console.warn('storage: Skipping personal expense without valid person assignment:', e.description);
+              return null;
+            }
+          }
+          
+          // For household expenses, personId is optional - can be undefined
+          if (e.category === 'household') {
+            // If personId exists but person doesn't exist anymore, clear it
+            if (personId && !people.find(p => p.id === personId)) {
+              console.log('storage: Clearing invalid personId for household expense:', e.description);
+              personId = undefined;
+            }
           }
           
           return {
@@ -182,14 +201,14 @@ const validateLegacyBudgetData = (data: any): LegacyBudgetData => {
             description: typeof e.description === 'string' ? e.description : '',
             category: (['household', 'personal'].includes(e.category) ? e.category : 'household') as 'household' | 'personal',
             frequency: validFreq.includes(e.frequency) ? e.frequency : 'monthly',
-            personId: personId, // Now required for all expenses
+            personId: personId, // Optional for household, required for personal
             date: typeof e.date === 'string' ? e.date : new Date().toISOString(),
             notes: typeof e.notes === 'string' ? e.notes : '',
             categoryTag: sanitizeCategoryTag(e.categoryTag || 'Misc'),
             endDate: sanitizeEndDate(e.frequency, e.endDate),
           };
         })
-        .filter((e: any) => e.personId) // Only keep expenses that have a valid personId
+        .filter((e: any) => e !== null) // Remove null entries (invalid personal expenses)
     : [];
   const distribution =
     safeData?.householdSettings &&
@@ -500,19 +519,34 @@ export const duplicateBudget = async (budgetId: string, customName?: string): Pr
         id: `expense_${now}_${Math.random().toString(36).substr(2, 9)}`,
       };
       
-      // Update the personId to match the new person ID (required for all expenses)
-      if (expense.personId) {
-        const originalPersonIndex = originalPeople.findIndex(p => p && p.id === expense.personId);
-        if (originalPersonIndex !== -1 && duplicatedPeople[originalPersonIndex]) {
-          newExpense.personId = duplicatedPeople[originalPersonIndex].id;
+      // Handle personId based on expense category
+      if (expense.category === 'personal') {
+        // For personal expenses, update the personId to match the new person ID
+        if (expense.personId) {
+          const originalPersonIndex = originalPeople.findIndex(p => p && p.id === expense.personId);
+          if (originalPersonIndex !== -1 && duplicatedPeople[originalPersonIndex]) {
+            newExpense.personId = duplicatedPeople[originalPersonIndex].id;
+          } else {
+            console.warn('storage: Could not find matching person for personal expense, assigning to first person:', expense);
+            // Assign to first person if original person not found
+            newExpense.personId = duplicatedPeople.length > 0 ? duplicatedPeople[0].id : undefined;
+          }
         } else {
-          console.warn('storage: Could not find matching person for expense, assigning to first person:', expense);
-          // Assign to first person if original person not found
-          newExpense.personId = duplicatedPeople.length > 0 ? duplicatedPeople[0].id : '';
+          // For personal expenses without personId, assign to first person
+          newExpense.personId = duplicatedPeople.length > 0 ? duplicatedPeople[0].id : undefined;
         }
-      } else {
-        // For legacy expenses without personId, assign to first person
-        newExpense.personId = duplicatedPeople.length > 0 ? duplicatedPeople[0].id : '';
+      } else if (expense.category === 'household') {
+        // For household expenses, personId is optional
+        if (expense.personId) {
+          const originalPersonIndex = originalPeople.findIndex(p => p && p.id === expense.personId);
+          if (originalPersonIndex !== -1 && duplicatedPeople[originalPersonIndex]) {
+            newExpense.personId = duplicatedPeople[originalPersonIndex].id;
+          } else {
+            // If original person not found, clear the personId for household expense
+            newExpense.personId = undefined;
+          }
+        }
+        // If no personId, leave it undefined (valid for household expenses)
       }
       
       return newExpense;

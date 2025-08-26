@@ -259,12 +259,12 @@ export default function AddExpenseScreen() {
     }
 
     // Determine the final personId to use
-    let finalPersonId = personId;
+    let finalPersonId: string | undefined = personId || undefined;
     
     // For household expenses, personId is optional
     if (category === 'household') {
-      // If no person is selected for household expense, that's fine - leave it empty
-      finalPersonId = personId || '';
+      // If no person is selected for household expense, that's fine - leave it undefined
+      finalPersonId = personId || undefined;
     } else {
       // For personal expenses, require a person to be assigned
       if (!finalPersonId) {
@@ -351,7 +351,7 @@ export default function AddExpenseScreen() {
         amount: numAmount,
         category,
         frequency,
-        personId: actualPersonId, // Use the actual person ID (either existing, newly created, or empty for household)
+        personId: actualPersonId, // Use the actual person ID (either existing, newly created, or undefined for household)
         date: isEditMode ? expenseToEdit!.date : new Date(startDateYMD + 'T00:00:00Z').toISOString(),
         notes: '', // Always include notes as empty string
         categoryTag: normalizedTag,
@@ -472,7 +472,12 @@ export default function AddExpenseScreen() {
             console.log('AddExpenseScreen: Setting category to household');
             setCategory('household');
             // For household expenses, clear person assignment since it's optional
-            setPersonId('');
+            // But don't clear if user has explicitly selected someone
+            if (isEditMode && expenseToEdit?.category === 'personal') {
+              // If editing and switching from personal to household, clear the person assignment
+              setPersonId('');
+              console.log('AddExpenseScreen: Cleared person assignment when switching from personal to household');
+            }
           }}
           disabled={saving || deleting}
         >
@@ -520,7 +525,7 @@ export default function AddExpenseScreen() {
         </TouchableOpacity>
       </View>
     </View>
-  ), [category, currentColors, saving, deleting, themedStyles]);
+  ), [category, currentColors, saving, deleting, themedStyles, isEditMode, expenseToEdit]);
 
   const handleAddPersonFromExpense = useCallback(async () => {
     if (!newPersonName.trim()) {
