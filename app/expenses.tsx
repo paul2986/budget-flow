@@ -531,22 +531,6 @@ export default function ExpensesScreen() {
                         <Text style={[themedStyles.text, { fontWeight: '600', fontSize: 16, lineHeight: 20, flex: 1 }]}>
                           {expense.description}
                         </Text>
-                        {/* Expiration indicator icon */}
-                        {hasExpirationDate && (
-                          <View style={{ marginLeft: 8 }}>
-                            <Icon 
-                              name={expirationInfo?.isExpired ? "time" : "timer-outline"} 
-                              size={16} 
-                              style={{ 
-                                color: expirationInfo?.isExpired 
-                                  ? currentColors.error 
-                                  : expirationInfo?.isExpiringSoon 
-                                    ? '#FF9500' 
-                                    : currentColors.textSecondary 
-                              }} 
-                            />
-                          </View>
-                        )}
                       </View>
                       
                       {/* Category and person info in one line */}
@@ -579,7 +563,7 @@ export default function ExpensesScreen() {
                         {isHousehold && !person ? expense.frequency : ` • ${expense.frequency}`}
                       </Text>
 
-                      {/* Expiration date display */}
+                      {/* Expiration date display - MOVED TIMER ICON TO THE LEFT */}
                       {hasExpirationDate && expirationInfo && (
                         <View style={{ 
                           flexDirection: 'row', 
@@ -595,6 +579,18 @@ export default function ExpensesScreen() {
                           borderRadius: 8,
                           alignSelf: 'flex-start',
                         }}>
+                          <Icon 
+                            name={expirationInfo?.isExpired ? "time" : "timer-outline"} 
+                            size={12} 
+                            style={{ 
+                              color: expirationInfo?.isExpired 
+                                ? currentColors.error 
+                                : expirationInfo?.isExpiringSoon 
+                                  ? '#FF9500' 
+                                  : currentColors.textSecondary,
+                              marginRight: 6
+                            }} 
+                          />
                           <Text style={{
                             fontSize: 11,
                             fontWeight: '600',
