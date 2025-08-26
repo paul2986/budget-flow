@@ -148,6 +148,24 @@ export default function AddExpenseScreen() {
       return;
     }
 
+    // Check if personal expense is selected but no people exist
+    if (category === 'personal' && data.people.length === 0) {
+      Alert.alert(
+        'No People Added', 
+        'You need to add people to your budget before creating personal expenses. Please add a person first.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Add Person', 
+            onPress: () => {
+              router.push('/people');
+            }
+          }
+        ]
+      );
+      return;
+    }
+
     // All expenses must be assigned to a person
     if (!personId) {
       if (category === 'household' && data.people.length > 0) {
@@ -335,8 +353,48 @@ export default function AddExpenseScreen() {
   ), [category, currentColors, saving, deleting, themedStyles, data.people]);
 
   const PersonPicker = useCallback(() => {
-    if (data.people.length === 0 || category === 'household') return null;
+    // Show message when personal is selected but no people exist
+    if (category === 'personal' && data.people.length === 0) {
+      return (
+        <View style={themedStyles.section}>
+          <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
+            Assign to Person <Text style={{ color: currentColors.error }}>*</Text>
+          </Text>
+          <View style={[themedStyles.card, { backgroundColor: currentColors.error + '10', borderColor: currentColors.error + '30', borderWidth: 1 }]}>
+            <View style={themedStyles.centerContent}>
+              <Icon name="people-outline" size={32} style={{ color: currentColors.error, marginBottom: 8 }} />
+              <Text style={[themedStyles.text, { textAlign: 'center', marginBottom: 8, color: currentColors.error, fontWeight: '600' }]}>
+                No People Added
+              </Text>
+              <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 12, fontSize: 14 }]}>
+                You need to add people to your budget before creating personal expenses.
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push('/people')}
+                style={[
+                  themedStyles.badge,
+                  { 
+                    backgroundColor: currentColors.error,
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 20,
+                  }
+                ]}
+              >
+                <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontWeight: '600' }]}>
+                  Add People
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      );
+    }
 
+    // Don't show person picker for household expenses
+    if (category === 'household') return null;
+
+    // Show person picker for personal expenses when people exist
     return (
       <View style={themedStyles.section}>
         <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
@@ -511,7 +569,8 @@ export default function AddExpenseScreen() {
       setCustomCategories(next);
       setCategoryTag(normalized);
       setShowCustomModal(false);
-      // Don't reset the form when creating a new category
+      // Form state is preserved - description and amount are not reset
+      console.log('AddExpenseScreen: Custom category created, form state preserved');
     } catch (e) {
       console.log('Error saving custom category', e);
       setCustomError('Failed to save category. Try again.');
