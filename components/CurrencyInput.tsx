@@ -27,7 +27,7 @@ export default function CurrencyInput({
   editable = true,
   ...props
 }: CurrencyInputProps) {
-  const { currency, formatCurrency } = useCurrency();
+  const { currency } = useCurrency();
   const { themedStyles } = useThemedStyles();
   const { currentColors } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
@@ -55,14 +55,18 @@ export default function CurrencyInput({
         setDisplayValue(numericValue.toString());
       }
     } else {
-      // When not focused, show formatted currency
+      // When not focused, show formatted number without currency symbol (since we have overlay)
       if (numericValue === null || numericValue === 0) {
         setDisplayValue('');
       } else {
-        setDisplayValue(formatCurrency(numericValue));
+        // Format number with commas and decimals but without currency symbol
+        setDisplayValue(numericValue.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }));
       }
     }
-  }, [value, isFocused, formatCurrency]);
+  }, [value, isFocused]);
 
   const handleFocus = () => {
     setIsFocused(true);
@@ -80,7 +84,11 @@ export default function CurrencyInput({
     if (numericValue !== null && numericValue > 0) {
       // Update the parent with the numeric string value
       onChangeText(numericValue.toString());
-      setDisplayValue(formatCurrency(numericValue));
+      // Format number with commas and decimals but without currency symbol (since we have overlay)
+      setDisplayValue(numericValue.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }));
     } else {
       onChangeText('');
       setDisplayValue('');
@@ -104,7 +112,7 @@ export default function CurrencyInput({
       )}
       
       <View style={{ position: 'relative' }}>
-        {/* Currency symbol overlay - always show when there's no value or when focused */}
+        {/* Currency symbol overlay - always show */}
         <View style={{
           position: 'absolute',
           left: 16,
@@ -119,6 +127,7 @@ export default function CurrencyInput({
             { 
               color: displayValue === '' ? currentColors.textSecondary : currentColors.text,
               fontSize: 16,
+              fontWeight: '500',
             }
           ]}>
             {currency.symbol}
