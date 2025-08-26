@@ -9,6 +9,7 @@ import {
 } from '../utils/calculations';
 import { useBudgetData } from '../hooks/useBudgetData';
 import Button from '../components/Button';
+import CurrencyInput from '../components/CurrencyInput';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useCurrency } from '../hooks/useCurrency';
 import Icon from '../components/Icon';
@@ -423,16 +424,10 @@ export default function EditPersonScreen() {
               editable={!saving && !isDeletingPerson}
             />
             
-            <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
-              Amount:
-            </Text>
-            <TextInput
-              style={themedStyles.input}
-              placeholder="0.00"
-              placeholderTextColor={currentColors.textSecondary}
+            <CurrencyInput
+              label="Amount"
               value={newIncome.amount}
               onChangeText={(text) => setNewIncome({ ...newIncome, amount: text })}
-              keyboardType="numeric"
               editable={!saving && !isDeletingPerson}
             />
             

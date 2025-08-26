@@ -7,6 +7,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useCurrency } from '../hooks/useCurrency';
 import Icon from '../components/Icon';
 import Button from '../components/Button';
+import CurrencyInput from '../components/CurrencyInput';
 import * as Clipboard from 'expo-clipboard';
 import { computeCreditCardPayoff, computeInterestOnlyMinimum } from '../utils/calculations';
 import { CreditCardPayoffResult } from '../types/budget';
@@ -71,9 +72,7 @@ export default function ToolsScreen() {
   const [isPaymentFocused, setIsPaymentFocused] = useState<boolean>(false);
   const [infoOpen, setInfoOpen] = useState<boolean>(false);
 
-  const balanceRef = useRef<TextInput>(null);
   const aprRef = useRef<TextInput>(null);
-  const paymentRef = useRef<TextInput>(null);
 
   const parseNumber = (val: string): number | null => {
     if (typeof val !== 'string') return null;
@@ -144,33 +143,7 @@ export default function ToolsScreen() {
     return b !== null && b > 0 && a !== null && a >= 0 && p !== null && p > 0 && Object.keys(errors).length === 0;
   }, [balanceInput, aprInput, paymentInput, errors]);
 
-  const onBlurCurrency = (field: 'balance' | 'payment') => {
-    const value = field === 'balance' ? balanceInput : paymentInput;
-    const num = parseNumber(value);
-    if (num === null || num < 0) {
-      // leave as-is, error will show via validate
-      return;
-    }
-    const formatted = formatCurrency(num);
-    if (field === 'balance') {
-      setBalanceInput(formatted);
-    } else {
-      setPaymentInput(formatted);
-    }
-  };
 
-  const onFocusCurrency = (field: 'balance' | 'payment') => {
-    const value = field === 'balance' ? balanceInput : paymentInput;
-    const num = parseNumber(value);
-    if (num === null) {
-      if (field === 'balance') setBalanceInput('');
-      else setPaymentInput('');
-      return;
-    }
-    const plain = num.toString();
-    if (field === 'balance') setBalanceInput(plain);
-    else setPaymentInput(plain);
-  };
 
   const onBlurApr = () => {
     const num = parseNumber(aprInput);
@@ -290,40 +263,13 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
 
   const renderCalculatorCard = () => (
     <View style={themedStyles.card}>
-      <View style={[styles.labelRow, { marginBottom: 8 }]}>
-        <Text style={[themedStyles.text, styles.labelText]}>Balance</Text>
-        <TouchableOpacity
-          onPress={() => balanceRef.current?.focus()}
-          accessibilityLabel="Focus balance input"
-        >
-          <Icon name="create-outline" size={16} style={{ color: currentColors.textSecondary }} />
-        </TouchableOpacity>
-      </View>
-      <TextInput
-        ref={balanceRef}
+      <CurrencyInput
+        label="Balance"
         value={balanceInput}
-        onChangeText={(t) => {
-          setBalanceInput(t);
-        }}
-        onFocus={() => onFocusCurrency('balance')}
-        onBlur={() => {
-          onBlurCurrency('balance');
-          validate();
-        }}
-        keyboardType={Platform.select({ ios: 'decimal-pad', android: 'decimal-pad', default: 'numeric' })}
-        placeholder={`${currency.symbol}0.00`}
-        placeholderTextColor={currentColors.textSecondary}
-        style={[
-          themedStyles.input,
-          errors.balance ? { borderColor: currentColors.error } : null,
-        ]}
+        onChangeText={setBalanceInput}
+        error={errors.balance}
         accessibilityLabel="Balance amount"
       />
-      {!!errors.balance && (
-        <Text style={[themedStyles.textSecondary, { color: currentColors.error, marginTop: -10, marginBottom: 8 }]}>
-          {errors.balance}
-        </Text>
-      )}
 
       <View style={[styles.labelRow, { marginBottom: 8 }]}>
         <Text style={[themedStyles.text, styles.labelText]}>APR %</Text>
@@ -357,46 +303,17 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
         </Text>
       )}
 
-      <View style={[styles.labelRow, { marginBottom: 8 }]}>
-        <Text style={[themedStyles.text, styles.labelText]}>Monthly Payment</Text>
-        <TouchableOpacity
-          onPress={() => paymentRef.current?.focus()}
-          accessibilityLabel="Focus monthly payment input"
-        >
-          <Icon name="create-outline" size={16} style={{ color: currentColors.textSecondary }} />
-        </TouchableOpacity>
-      </View>
-      <TextInput
-        ref={paymentRef}
+      <CurrencyInput
+        label="Monthly Payment"
         value={paymentInput}
         onChangeText={(t) => {
           setPaymentInput(t);
           setHasPaymentOverride(true);
           setIsPaymentAuto(false);
         }}
-        onFocus={() => {
-          setIsPaymentFocused(true);
-          onFocusCurrency('payment');
-        }}
-        onBlur={() => {
-          setIsPaymentFocused(false);
-          onBlurCurrency('payment');
-          validate();
-        }}
-        keyboardType={Platform.select({ ios: 'decimal-pad', android: 'decimal-pad', default: 'numeric' })}
-        placeholder={`${currency.symbol}0.00`}
-        placeholderTextColor={currentColors.textSecondary}
-        style={[
-          themedStyles.input,
-          errors.payment ? { borderColor: currentColors.error } : null,
-        ]}
+        error={errors.payment}
         accessibilityLabel="Monthly payment amount"
       />
-      {!!errors.payment && (
-        <Text style={[themedStyles.textSecondary, { color: currentColors.error, marginTop: -10, marginBottom: 8 }]}>
-          {errors.payment}
-        </Text>
-      )}
 
       <HelperRow />
 

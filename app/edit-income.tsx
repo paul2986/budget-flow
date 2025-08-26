@@ -8,6 +8,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useCurrency } from '../hooks/useCurrency';
 import { Income } from '../types/budget';
 import Button from '../components/Button';
+import CurrencyInput from '../components/CurrencyInput';
 import Icon from '../components/Icon';
 import StandardHeader from '../components/StandardHeader';
 
@@ -301,16 +302,10 @@ export default function EditIncomeScreen() {
             editable={!saving}
           />
           
-          <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
-            Amount:
-          </Text>
-          <TextInput
-            style={themedStyles.input}
+          <CurrencyInput
+            label="Amount"
             value={editedIncome.amount}
             onChangeText={(text) => setEditedIncome({ ...editedIncome, amount: text })}
-            placeholder="0.00"
-            placeholderTextColor={currentColors.textSecondary}
-            keyboardType="numeric"
             editable={!saving}
           />
           

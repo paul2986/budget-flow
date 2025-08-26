@@ -6,6 +6,7 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useCurrency } from '../hooks/useCurrency';
 import Icon from './Icon';
 import Button from './Button';
+import CurrencyInput from './CurrencyInput';
 import { Person, Income } from '../types/budget';
 
 interface IncomeModalProps {
@@ -260,21 +261,14 @@ export default function IncomeModal({
             </View>
 
             {/* Amount Input */}
-            <View style={[themedStyles.section, { paddingBottom: 0 }]}>
-              <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600', fontSize: 16 }]}>
-                Amount
-              </Text>
-              <TextInput
-                style={[themedStyles.input, { marginBottom: 0 }]}
-                placeholder="0.00"
-                placeholderTextColor={currentColors.textSecondary}
-                value={tempIncome.amount}
-                onChangeText={(text) => setTempIncome({ ...tempIncome, amount: text })}
-                keyboardType="numeric"
-                editable={!saving}
-                accessibilityLabel="Income amount"
-              />
-            </View>
+            <CurrencyInput
+              label="Amount"
+              value={tempIncome.amount}
+              onChangeText={(text) => setTempIncome({ ...tempIncome, amount: text })}
+              editable={!saving}
+              containerStyle={[themedStyles.section, { paddingBottom: 0 }]}
+              accessibilityLabel="Income amount"
+            />
 
             {/* Frequency Selection */}
             <View style={[themedStyles.section, { paddingBottom: 0 }]}>

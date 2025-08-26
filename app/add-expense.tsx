@@ -7,6 +7,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useCurrency } from '../hooks/useCurrency';
 import Button from '../components/Button';
+import CurrencyInput from '../components/CurrencyInput';
 import Icon from '../components/Icon';
 import { Expense, ExpenseCategory, DEFAULT_CATEGORIES, Person } from '../types/budget';
 import StandardHeader from '../components/StandardHeader';
@@ -978,18 +979,13 @@ export default function AddExpenseScreen() {
           />
         </View>
 
-        <View style={themedStyles.section}>
-          <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>Amount</Text>
-          <TextInput
-            style={themedStyles.input}
-            value={amount}
-            onChangeText={setAmount}
-            placeholder="0.00"
-            placeholderTextColor={currentColors.textSecondary}
-            keyboardType="numeric"
-            editable={!saving && !deleting && !isSaving}
-          />
-        </View>
+        <CurrencyInput
+          label="Amount"
+          value={amount}
+          onChangeText={setAmount}
+          editable={!saving && !deleting && !isSaving}
+          containerStyle={themedStyles.section}
+        />
 
         <OwnershipPicker />
         <PersonPicker />
