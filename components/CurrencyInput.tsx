@@ -112,13 +112,11 @@ export default function CurrencyInput({
       )}
       
       <View style={{ position: 'relative' }}>
-        {/* Currency symbol overlay - always show */}
+        {/* Currency symbol overlay - positioned to align with text baseline */}
         <View style={{
           position: 'absolute',
           left: 16,
-          top: 0,
-          bottom: 0,
-          justifyContent: 'center',
+          top: 16, // Match the input's padding top
           zIndex: 1,
           pointerEvents: 'none',
         }}>
@@ -128,6 +126,7 @@ export default function CurrencyInput({
               color: displayValue === '' ? currentColors.textSecondary : currentColors.text,
               fontSize: 16,
               fontWeight: '500',
+              lineHeight: 24, // Match the text input's line height for proper alignment
             }
           ]}>
             {currency.symbol}
@@ -140,6 +139,7 @@ export default function CurrencyInput({
             themedStyles.input,
             {
               paddingLeft: 40, // Always make room for currency symbol
+              lineHeight: 24, // Ensure consistent line height
             },
             error ? { borderColor: currentColors.error } : null,
             inputStyle,
