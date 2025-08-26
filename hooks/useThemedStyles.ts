@@ -25,7 +25,7 @@ export const useThemedStyles = () => {
       paddingBottom: 0, // Remove bottom padding from content, handled by scrollContent
     },
     scrollContent: {
-      paddingBottom: 120, // Reduced padding to allow content to scroll closer to bottom
+      paddingBottom: 140, // Increased padding to ensure content is visible above nav bar
       minHeight: '100%', // Ensure content takes full height to prevent clipping
     },
     title: {

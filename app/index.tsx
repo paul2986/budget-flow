@@ -36,6 +36,7 @@ export default function HomeScreen() {
   
   const [authenticating, setAuthenticating] = useState(false);
   const [showBudgetNaming, setShowBudgetNaming] = useState(false);
+  const [showBudgetReady, setShowBudgetReady] = useState(false);
   const [budgetName, setBudgetName] = useState('');
   const [creatingBudget, setCreatingBudget] = useState(false);
   const appState = useRef(AppState.currentState);
@@ -155,6 +156,7 @@ export default function HomeScreen() {
       if (result.success) {
         showToast('Budget created successfully!', 'success');
         setShowBudgetNaming(false);
+        setShowBudgetReady(true); // Show the "Budget Ready" page
         setBudgetName('');
         // The useBudgetData hook will automatically refresh and set the new budget as active
       } else {
@@ -173,6 +175,10 @@ export default function HomeScreen() {
     setBudgetName('');
   }, []);
 
+  const handleContinueFromBudgetReady = useCallback(() => {
+    setShowBudgetReady(false);
+  }, []);
+
   if (loading) {
     return (
       <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
@@ -184,7 +190,7 @@ export default function HomeScreen() {
     );
   }
 
-  // First-time user: No budget found - show budget naming interface
+  // Step 1: Budget naming interface (first-time user: No budget found)
   if (!activeBudget || showBudgetNaming) {
     return (
       <KeyboardAvoidingView 
@@ -203,9 +209,10 @@ export default function HomeScreen() {
             themedStyles.scrollContent,
             {
               paddingHorizontal: 24,
-              paddingTop: 40, // Add extra padding to prevent header overlap
+              paddingTop: 40,
+              paddingBottom: 40, // Ensure bottom content is visible
               justifyContent: 'center',
-              flex: 1,
+              flexGrow: 1,
             }
           ]}
           showsVerticalScrollIndicator={false}
@@ -297,6 +304,169 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+    );
+  }
+
+  // Step 2: "Your Budget is Ready" page
+  if (showBudgetReady) {
+    return (
+      <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
+        <StandardHeader 
+          title="Budget Flow" 
+          showLeftIcon={false}
+          showRightIcon={false}
+        />
+        
+        <ScrollView 
+          style={themedStyles.content} 
+          contentContainerStyle={[
+            themedStyles.scrollContent,
+            {
+              paddingHorizontal: 24,
+              paddingTop: 40,
+              paddingBottom: 40, // Ensure bottom content is visible above nav bar
+              flexGrow: 1,
+            }
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Top Section - Celebration */}
+          <View style={{ alignItems: 'center', marginBottom: 40 }}>
+            <View style={{
+              width: 120,
+              height: 120,
+              borderRadius: 60,
+              backgroundColor: currentColors.success + '20',
+              borderWidth: 3,
+              borderColor: currentColors.success,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 24,
+            }}>
+              <Icon name="checkmark-circle" size={60} style={{ color: currentColors.success }} />
+            </View>
+            
+            <Text style={[themedStyles.title, { textAlign: 'center', marginBottom: 12, fontSize: 32 }]}>
+              Your Budget is Ready!
+            </Text>
+            <Text style={[themedStyles.textSecondary, { textAlign: 'center', fontSize: 18, lineHeight: 26 }]}>
+              "{activeBudget?.name}" has been created successfully
+            </Text>
+          </View>
+
+          {/* Middle Section - Next Steps */}
+          <View style={[
+            themedStyles.card,
+            {
+              backgroundColor: currentColors.primary + '10',
+              borderColor: currentColors.primary + '30',
+              borderWidth: 2,
+              padding: 32,
+              marginBottom: 32,
+            }
+          ]}>
+            <View style={{ alignItems: 'center', marginBottom: 24 }}>
+              <Icon name="rocket-outline" size={40} style={{ color: currentColors.primary, marginBottom: 16 }} />
+              <Text style={[themedStyles.subtitle, { textAlign: 'center', fontSize: 22, marginBottom: 8 }]}>
+                What's Next?
+              </Text>
+              <Text style={[themedStyles.textSecondary, { textAlign: 'center', fontSize: 16, lineHeight: 24 }]}>
+                Let's set up your budget with people and expenses
+              </Text>
+            </View>
+
+            <View style={{ gap: 16 }}>
+              <View style={[
+                themedStyles.card,
+                {
+                  backgroundColor: currentColors.backgroundAlt,
+                  borderColor: currentColors.border,
+                  borderWidth: 1,
+                  padding: 20,
+                  marginBottom: 0,
+                }
+              ]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                  <View style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: currentColors.primary,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 12,
+                  }}>
+                    <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>1</Text>
+                  </View>
+                  <Text style={[themedStyles.subtitle, { fontSize: 18, fontWeight: '700', marginBottom: 0 }]}>
+                    Add People & Income
+                  </Text>
+                </View>
+                <Text style={[themedStyles.textSecondary, { marginLeft: 44, lineHeight: 20 }]}>
+                  Add yourself and anyone else who shares expenses
+                </Text>
+              </View>
+
+              <View style={[
+                themedStyles.card,
+                {
+                  backgroundColor: currentColors.backgroundAlt,
+                  borderColor: currentColors.border,
+                  borderWidth: 1,
+                  padding: 20,
+                  marginBottom: 0,
+                }
+              ]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                  <View style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: currentColors.secondary,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 12,
+                  }}>
+                    <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>2</Text>
+                  </View>
+                  <Text style={[themedStyles.subtitle, { fontSize: 18, fontWeight: '700', marginBottom: 0 }]}>
+                    Track Expenses
+                  </Text>
+                </View>
+                <Text style={[themedStyles.textSecondary, { marginLeft: 44, lineHeight: 20 }]}>
+                  Add household and personal expenses with frequencies
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Bottom Section - Action Button */}
+          <View style={{ gap: 16 }}>
+            <Button
+              text="Continue to Setup"
+              onPress={handleContinueFromBudgetReady}
+              variant="primary"
+            />
+
+            <View style={[
+              themedStyles.card,
+              {
+                backgroundColor: currentColors.info + '10',
+                borderColor: currentColors.info + '30',
+                borderWidth: 1,
+                padding: 20,
+                alignItems: 'center',
+                marginBottom: 0,
+              }
+            ]}>
+              <Icon name="lightbulb-outline" size={20} style={{ color: currentColors.info, marginBottom: 8 }} />
+              <Text style={[themedStyles.textSecondary, { textAlign: 'center', fontSize: 14, lineHeight: 20 }]}>
+                You can always access your budget settings and add more budgets later from the budgets page
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
     );
   }
 
@@ -446,9 +616,10 @@ export default function HomeScreen() {
             themedStyles.scrollContent,
             {
               paddingHorizontal: 24,
-              paddingTop: 40, // Add extra padding to prevent header overlap
+              paddingTop: 40,
+              paddingBottom: 40, // Ensure bottom content is visible above nav bar
               justifyContent: 'center',
-              flex: 1,
+              flexGrow: 1,
             }
           ]}
           showsVerticalScrollIndicator={false}
@@ -554,7 +725,8 @@ export default function HomeScreen() {
             themedStyles.scrollContent,
             {
               paddingHorizontal: 24,
-              paddingTop: 32, // Add extra padding to prevent header overlap
+              paddingTop: 32,
+              paddingBottom: 40, // Ensure bottom content is visible above nav bar
             }
           ]}
           showsVerticalScrollIndicator={false}
@@ -627,7 +799,7 @@ export default function HomeScreen() {
                     marginRight: 12 
                   }} 
                 />
-                <Text style={[themedStyles.subtitle, { fontSize: 18, fontWeight: '700' }]}>
+                <Text style={[themedStyles.subtitle, { fontSize: 18, fontWeight: '700', marginBottom: 0 }]}>
                   Expenses {hasExpenses ? '✓' : ''}
                 </Text>
               </View>
@@ -693,6 +865,7 @@ export default function HomeScreen() {
           {
             paddingHorizontal: 0,
             paddingTop: 16,
+            paddingBottom: 40, // Ensure bottom content is visible above nav bar
           }
         ]}
         showsVerticalScrollIndicator={false}
