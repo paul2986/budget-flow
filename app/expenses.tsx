@@ -431,9 +431,9 @@ export default function ExpensesScreen() {
         </View>
       )}
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 20 }]}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
         {filteredExpenses.length === 0 ? (
-          <View style={[themedStyles.card, { alignItems: 'center', paddingVertical: 60 }]}>
+          <View style={[themedStyles.card, { alignItems: 'center', paddingVertical: 60, marginHorizontal: 20 }]}>
             <Icon name="receipt-outline" size={64} style={{ color: currentColors.textSecondary, marginBottom: 20 }} />
             <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8, color: currentColors.textSecondary }]}>
               {hasActiveFilters ? 'No matching expenses' : 'No expenses yet'}
@@ -445,7 +445,7 @@ export default function ExpensesScreen() {
             </Text>
           </View>
         ) : (
-          <View style={{ gap: 12 }}>
+          <View style={{ gap: 8, paddingHorizontal: 20 }}>
             {filteredExpenses.map((expense) => {
               console.log('ExpensesScreen: Rendering expense:', { 
                 id: expense.id, 
@@ -468,67 +468,70 @@ export default function ExpensesScreen() {
                   style={[
                     themedStyles.card, 
                     { 
-                      padding: 20,
+                      padding: 16,
                       opacity: isDeleting ? 0.6 : 1,
-                      borderLeftWidth: 4,
+                      borderLeftWidth: 3,
                       borderLeftColor: isHousehold ? currentColors.household : currentColors.personal,
+                      marginBottom: 8,
                     }
                   ]}
                 >
                   {/* Main content row */}
-                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     {/* Left side - expense info */}
-                    <View style={{ flex: 1, marginRight: 16 }}>
-                      <Text style={[themedStyles.text, { fontWeight: '700', fontSize: 18, marginBottom: 4, lineHeight: 24 }]}>
+                    <View style={{ flex: 1, marginRight: 12 }}>
+                      <Text style={[themedStyles.text, { fontWeight: '600', fontSize: 16, marginBottom: 2, lineHeight: 20 }]}>
                         {expense.description}
                       </Text>
                       
-                      {/* Category and person info */}
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                      {/* Category and person info in one line */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
                         <View style={{
                           backgroundColor: isHousehold ? currentColors.household + '15' : currentColors.personal + '15',
-                          paddingHorizontal: 8,
-                          paddingVertical: 3,
-                          borderRadius: 8,
-                          marginRight: 8,
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                          borderRadius: 6,
+                          marginRight: 6,
                         }}>
                           <Text style={{
                             color: isHousehold ? currentColors.household : currentColors.personal,
-                            fontSize: 11,
-                            fontWeight: '700',
+                            fontSize: 10,
+                            fontWeight: '600',
                             textTransform: 'uppercase',
                           }}>
                             {expense.category}
                           </Text>
                         </View>
                         
-                        <Text style={[themedStyles.textSecondary, { fontSize: 13 }]}>
+                        <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
                           {tag}
                         </Text>
                       </View>
 
                       {/* Person and frequency */}
-                      <Text style={[themedStyles.textSecondary, { fontSize: 13, lineHeight: 18 }]}>
+                      <Text style={[themedStyles.textSecondary, { fontSize: 11, lineHeight: 14 }]}>
                         {person ? person.name : 'Unassigned'} • {expense.frequency}
                       </Text>
                     </View>
 
                     {/* Right side - amount and delete */}
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={[
-                        themedStyles.text,
-                        {
-                          fontWeight: '800',
-                          fontSize: 20,
-                          color: isHousehold ? currentColors.household : currentColors.personal,
-                          marginBottom: 4,
-                        },
-                      ]}>
-                        {formatCurrency(expense.amount)}
-                      </Text>
-                      <Text style={[themedStyles.textSecondary, { fontSize: 12, marginBottom: 12 }]}>
-                        {formatCurrency(monthlyAmount)}/mo
-                      </Text>
+                    <View style={{ alignItems: 'flex-end', flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={{ alignItems: 'flex-end', marginRight: 8 }}>
+                        <Text style={[
+                          themedStyles.text,
+                          {
+                            fontWeight: '700',
+                            fontSize: 16,
+                            color: isHousehold ? currentColors.household : currentColors.personal,
+                            marginBottom: 2,
+                          },
+                        ]}>
+                          {formatCurrency(expense.amount)}
+                        </Text>
+                        <Text style={[themedStyles.textSecondary, { fontSize: 10 }]}>
+                          {formatCurrency(monthlyAmount)}/mo
+                        </Text>
+                      </View>
                       
                       {/* Delete button */}
                       <TouchableOpacity
@@ -538,38 +541,23 @@ export default function ExpensesScreen() {
                         }}
                         disabled={saving || isDeleting}
                         style={{
-                          padding: 8,
-                          borderRadius: 16,
+                          padding: 6,
+                          borderRadius: 12,
                           backgroundColor: currentColors.error + '15',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          minWidth: 32,
-                          minHeight: 32,
+                          minWidth: 28,
+                          minHeight: 28,
                         }}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       >
                         {isDeleting ? (
                           <ActivityIndicator size="small" color={currentColors.error} />
                         ) : (
-                          <Icon name="trash-outline" size={16} style={{ color: currentColors.error }} />
+                          <Icon name="trash-outline" size={14} style={{ color: currentColors.error }} />
                         )}
                       </TouchableOpacity>
                     </View>
-                  </View>
-
-                  {/* Date at bottom */}
-                  <View style={{ 
-                    paddingTop: 12, 
-                    borderTopWidth: 1, 
-                    borderTopColor: currentColors.border + '50',
-                  }}>
-                    <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
-                      Added {new Date(expense.date).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        year: 'numeric' 
-                      })}
-                    </Text>
                   </View>
                 </TouchableOpacity>
               );
