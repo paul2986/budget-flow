@@ -66,6 +66,16 @@ export default function IndividualBreakdownsSection({
         const monthlyPersonHouseholdShare = calculateMonthlyAmount(personHouseholdShare, 'yearly');
         const monthlyPersonRemaining = calculateMonthlyAmount(personRemaining, 'yearly');
 
+        // Calculate percentages for the progress bar
+        const personalPercentage = monthlyPersonIncome > 0 ? (monthlyPersonPersonalExpenses / monthlyPersonIncome) * 100 : 0;
+        const householdPercentage = monthlyPersonIncome > 0 ? (monthlyPersonHouseholdShare / monthlyPersonIncome) * 100 : 0;
+        const remainingPercentage = monthlyPersonIncome > 0 ? Math.max(0, (monthlyPersonRemaining / monthlyPersonIncome) * 100) : 0;
+
+        // Ensure percentages don't exceed 100% for display
+        const displayPersonalPercentage = Math.min(personalPercentage, 100);
+        const displayHouseholdPercentage = Math.min(householdPercentage, 100 - displayPersonalPercentage);
+        const displayRemainingPercentage = Math.max(0, 100 - displayPersonalPercentage - displayHouseholdPercentage);
+
         return (
           <View 
             key={person.id} 
@@ -183,17 +193,31 @@ export default function IndividualBreakdownsSection({
                 {monthlyPersonIncome > 0 && (
                   <>
                     {/* Personal Expenses Bar */}
-                    {monthlyPersonPersonalExpenses > 0 && (
+                    {displayPersonalPercentage > 0 && (
                       <View style={{
                         backgroundColor: currentColors.personal,
-                        width: `${Math.min((monthlyPersonPersonalExpenses / monthlyPersonIncome) * 100, 100)}%`,
+                        width: `${displayPersonalPercentage}%`,
                       }} />
                     )}
                     {/* Household Share Bar */}
-                    {monthlyPersonHouseholdShare > 0 && (
+                    {displayHouseholdPercentage > 0 && (
                       <View style={{
                         backgroundColor: currentColors.household,
-                        width: `${Math.min((monthlyPersonHouseholdShare / monthlyPersonIncome) * 100, 100 - (monthlyPersonPersonalExpenses / monthlyPersonIncome) * 100)}%`,
+                        width: `${displayHouseholdPercentage}%`,
+                      }} />
+                    )}
+                    {/* Remaining Income Bar - Green */}
+                    {displayRemainingPercentage > 0 && monthlyPersonRemaining >= 0 && (
+                      <View style={{
+                        backgroundColor: currentColors.success,
+                        width: `${displayRemainingPercentage}%`,
+                      }} />
+                    )}
+                    {/* Over Budget Bar - Red */}
+                    {monthlyPersonRemaining < 0 && (
+                      <View style={{
+                        backgroundColor: currentColors.error,
+                        width: `${Math.min(Math.abs((monthlyPersonRemaining / monthlyPersonIncome) * 100), 100 - displayPersonalPercentage - displayHouseholdPercentage)}%`,
                       }} />
                     )}
                   </>
@@ -202,19 +226,34 @@ export default function IndividualBreakdownsSection({
             </View>
 
             {/* Percentage Labels */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 4 }}>
               <Text style={[themedStyles.textSecondary, { fontSize: 11 }]}>
                 {monthlyPersonIncome > 0 
-                  ? `${((monthlyPersonPersonalExpenses / monthlyPersonIncome) * 100).toFixed(0)}% personal`
+                  ? `${personalPercentage.toFixed(0)}% personal`
                   : '0% personal'
                 }
               </Text>
               <Text style={[themedStyles.textSecondary, { fontSize: 11 }]}>
                 {monthlyPersonIncome > 0 
-                  ? `${((monthlyPersonHouseholdShare / monthlyPersonIncome) * 100).toFixed(0)}% household`
+                  ? `${householdPercentage.toFixed(0)}% household`
                   : '0% household'
                 }
               </Text>
+              {monthlyPersonRemaining >= 0 ? (
+                <Text style={[themedStyles.textSecondary, { fontSize: 11, color: currentColors.success }]}>
+                  {monthlyPersonIncome > 0 
+                    ? `${remainingPercentage.toFixed(0)}% remaining`
+                    : '0% remaining'
+                  }
+                </Text>
+              ) : (
+                <Text style={[themedStyles.textSecondary, { fontSize: 11, color: currentColors.error }]}>
+                  {monthlyPersonIncome > 0 
+                    ? `${Math.abs((monthlyPersonRemaining / monthlyPersonIncome) * 100).toFixed(0)}% over budget`
+                    : 'Over budget'
+                  }
+                </Text>
+              )}
             </View>
           </View>
         );
