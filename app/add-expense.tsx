@@ -28,7 +28,7 @@ type TempCategory = {
 };
 
 // Helper function to safely handle async operations
-const safeAsync = async <T>(
+const safeAsync = async <T,>(
   operation: () => Promise<T>,
   fallback: T,
   operationName: string

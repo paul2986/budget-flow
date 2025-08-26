@@ -43,6 +43,15 @@ export default function ExpensesScreen() {
   // Use ref to track if we've already refreshed on this focus
   const hasRefreshedOnFocus = useRef(false);
 
+  // Wrap announceFilter in useCallback to fix exhaustive deps warning
+  const announceFilter = useCallback((msg: string) => {
+    try {
+      AccessibilityInfo.announceForAccessibility?.(msg);
+    } catch (e) {
+      console.log('Accessibility announce failed', e);
+    }
+  }, []);
+
   // Load custom categories and persisted filters
   useEffect(() => {
     (async () => {
@@ -97,14 +106,6 @@ export default function ExpensesScreen() {
       };
     }, [refreshData])
   );
-
-  const announceFilter = (msg: string) => {
-    try {
-      AccessibilityInfo.announceForAccessibility?.(msg);
-    } catch (e) {
-      console.log('Accessibility announce failed', e);
-    }
-  };
 
   const handleRemoveExpense = useCallback(
     async (expenseId: string, description: string) => {

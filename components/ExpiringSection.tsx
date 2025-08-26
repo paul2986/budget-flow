@@ -10,6 +10,7 @@ import { useToast } from '../hooks/useToast';
 import { calculateMonthlyAmount, getEndingSoon } from '../utils/calculations';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import Icon from './Icon';
+import PropTypes from 'prop-types';
 
 interface ExpiringSectionProps {
   expenses: Expense[];
@@ -202,3 +203,17 @@ export default function ExpiringSection({ expenses }: ExpiringSectionProps) {
     </View>
   );
 }
+
+// Add PropTypes for the expense.id validation
+ExpiringSection.propTypes = {
+  expenses: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      description: PropTypes.string.isRequired,
+      amount: PropTypes.number.isRequired,
+      category: PropTypes.string.isRequired,
+      frequency: PropTypes.string.isRequired,
+      endDate: PropTypes.string,
+    })
+  ).isRequired,
+};
