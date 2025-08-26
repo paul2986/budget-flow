@@ -380,7 +380,7 @@ export default function HomeScreen() {
               </View>
               
               <Text style={[themedStyles.title, { textAlign: 'center', marginBottom: 12, fontSize: 32 }]}>
-                Your Budget is Ready!
+                Great! Your budget is ready
               </Text>
               <Text style={[themedStyles.textSecondary, { textAlign: 'center', fontSize: 18, lineHeight: 26 }]}>
                 "{activeBudget?.name || 'Your budget'}" has been created successfully
@@ -752,151 +752,158 @@ export default function HomeScreen() {
     const hasExpenses = expenses.length > 0;
 
     return (
-      <>
-        {/* Custom safe zone with primary color to match the heading box */}
-        <View style={{ height: insets.top, backgroundColor: currentColors.primary + '20' }} />
-        
-        <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
-          <StandardHeader 
-            title={activeBudget?.name || 'Budget'}
-            rightIcon="wallet-outline"
-            onRightPress={() => router.push('/budgets')}
-          />
+      <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
+        <StandardHeader 
+          title={activeBudget?.name || 'Budget'}
+          rightIcon="wallet-outline"
+          onRightPress={() => router.push('/budgets')}
+        />
 
-          <ScrollView 
-            style={themedStyles.content} 
-            contentContainerStyle={[
-              themedStyles.scrollContent,
+        <ScrollView 
+          style={themedStyles.content} 
+          contentContainerStyle={[
+            themedStyles.scrollContent,
+            {
+              paddingHorizontal: 0, // Changed from 16 to 0 to match other screens
+              paddingTop: 32,
+              paddingBottom: 120, // Ensure bottom content is visible above nav bar
+            }
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={{ alignItems: 'center', marginBottom: 24 }}>
+            <View style={{
+              width: 120,
+              height: 120,
+              borderRadius: 60,
+              backgroundColor: currentColors.success + '20',
+              borderWidth: 3,
+              borderColor: currentColors.success,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 24,
+            }}>
+              <Icon name="checkmark-circle" size={60} style={{ color: currentColors.success }} />
+            </View>
+            <Text style={[themedStyles.title, { textAlign: 'center', marginBottom: 8, fontSize: 32 }]}>
+              You're almost ready!
+            </Text>
+            <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
+              Complete the setup to see your full dashboard
+            </Text>
+          </View>
+
+          <View style={{ gap: 16, marginBottom: 24 }}>
+            {/* People Status */}
+            <View style={[
+              themedStyles.card,
               {
-                paddingHorizontal: 0, // Changed from 16 to 0 to match other screens
-                paddingTop: 32,
-                paddingBottom: 120, // Ensure bottom content is visible above nav bar
+                backgroundColor: hasPeople ? currentColors.success + '10' : currentColors.warning + '10',
+                borderColor: hasPeople ? currentColors.success + '30' : currentColors.warning + '30',
+                borderWidth: 1,
+                padding: 20,
               }
-            ]}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={{ alignItems: 'center', marginBottom: 24 }}>
-              <Icon name="checkmark-circle" size={48} style={{ color: currentColors.success, marginBottom: 12 }} />
-              <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8 }]}>
-                You're almost ready!
-              </Text>
-              <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
-                Complete the setup to see your full dashboard
-              </Text>
-            </View>
-
-            <View style={{ gap: 16, marginBottom: 24 }}>
-              {/* People Status */}
-              <View style={[
-                themedStyles.card,
-                {
-                  backgroundColor: hasPeople ? currentColors.success + '10' : currentColors.warning + '10',
-                  borderColor: hasPeople ? currentColors.success + '30' : currentColors.warning + '30',
-                  borderWidth: 1,
-                  padding: 20,
-                }
-              ]}>
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
-                  <Icon 
-                    name={hasPeople ? "checkmark-circle" : "people"} 
-                    size={24} 
-                    style={{ 
-                      color: hasPeople ? currentColors.success : currentColors.warning, 
-                      marginRight: 12,
-                      marginTop: 2, // Added margin to align with text baseline
-                    }} 
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[themedStyles.subtitle, { fontSize: 18, fontWeight: '700' }]}>
-                      People & Income {hasPeople ? '✓' : ''}
-                    </Text>
-                  </View>
+            ]}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
+                <Icon 
+                  name={hasPeople ? "checkmark-circle" : "people"} 
+                  size={24} 
+                  style={{ 
+                    color: hasPeople ? currentColors.success : currentColors.warning, 
+                    marginRight: 12,
+                    marginTop: 2, // Added margin to align with text baseline
+                  }} 
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={[themedStyles.subtitle, { fontSize: 18, fontWeight: '700' }]}>
+                    People & Income {hasPeople ? '✓' : ''}
+                  </Text>
                 </View>
-                <Text style={[themedStyles.textSecondary, { marginBottom: 16, lineHeight: 20 }]}>
-                  {hasPeople 
-                    ? `Great! You have ${people.length} ${people.length === 1 ? 'person' : 'people'} added.`
-                    : 'Add people and their income sources to track individual spending.'
-                  }
-                </Text>
-                {!hasPeople && (
-                  <Button
-                    text="Add People & Income"
-                    onPress={() => router.push('/people')}
-                    variant="primary"
-                  />
-                )}
               </View>
-
-              {/* Expenses Status */}
-              <View style={[
-                themedStyles.card,
-                {
-                  backgroundColor: hasExpenses ? currentColors.success + '10' : currentColors.warning + '10',
-                  borderColor: hasExpenses ? currentColors.success + '30' : currentColors.warning + '30',
-                  borderWidth: 1,
-                  padding: 20,
+              <Text style={[themedStyles.textSecondary, { marginBottom: 16, lineHeight: 20 }]}>
+                {hasPeople 
+                  ? `Great! You have ${people.length} ${people.length === 1 ? 'person' : 'people'} added.`
+                  : 'Add people and their income sources to track individual spending.'
                 }
-              ]}>
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
-                  <Icon 
-                    name={hasExpenses ? "checkmark-circle" : "card"} 
-                    size={24} 
-                    style={{ 
-                      color: hasExpenses ? currentColors.success : currentColors.warning, 
-                      marginRight: 12,
-                      marginTop: 2, // Added margin to align with text baseline
-                    }} 
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[themedStyles.subtitle, { fontSize: 18, fontWeight: '700', marginBottom: 0 }]}>
-                      Expenses {hasExpenses ? '✓' : ''}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={[themedStyles.textSecondary, { marginBottom: 16, lineHeight: 20 }]}>
-                  {hasExpenses 
-                    ? `Perfect! You have ${expenses.length} ${expenses.length === 1 ? 'expense' : 'expenses'} tracked.`
-                    : 'Add your household and personal expenses to see spending breakdowns.'
-                  }
-                </Text>
-                {!hasExpenses && (
-                  <Button
-                    text="Add Expenses"
-                    onPress={() => router.push('/add-expense')}
-                    variant="secondary"
-                  />
-                )}
-              </View>
-            </View>
-
-            {/* Quick Actions for partial setup */}
-            <View style={{ marginBottom: 24 }}>
-              <Text style={[themedStyles.subtitle, { fontSize: 18, fontWeight: '700', marginBottom: 16 }]}>
-                Quick Actions
               </Text>
-              <QuickActionsSection />
+              {!hasPeople && (
+                <Button
+                  text="Add People & Income"
+                  onPress={() => router.push('/people')}
+                  variant="primary"
+                />
+              )}
             </View>
 
-            {hasPeople && hasExpenses && (
-              <View style={[
-                themedStyles.card,
-                {
-                  backgroundColor: currentColors.info + '10',
-                  borderColor: currentColors.info + '30',
-                  borderWidth: 1,
-                  padding: 20,
-                  alignItems: 'center',
-                }
-              ]}>
-                <Icon name="analytics" size={24} style={{ color: currentColors.info, marginBottom: 8 }} />
-                <Text style={[themedStyles.textSecondary, { textAlign: 'center', fontSize: 14 }]}>
-                  Refresh the page to see your complete dashboard with analytics and breakdowns!
-                </Text>
+            {/* Expenses Status */}
+            <View style={[
+              themedStyles.card,
+              {
+                backgroundColor: hasExpenses ? currentColors.success + '10' : currentColors.warning + '10',
+                borderColor: hasExpenses ? currentColors.success + '30' : currentColors.warning + '30',
+                borderWidth: 1,
+                padding: 20,
+              }
+            ]}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
+                <Icon 
+                  name={hasExpenses ? "checkmark-circle" : "card"} 
+                  size={24} 
+                  style={{ 
+                    color: hasExpenses ? currentColors.success : currentColors.warning, 
+                    marginRight: 12,
+                    marginTop: 2, // Added margin to align with text baseline
+                  }} 
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={[themedStyles.subtitle, { fontSize: 18, fontWeight: '700', marginBottom: 0 }]}>
+                    Expenses {hasExpenses ? '✓' : ''}
+                  </Text>
+                </View>
               </View>
-            )}
-          </ScrollView>
-        </View>
-      </>
+              <Text style={[themedStyles.textSecondary, { marginBottom: 16, lineHeight: 20 }]}>
+                {hasExpenses 
+                  ? `Perfect! You have ${expenses.length} ${expenses.length === 1 ? 'expense' : 'expenses'} tracked.`
+                  : 'Add your household and personal expenses to see spending breakdowns.'
+                }
+              </Text>
+              {!hasExpenses && (
+                <Button
+                  text="Add Expenses"
+                  onPress={() => router.push('/add-expense')}
+                  variant="secondary"
+                />
+              )}
+            </View>
+          </View>
+
+          {/* Quick Actions for partial setup */}
+          <View style={{ marginBottom: 24 }}>
+            <Text style={[themedStyles.subtitle, { fontSize: 18, fontWeight: '700', marginBottom: 16 }]}>
+              Quick Actions
+            </Text>
+            <QuickActionsSection />
+          </View>
+
+          {hasPeople && hasExpenses && (
+            <View style={[
+              themedStyles.card,
+              {
+                backgroundColor: currentColors.info + '10',
+                borderColor: currentColors.info + '30',
+                borderWidth: 1,
+                padding: 20,
+                alignItems: 'center',
+              }
+            ]}>
+              <Icon name="analytics" size={24} style={{ color: currentColors.info, marginBottom: 8 }} />
+              <Text style={[themedStyles.textSecondary, { textAlign: 'center', fontSize: 14 }]}>
+                Refresh the page to see your complete dashboard with analytics and breakdowns!
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      </View>
     );
   }
 
