@@ -144,14 +144,29 @@ export default function ExpensesScreen() {
           announceFilter(`Filtered by ${filterMessages.join(' and ')}`);
         }
       } else {
-        // Use persisted filters if not coming from dashboard
-        setCategoryFilter(filters.category || null);
-        setSearchQuery(filters.search || '');
-        setSearchTerm(filters.search || '');
-        setHasEndDateFilter(filters.hasEndDate || false);
+        // Check if this is navigation from bottom nav bar (no URL parameters at all)
+        const hasAnyParams = Object.keys(params).length > 0;
+        
+        if (!hasAnyParams) {
+          // Navigation from bottom nav bar - clear all filters to show all expenses
+          console.log('ExpensesScreen: Navigation from bottom nav bar detected - clearing all filters');
+          setCategoryFilter(null);
+          setSearchQuery('');
+          setSearchTerm('');
+          setHasEndDateFilter(false);
+          setFilter('all');
+          setPersonFilter(null);
+          announceFilter('Showing all expenses');
+        } else {
+          // Use persisted filters if coming from other navigation with parameters
+          setCategoryFilter(filters.category || null);
+          setSearchQuery(filters.search || '');
+          setSearchTerm(filters.search || '');
+          setHasEndDateFilter(filters.hasEndDate || false);
+        }
       }
     })();
-  }, [params.filter, params.category, params.fromDashboard, params.personId, announceFilter, data.people]);
+  }, [params.filter, params.category, params.fromDashboard, params.personId, announceFilter, data.people, params]);
 
   // Reload custom categories when data changes (e.g., after clearing all data)
   useEffect(() => {
@@ -167,15 +182,20 @@ export default function ExpensesScreen() {
     })();
   }, [data.people.length, data.expenses.length, categoryFilter]); // Reload when core data changes
 
-  // Persist category + search + hasEndDate with debounce (but not when coming from dashboard)
+  // Persist category + search + hasEndDate with debounce (but not when coming from dashboard or bottom nav)
   useEffect(() => {
-    if (params.fromDashboard !== 'true') {
+    const hasAnyParams = Object.keys(params).length > 0;
+    
+    // Only persist filters if:
+    // 1. Not coming from dashboard (params.fromDashboard !== 'true')
+    // 2. Has some URL parameters (not from bottom nav bar)
+    if (params.fromDashboard !== 'true' && hasAnyParams) {
       const t = setTimeout(() => {
         saveExpensesFilters({ category: categoryFilter, search: searchQuery, hasEndDate: hasEndDateFilter });
       }, 300);
       return () => clearTimeout(t);
     }
-  }, [categoryFilter, searchQuery, hasEndDateFilter, params.fromDashboard]);
+  }, [categoryFilter, searchQuery, hasEndDateFilter, params]);
 
   // Debounce search for filtering perf
   useEffect(() => {
