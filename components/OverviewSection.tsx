@@ -21,7 +21,7 @@ interface OverviewSectionProps {
   householdSettings?: HouseholdSettings;
 }
 
-type ViewMode = 'monthly' | 'yearly';
+type ViewMode = 'daily' | 'monthly' | 'yearly';
 
 export default function OverviewSection({ 
   calculations, 
@@ -33,10 +33,19 @@ export default function OverviewSection({
   const { formatCurrency } = useCurrency();
   const { themedStyles } = useThemedStyles();
   
+  // Default to monthly as requested
   const [viewMode, setViewMode] = useState<ViewMode>('monthly');
 
   const displayValues = useMemo(() => {
-    if (viewMode === 'monthly') {
+    if (viewMode === 'daily') {
+      return {
+        totalIncome: calculateMonthlyAmount(calculations.totalIncome, 'yearly') / 30.44, // Average days per month
+        totalExpenses: calculateMonthlyAmount(calculations.totalExpenses, 'yearly') / 30.44,
+        householdExpenses: calculateMonthlyAmount(calculations.householdExpenses, 'yearly') / 30.44,
+        personalExpenses: calculateMonthlyAmount(calculations.personalExpenses, 'yearly') / 30.44,
+        remaining: calculateMonthlyAmount(calculations.remaining, 'yearly') / 30.44,
+      };
+    } else if (viewMode === 'monthly') {
       return {
         totalIncome: calculateMonthlyAmount(calculations.totalIncome, 'yearly'),
         totalExpenses: calculateMonthlyAmount(calculations.totalExpenses, 'yearly'),
@@ -54,7 +63,7 @@ export default function OverviewSection({
       style={[
         {
           flex: 1,
-          paddingHorizontal: 16,
+          paddingHorizontal: 12,
           paddingVertical: 10,
           borderRadius: 8,
           backgroundColor: viewMode === mode ? currentColors.border : 'transparent',
@@ -87,6 +96,7 @@ export default function OverviewSection({
         padding: 4,
         marginBottom: 20 
       }}>
+        <TabButton mode="daily" label="Daily" />
         <TabButton mode="monthly" label="Monthly" />
         <TabButton mode="yearly" label="Yearly" />
       </View>
