@@ -47,12 +47,27 @@ export default function ExpensesScreen() {
   useEffect(() => {
     (async () => {
       const [customs, filters] = await Promise.all([getCustomExpenseCategories(), getExpensesFilters()]);
+      console.log('ExpensesScreen: Loaded custom categories:', customs);
       setCustomCategories(customs);
       setCategoryFilter(filters.category || null);
       setSearchQuery(filters.search || '');
       setSearchTerm(filters.search || '');
     })();
   }, []);
+
+  // Reload custom categories when data changes (e.g., after clearing all data)
+  useEffect(() => {
+    (async () => {
+      const customs = await getCustomExpenseCategories();
+      console.log('ExpensesScreen: Reloaded custom categories after data change:', customs);
+      setCustomCategories(customs);
+      // If current category filter is no longer valid, clear it
+      if (categoryFilter && !customs.includes(categoryFilter) && !DEFAULT_CATEGORIES.includes(categoryFilter)) {
+        console.log('ExpensesScreen: Clearing invalid category filter:', categoryFilter);
+        setCategoryFilter(null);
+      }
+    })();
+  }, [data.people.length, data.expenses.length, categoryFilter]); // Reload when core data changes
 
   // Persist category + search with debounce
   useEffect(() => {

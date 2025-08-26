@@ -34,6 +34,11 @@ export default function ManageCategoriesScreen() {
     refresh();
   }, [refresh]);
 
+  // Refresh when data changes (e.g., after clearing all data)
+  useEffect(() => {
+    refresh();
+  }, [data.people.length, data.expenses.length, refresh]);
+
   const isInUse = (category: string): boolean => {
     if (!data?.expenses) return false;
     const normalized = normalizeCategoryName(category);

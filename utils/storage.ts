@@ -634,7 +634,7 @@ export const clearActiveBudgetData = async (): Promise<void> => {
 // Clear ALL app data - delete all budgets, people, and expenses
 export const clearAllAppData = async (): Promise<{ success: boolean; error?: Error }> => {
   try {
-    console.log('storage: Clearing all app data - deleting all budgets, people, and expenses');
+    console.log('storage: Clearing all app data - deleting all budgets, people, expenses, and custom categories');
     
     // Create a completely empty app state with no budgets (first-time user state)
     const freshAppData: AppDataV2 = { 
@@ -643,9 +643,15 @@ export const clearAllAppData = async (): Promise<{ success: boolean; error?: Err
       activeBudgetId: '' 
     };
     
-    // Also clear custom categories and filters
-    await AsyncStorage.removeItem(STORAGE_KEYS.CUSTOM_EXPENSE_CATEGORIES);
-    await AsyncStorage.removeItem(STORAGE_KEYS.EXPENSES_FILTERS);
+    // Clear all related storage items including custom categories and filters
+    await Promise.all([
+      AsyncStorage.removeItem(STORAGE_KEYS.CUSTOM_EXPENSE_CATEGORIES),
+      AsyncStorage.removeItem(STORAGE_KEYS.EXPENSES_FILTERS),
+      // Also clear any legacy data that might exist
+      AsyncStorage.removeItem(STORAGE_KEYS.BUDGET_DATA),
+    ]);
+    
+    console.log('storage: Cleared custom categories, filters, and legacy data');
     
     // Save the fresh app data
     const result = await saveAppData(freshAppData);

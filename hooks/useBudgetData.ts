@@ -687,7 +687,7 @@ export const useBudgetData = () => {
 
   // Clear ALL app data - delete all budgets, people, and expenses
   const clearAllData = useCallback(async (): Promise<{ success: boolean; error?: Error }> => {
-    console.log('useBudgetData: Clearing ALL app data - deleting all budgets, people, and expenses...');
+    console.log('useBudgetData: Clearing ALL app data - deleting all budgets, people, expenses, and custom categories...');
     try {
       const result = await storageClearAllAppData();
       if (result.success) {

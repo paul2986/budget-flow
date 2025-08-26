@@ -56,6 +56,7 @@ export default function AddExpenseScreen() {
   useEffect(() => {
     (async () => {
       const list = await getCustomExpenseCategories();
+      console.log('AddExpenseScreen: Loaded custom categories:', list);
       setCustomCategories(list);
     })();
     
@@ -64,6 +65,15 @@ export default function AddExpenseScreen() {
       scrollViewRef.current?.scrollTo({ y: 0, animated: false });
     }, 100);
   }, []);
+
+  // Reload custom categories when data changes (e.g., after clearing all data)
+  useEffect(() => {
+    (async () => {
+      const list = await getCustomExpenseCategories();
+      console.log('AddExpenseScreen: Reloaded custom categories after data change:', list);
+      setCustomCategories(list);
+    })();
+  }, [data.people.length, data.expenses.length]); // Reload when core data changes
 
   // Load expense data for editing
   useEffect(() => {
@@ -148,33 +158,22 @@ export default function AddExpenseScreen() {
       return;
     }
 
-    // Check if personal expense is selected but no people exist
-    if (category === 'personal' && data.people.length === 0) {
-      Alert.alert(
-        'No People Added', 
-        'You need to add people to your budget before creating personal expenses. Please add a person first.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Add Person', 
-            onPress: () => {
-              router.push('/people');
-            }
-          }
-        ]
-      );
-      return;
+    // Determine the final personId to use
+    let finalPersonId = personId;
+    
+    // Auto-assign household expenses to first person if not already assigned
+    if (category === 'household' && !finalPersonId && data.people.length > 0) {
+      finalPersonId = data.people[0].id;
     }
-
-    // All expenses must be assigned to a person
-    if (!personId) {
-      if (category === 'household' && data.people.length > 0) {
-        // Auto-assign household expenses to first person
-        setPersonId(data.people[0].id);
+    
+    // Validate that we have a person assigned
+    if (!finalPersonId) {
+      if (category === 'personal') {
+        Alert.alert('Error', 'Please select a person to assign this personal expense to');
       } else {
         Alert.alert('Error', 'Please select a person to assign this expense to');
-        return;
       }
+      return;
     }
 
     const normalizedTag = normalizeCategoryName(categoryTag || 'Misc');
@@ -201,7 +200,7 @@ export default function AddExpenseScreen() {
         amount: numAmount,
         category,
         frequency,
-        personId: personId, // Always assign to a person
+        personId: finalPersonId, // Always assign to a person
         date: isEditMode ? expenseToEdit!.date : new Date(startDateYMD + 'T00:00:00Z').toISOString(),
         notes: '', // Always include notes as empty string
         categoryTag: normalizedTag,
@@ -307,6 +306,8 @@ export default function AddExpenseScreen() {
             // For household expenses, assign to first person for tracking but don't show picker
             if (data.people.length > 0) {
               setPersonId(data.people[0].id);
+            } else {
+              setPersonId(''); // Clear personId if no people exist
             }
           }}
           disabled={saving || deleting}
@@ -334,7 +335,11 @@ export default function AddExpenseScreen() {
               flex: 1,
             }
           ]}
-          onPress={() => setCategory('personal')}
+          onPress={() => {
+            setCategory('personal');
+            // Clear personId when switching to personal so user must select
+            setPersonId('');
+          }}
           disabled={saving || deleting}
         >
           <Text style={[
@@ -353,6 +358,9 @@ export default function AddExpenseScreen() {
   ), [category, currentColors, saving, deleting, themedStyles, data.people]);
 
   const PersonPicker = useCallback(() => {
+    // Don't show person picker for household expenses
+    if (category === 'household') return null;
+
     // Show message when personal is selected but no people exist
     if (category === 'personal' && data.people.length === 0) {
       return (
@@ -391,50 +399,52 @@ export default function AddExpenseScreen() {
       );
     }
 
-    // Don't show person picker for household expenses
-    if (category === 'household') return null;
-
-    // Show person picker for personal expenses when people exist
-    return (
-      <View style={themedStyles.section}>
-        <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
-          Assign to Person <Text style={{ color: currentColors.error }}>*</Text>
-        </Text>
-        <View style={[themedStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
-          {data.people.map((person) => (
-            <TouchableOpacity
-              key={person.id}
-              style={[
-                themedStyles.badge,
-                { 
-                  backgroundColor: personId === person.id ? currentColors.secondary : currentColors.border,
-                  marginRight: 8,
-                  marginBottom: 8,
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 20,
-                }
-              ]}
-              onPress={() => setPersonId(person.id)}
-              disabled={saving || deleting}
-            >
-              <Text style={[
-                themedStyles.badgeText,
-                { 
-                  color: personId === person.id ? '#FFFFFF' : currentColors.text,
-                  fontWeight: '600',
-                }
-              ]}>
-                {person.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
+    // Only show person picker for personal expenses when people exist
+    if (category === 'personal' && data.people.length > 0) {
+      return (
+        <View style={themedStyles.section}>
+          <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
+            Assign to Person <Text style={{ color: currentColors.error }}>*</Text>
+          </Text>
+          <View style={[themedStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
+            {data.people.map((person) => (
+              <TouchableOpacity
+                key={person.id}
+                style={[
+                  themedStyles.badge,
+                  { 
+                    backgroundColor: personId === person.id ? currentColors.secondary : currentColors.border,
+                    marginRight: 8,
+                    marginBottom: 8,
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 20,
+                  }
+                ]}
+                onPress={() => setPersonId(person.id)}
+                disabled={saving || deleting}
+              >
+                <Text style={[
+                  themedStyles.badgeText,
+                  { 
+                    color: personId === person.id ? '#FFFFFF' : currentColors.text,
+                    fontWeight: '600',
+                  }
+                ]}>
+                  {person.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={[themedStyles.textSecondary, { fontSize: 12, marginTop: 4 }]}>
+            Select the person this personal expense belongs to.
+          </Text>
         </View>
-        <Text style={[themedStyles.textSecondary, { fontSize: 12, marginTop: 4 }]}>
-          Select the person this personal expense belongs to.
-        </Text>
-      </View>
-    );
+      );
+    }
+
+    // Return null for all other cases (household or personal with no people)
+    return null;
   }, [data.people, personId, currentColors, saving, deleting, themedStyles, category]);
 
   const CategoryTagPicker = useCallback(() => {
