@@ -104,35 +104,33 @@ export default function CurrencyInput({
       )}
       
       <View style={{ position: 'relative' }}>
-        {/* Currency symbol overlay */}
-        {!isFocused && displayValue === '' && (
-          <View style={{
-            position: 'absolute',
-            left: 16,
-            top: 0,
-            bottom: 0,
-            justifyContent: 'center',
-            zIndex: 1,
-            pointerEvents: 'none',
-          }}>
-            <Text style={[
-              themedStyles.text,
-              { 
-                color: currentColors.textSecondary,
-                fontSize: 16,
-              }
-            ]}>
-              {currency.symbol}
-            </Text>
-          </View>
-        )}
+        {/* Currency symbol overlay - always show when there's no value or when focused */}
+        <View style={{
+          position: 'absolute',
+          left: 16,
+          top: 0,
+          bottom: 0,
+          justifyContent: 'center',
+          zIndex: 1,
+          pointerEvents: 'none',
+        }}>
+          <Text style={[
+            themedStyles.text,
+            { 
+              color: displayValue === '' ? currentColors.textSecondary : currentColors.text,
+              fontSize: 16,
+            }
+          ]}>
+            {currency.symbol}
+          </Text>
+        </View>
         
         <TextInput
           ref={inputRef}
           style={[
             themedStyles.input,
             {
-              paddingLeft: !isFocused && displayValue === '' ? 40 : 16, // Make room for currency symbol
+              paddingLeft: 40, // Always make room for currency symbol
             },
             error ? { borderColor: currentColors.error } : null,
             inputStyle,
@@ -141,7 +139,7 @@ export default function CurrencyInput({
           onChangeText={handleChangeText}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          placeholder={isFocused ? placeholder : `${currency.symbol}${placeholder}`}
+          placeholder={placeholder} // Remove currency symbol from placeholder to avoid duplication
           placeholderTextColor={currentColors.textSecondary}
           keyboardType="numeric"
           editable={editable}
