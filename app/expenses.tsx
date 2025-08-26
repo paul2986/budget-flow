@@ -235,94 +235,63 @@ export default function ExpensesScreen() {
 
   const getSortIcon = useCallback((sortType: SortOption) => {
     if (sortBy !== sortType) {
-      // Show default icon when not active
-      switch (sortType) {
-        case 'date': return 'calendar-outline';
-        case 'alphabetical': return 'text-outline';
-        case 'cost': return 'cash-outline';
-        default: return 'calendar-outline';
-      }
+      return 'swap-vertical-outline';
     }
     
-    // Show directional icon when active
-    switch (sortType) {
-      case 'date':
-        return sortOrder === 'desc' ? 'arrow-down-outline' : 'arrow-up-outline';
-      case 'alphabetical':
-        return sortOrder === 'asc' ? 'text-outline' : 'text-outline';
-      case 'cost':
-        return sortOrder === 'asc' ? 'trending-up-outline' : 'trending-down-outline';
-      default:
-        return 'calendar-outline';
-    }
+    return sortOrder === 'desc' ? 'arrow-down' : 'arrow-up';
   }, [sortBy, sortOrder]);
 
   const getSortLabel = useCallback((sortType: SortOption) => {
-    if (sortBy !== sortType) {
-      // Show simple label when not active
-      switch (sortType) {
-        case 'date': return 'Date Added';
-        case 'alphabetical': return 'Alphabetical';
-        case 'cost': return 'Cost';
-        default: return 'Date Added';
-      }
-    }
-    
-    // Show directional label when active
     switch (sortType) {
-      case 'date':
-        return sortOrder === 'desc' ? 'Newest First' : 'Oldest First';
-      case 'alphabetical':
-        return sortOrder === 'asc' ? 'A to Z' : 'Z to A';
-      case 'cost':
-        return sortOrder === 'asc' ? 'Lowest Cost' : 'Highest Cost';
-      default:
-        return 'Date Added';
+      case 'date': return 'Date';
+      case 'alphabetical': return 'Name';
+      case 'cost': return 'Amount';
+      default: return 'Date';
     }
-  }, [sortBy, sortOrder]);
+  }, []);
 
   const SortButton = useCallback(
     ({ sortType }: { sortType: SortOption }) => (
       <TouchableOpacity
         style={[
-          themedStyles.badge,
           {
-            backgroundColor: sortBy === sortType ? currentColors.secondary : currentColors.border,
-            marginRight: 8,
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            borderRadius: 16,
+            backgroundColor: sortBy === sortType ? currentColors.primary : currentColors.backgroundAlt,
+            marginRight: 12,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            borderRadius: 20,
             flexDirection: 'row',
             alignItems: 'center',
-            minHeight: 36,
+            borderWidth: 1,
+            borderColor: sortBy === sortType ? currentColors.primary : currentColors.border,
+            minHeight: 40,
           },
         ]}
         onPress={() => handleSortPress(sortType)}
         disabled={saving || deletingExpenseId !== null}
       >
-        <Icon 
-          name={getSortIcon(sortType) as any} 
-          size={16} 
-          style={{ 
-            color: sortBy === sortType ? '#FFFFFF' : currentColors.text, 
-            marginRight: 6 
-          }} 
-        />
         <Text
           style={[
-            themedStyles.badgeText,
             {
               color: sortBy === sortType ? '#FFFFFF' : currentColors.text,
               fontWeight: '600',
-              fontSize: 13,
+              fontSize: 14,
+              marginRight: 6,
             },
           ]}
         >
           {getSortLabel(sortType)}
         </Text>
+        <Icon 
+          name={getSortIcon(sortType) as any} 
+          size={14} 
+          style={{ 
+            color: sortBy === sortType ? '#FFFFFF' : currentColors.textSecondary,
+          }} 
+        />
       </TouchableOpacity>
     ),
-    [sortBy, sortOrder, currentColors, saving, deletingExpenseId, themedStyles, handleSortPress, getSortIcon, getSortLabel]
+    [sortBy, sortOrder, currentColors, saving, deletingExpenseId, handleSortPress, getSortIcon, getSortLabel]
   );
 
   // Apply filters
@@ -390,21 +359,14 @@ export default function ExpensesScreen() {
 
   const hasActiveFilters = !!categoryFilter || !!searchTerm || (filter !== 'all') || !!personFilter;
 
-  // Header buttons - filter button on left, clear filter button (if filters active), add button on right
+  // Header buttons - filter button on left, add button on right
   const leftButtons = [
     {
-      icon: 'funnel-outline',
+      icon: 'options-outline',
       onPress: () => setShowFilterModal(true),
-      backgroundColor: hasActiveFilters ? currentColors.secondary : currentColors.border + '80',
+      backgroundColor: hasActiveFilters ? currentColors.primary : currentColors.backgroundAlt,
       iconColor: hasActiveFilters ? '#FFFFFF' : currentColors.text,
     },
-    // Add clear filter button next to filter button when filters are active
-    ...(hasActiveFilters ? [{
-      icon: 'close',
-      onPress: handleClearFilters,
-      backgroundColor: currentColors.error,
-      iconColor: '#FFFFFF',
-    }] : []),
   ];
 
   const rightButtons = [
@@ -427,11 +389,10 @@ export default function ExpensesScreen() {
         loading={saving || deletingExpenseId !== null} 
       />
 
-      {/* Enhanced sort options */}
-      <View style={[themedStyles.section, { paddingBottom: 0, paddingTop: 12, paddingHorizontal: 16 }]}>
-        <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Sort by</Text>
+      {/* Sort controls - simplified and cleaner */}
+      <View style={{ paddingHorizontal: 20, paddingVertical: 16, backgroundColor: currentColors.backgroundAlt, borderBottomWidth: 1, borderBottomColor: currentColors.border }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={{ paddingHorizontal: 4, flexDirection: 'row' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <SortButton sortType="date" />
             <SortButton sortType="alphabetical" />
             <SortButton sortType="cost" />
@@ -439,216 +400,181 @@ export default function ExpensesScreen() {
         </ScrollView>
       </View>
 
-      {/* Active filters summary - compact */}
+      {/* Active filters summary - more prominent when active */}
       {hasActiveFilters && (
-        <View style={[themedStyles.section, { paddingTop: 8, paddingHorizontal: 16 }]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={[themedStyles.textSecondary, { marginRight: 8, fontSize: 12 }]}>Filtered:</Text>
-              {!!categoryFilter && (
-                <View
-                  style={[
-                    themedStyles.badge,
-                    {
-                      backgroundColor: currentColors.secondary + '20',
-                      borderRadius: 12,
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      marginRight: 6,
-                      borderWidth: 1,
-                      borderColor: currentColors.secondary,
-                    },
-                  ]}
-                >
-                  <Text style={[themedStyles.text, { color: currentColors.secondary, fontSize: 10 }]}>{categoryFilter}</Text>
-                </View>
-              )}
-              {!!searchTerm && (
-                <View
-                  style={[
-                    themedStyles.badge,
-                    {
-                      backgroundColor: currentColors.primary + '20',
-                      borderRadius: 12,
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      marginRight: 6,
-                      borderWidth: 1,
-                      borderColor: currentColors.primary,
-                    },
-                  ]}
-                >
-                  <Text style={[themedStyles.text, { color: currentColors.primary, fontSize: 10 }]}>"{searchTerm}"</Text>
-                </View>
-              )}
-              {filter !== 'all' && (
-                <View
-                  style={[
-                    themedStyles.badge,
-                    {
-                      backgroundColor: currentColors.household + '20',
-                      borderRadius: 12,
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      marginRight: 6,
-                      borderWidth: 1,
-                      borderColor: currentColors.household,
-                    },
-                  ]}
-                >
-                  <Text style={[themedStyles.text, { color: currentColors.household, fontSize: 10 }]}>
-                    {filter === 'household' ? 'Household' : 'Personal'}
-                  </Text>
-                </View>
-              )}
-              {personFilter && (
-                <View
-                  style={[
-                    themedStyles.badge,
-                    {
-                      backgroundColor: currentColors.personal + '20',
-                      borderRadius: 12,
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      marginRight: 6,
-                      borderWidth: 1,
-                      borderColor: currentColors.personal,
-                    },
-                  ]}
-                >
-                  <Text style={[themedStyles.text, { color: currentColors.personal, fontSize: 10 }]}>
-                    {data.people.find(p => p.id === personFilter)?.name || 'Unknown'}
-                  </Text>
-                </View>
-              )}
+        <View style={{ 
+          paddingHorizontal: 20, 
+          paddingVertical: 12, 
+          backgroundColor: currentColors.primary + '10',
+          borderBottomWidth: 1,
+          borderBottomColor: currentColors.primary + '20'
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <Icon name="funnel" size={16} style={{ color: currentColors.primary, marginRight: 8 }} />
+              <Text style={[themedStyles.text, { color: currentColors.primary, fontWeight: '600', fontSize: 14 }]}>
+                {filteredExpenses.length} of {data.expenses.length} expenses
+              </Text>
             </View>
-          </ScrollView>
+            <TouchableOpacity 
+              onPress={handleClearFilters}
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                backgroundColor: currentColors.primary,
+                borderRadius: 12,
+              }}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>Clear</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0 }]}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 20 }]}>
         {filteredExpenses.length === 0 ? (
-          <View style={themedStyles.card}>
-            <View style={themedStyles.centerContent}>
-              <Icon name="receipt-outline" size={64} style={{ color: currentColors.textSecondary, marginBottom: 16 }} />
-              <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 12 }]}>No Expenses Found</Text>
-              <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
-                {hasActiveFilters
-                  ? 'No expenses match your filters. Try adjusting your filters.'
-                  : 'Add your first expense to get started'}
-              </Text>
-            </View>
+          <View style={[themedStyles.card, { alignItems: 'center', paddingVertical: 60 }]}>
+            <Icon name="receipt-outline" size={64} style={{ color: currentColors.textSecondary, marginBottom: 20 }} />
+            <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8, color: currentColors.textSecondary }]}>
+              {hasActiveFilters ? 'No matching expenses' : 'No expenses yet'}
+            </Text>
+            <Text style={[themedStyles.textSecondary, { textAlign: 'center', lineHeight: 22 }]}>
+              {hasActiveFilters
+                ? 'Try adjusting your filters to see more expenses'
+                : 'Add your first expense to get started tracking your spending'}
+            </Text>
           </View>
         ) : (
-          filteredExpenses.map((expense) => {
-            console.log('ExpensesScreen: Rendering expense:', { 
-              id: expense.id, 
-              description: expense.description, 
-              category: expense.category,
-              personId: expense.personId 
-            });
-            const person = expense.personId ? data.people.find((p) => p.id === expense.personId) : null;
-            const monthlyAmount = calculateMonthlyAmount(expense.amount, expense.frequency);
-            const isDeleting = deletingExpenseId === expense.id;
-            const tag = normalizeCategoryName((expense as any).categoryTag || 'Misc');
+          <View style={{ gap: 12 }}>
+            {filteredExpenses.map((expense) => {
+              console.log('ExpensesScreen: Rendering expense:', { 
+                id: expense.id, 
+                description: expense.description, 
+                category: expense.category,
+                personId: expense.personId 
+              });
+              const person = expense.personId ? data.people.find((p) => p.id === expense.personId) : null;
+              const monthlyAmount = calculateMonthlyAmount(expense.amount, expense.frequency);
+              const isDeleting = deletingExpenseId === expense.id;
+              const tag = normalizeCategoryName((expense as any).categoryTag || 'Misc');
+              const isHousehold = expense.category === 'household';
 
-            return (
-              <View key={expense.id} style={[themedStyles.card, { marginBottom: 6, padding: 12, opacity: isDeleting ? 0.6 : 1 }]}>
-                <TouchableOpacity onPress={() => handleEditExpense(expense)} activeOpacity={0.7} disabled={saving || isDeleting} style={{ flex: 1 }}>
-                  {/* Title and amount */}
-                  <View style={[themedStyles.row, { marginBottom: 6, alignItems: 'flex-start', paddingRight: 50 }]}>
-                    <View style={themedStyles.flex1}>
-                      <Text style={[themedStyles.text, { fontWeight: '700', fontSize: 16 }]}>{expense.description}</Text>
+              return (
+                <TouchableOpacity 
+                  key={expense.id} 
+                  onPress={() => handleEditExpense(expense)} 
+                  activeOpacity={0.7} 
+                  disabled={saving || isDeleting}
+                  style={[
+                    themedStyles.card, 
+                    { 
+                      padding: 20,
+                      opacity: isDeleting ? 0.6 : 1,
+                      borderLeftWidth: 4,
+                      borderLeftColor: isHousehold ? currentColors.household : currentColors.personal,
+                    }
+                  ]}
+                >
+                  {/* Main content row */}
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
+                    {/* Left side - expense info */}
+                    <View style={{ flex: 1, marginRight: 16 }}>
+                      <Text style={[themedStyles.text, { fontWeight: '700', fontSize: 18, marginBottom: 4, lineHeight: 24 }]}>
+                        {expense.description}
+                      </Text>
+                      
+                      {/* Category and person info */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                        <View style={{
+                          backgroundColor: isHousehold ? currentColors.household + '15' : currentColors.personal + '15',
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          borderRadius: 8,
+                          marginRight: 8,
+                        }}>
+                          <Text style={{
+                            color: isHousehold ? currentColors.household : currentColors.personal,
+                            fontSize: 11,
+                            fontWeight: '700',
+                            textTransform: 'uppercase',
+                          }}>
+                            {expense.category}
+                          </Text>
+                        </View>
+                        
+                        <Text style={[themedStyles.textSecondary, { fontSize: 13 }]}>
+                          {tag}
+                        </Text>
+                      </View>
+
+                      {/* Person and frequency */}
+                      <Text style={[themedStyles.textSecondary, { fontSize: 13, lineHeight: 18 }]}>
+                        {person ? person.name : 'Unassigned'} • {expense.frequency}
+                      </Text>
                     </View>
+
+                    {/* Right side - amount and delete */}
                     <View style={{ alignItems: 'flex-end' }}>
-                      <Text
-                        style={[
-                          themedStyles.text,
-                          {
-                            fontWeight: '800',
-                            color: expense.category === 'household' ? currentColors.household : currentColors.personal,
-                            fontSize: 16,
-                          },
-                        ]}
-                      >
+                      <Text style={[
+                        themedStyles.text,
+                        {
+                          fontWeight: '800',
+                          fontSize: 20,
+                          color: isHousehold ? currentColors.household : currentColors.personal,
+                          marginBottom: 4,
+                        },
+                      ]}>
                         {formatCurrency(expense.amount)}
                       </Text>
-                      <Text style={[themedStyles.textSecondary, { fontSize: 11 }]}>{formatCurrency(monthlyAmount)}/mo</Text>
+                      <Text style={[themedStyles.textSecondary, { fontSize: 12, marginBottom: 12 }]}>
+                        {formatCurrency(monthlyAmount)}/mo
+                      </Text>
+                      
+                      {/* Delete button */}
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleDeletePress(expense.id, expense.description);
+                        }}
+                        disabled={saving || isDeleting}
+                        style={{
+                          padding: 8,
+                          borderRadius: 16,
+                          backgroundColor: currentColors.error + '15',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: 32,
+                          minHeight: 32,
+                        }}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        {isDeleting ? (
+                          <ActivityIndicator size="small" color={currentColors.error} />
+                        ) : (
+                          <Icon name="trash-outline" size={16} style={{ color: currentColors.error }} />
+                        )}
+                      </TouchableOpacity>
                     </View>
                   </View>
 
-                  {/* Meta row with ownership badge + date + category tag */}
-                  <View style={[themedStyles.row, { alignItems: 'center', paddingRight: 50, flexWrap: 'wrap' }]}>
-                    <View
-                      style={[
-                        themedStyles.badge,
-                        {
-                          backgroundColor: expense.category === 'household' ? currentColors.household : currentColors.personal,
-                          marginRight: 8,
-                          marginBottom: 4,
-                          paddingHorizontal: 8,
-                          paddingVertical: 3,
-                          borderRadius: 12,
-                        },
-                      ]}
-                    >
-                      <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontSize: 10, fontWeight: '700' }]}>{expense.category.toUpperCase()}</Text>
-                    </View>
-
-                    <View
-                      style={[
-                        themedStyles.badge,
-                        {
-                          backgroundColor: currentColors.secondary + '20',
-                          marginRight: 8,
-                          marginBottom: 4,
-                          paddingHorizontal: 8,
-                          paddingVertical: 3,
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          borderColor: currentColors.secondary,
-                        },
-                      ]}
-                    >
-                      <Text style={[themedStyles.text, { color: currentColors.secondary, fontSize: 10, fontWeight: '700' }]}>{tag}</Text>
-                    </View>
-
-                    <Text style={[themedStyles.textSecondary, { flex: 1, fontSize: 12 }]}>
-                      {expense.category === 'household' && !expense.personId 
-                        ? 'Household • ' 
-                        : person 
-                          ? `${person.name} • ` 
-                          : expense.category === 'household'
-                            ? 'Household • '
-                            : 'Unknown Person • '
-                      }
-                      {expense.frequency} • {new Date(expense.date).toLocaleDateString()}
+                  {/* Date at bottom */}
+                  <View style={{ 
+                    paddingTop: 12, 
+                    borderTopWidth: 1, 
+                    borderTopColor: currentColors.border + '50',
+                  }}>
+                    <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
+                      Added {new Date(expense.date).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        year: 'numeric' 
+                      })}
                     </Text>
                   </View>
                 </TouchableOpacity>
-
-                {/* Delete button */}
-                <View style={{ position: 'absolute', top: 8, right: 8, zIndex: 100 }}>
-                  <TouchableOpacity
-                    onPress={() => handleDeletePress(expense.id, expense.description)}
-                    disabled={saving || isDeleting}
-                    style={{
-                      padding: 8,
-                      borderRadius: 20,
-                      backgroundColor: currentColors.error + '20',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minWidth: 36,
-                      minHeight: 36,
-                    }}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    {isDeleting ? <ActivityIndicator size="small" color={currentColors.error} /> : <Icon name="trash-outline" size={18} style={{ color: currentColors.error }} />}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })
+              );
+            })}
+          </View>
         )}
       </ScrollView>
 
