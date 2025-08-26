@@ -200,20 +200,45 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Data Management */}
-        <View style={[themedStyles.card, { marginBottom: 24 }]}>
-          <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 12 }]}>Data Management</Text>
+        {/* Danger Zone */}
+        <View style={[
+          themedStyles.card, 
+          { 
+            marginBottom: 24,
+            borderColor: currentColors.error + '40',
+            borderWidth: 2,
+            backgroundColor: currentColors.error + '08'
+          }
+        ]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+            <Icon name="warning" size={24} style={{ color: currentColors.error, marginRight: 12 }} />
+            <Text style={[themedStyles.text, { fontWeight: '700', color: currentColors.error, fontSize: 18 }]}>
+              Danger Zone
+            </Text>
+          </View>
+          
+          <Text style={[themedStyles.textSecondary, { marginBottom: 16, lineHeight: 20 }]}>
+            This action will permanently delete all your data. This cannot be undone.
+          </Text>
           
           <TouchableOpacity
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              paddingVertical: 8,
+              justifyContent: 'center',
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              backgroundColor: currentColors.error,
+              borderRadius: 12,
+              borderWidth: 2,
+              borderColor: currentColors.error,
             }}
             onPress={handleClearAllData}
           >
-            <Icon name="trash-outline" size={20} style={{ color: currentColors.error, marginRight: 12 }} />
-            <Text style={[themedStyles.text, { color: currentColors.error }]}>Clear All Data</Text>
+            <Icon name="trash" size={20} style={{ color: currentColors.background, marginRight: 8 }} />
+            <Text style={[themedStyles.text, { color: currentColors.background, fontWeight: '700' }]}>
+              Clear All Data
+            </Text>
           </TouchableOpacity>
         </View>
 

@@ -151,69 +151,90 @@ export default function BudgetsScreen() {
     
     return (
       <View style={[
-        themedStyles.card,
         {
           position: 'absolute',
-          top: 40,
-          right: 0,
+          top: 50,
+          right: 8,
           zIndex: 1000,
-          minWidth: 200,
+          minWidth: 180,
           backgroundColor: currentColors.backgroundAlt,
+          borderRadius: 12,
           borderWidth: 1,
           borderColor: currentColors.border,
           shadowColor: currentColors.text,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 5,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 12,
+          elevation: 8,
+          paddingVertical: 8,
         }
       ]}>
         {!isActive && (
           <TouchableOpacity
-            style={[themedStyles.dropdownItem]}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+            }}
             onPress={() => {
               handleSetActiveBudget(budget.id);
               setDropdownBudgetId(null);
             }}
           >
-            <Icon name="checkmark-circle" size={16} color={currentColors.success} />
-            <Text style={[themedStyles.text, { marginLeft: 8 }]}>Set as Active</Text>
+            <Icon name="checkmark-circle" size={18} color={currentColors.success} />
+            <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Set as Active</Text>
           </TouchableOpacity>
         )}
         
         <TouchableOpacity
-          style={[themedStyles.dropdownItem]}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+          }}
           onPress={() => {
             setEditingBudgetId(budget.id);
             setEditingName(budget.name);
             setDropdownBudgetId(null);
           }}
         >
-          <Icon name="create" size={16} color={currentColors.text} />
-          <Text style={[themedStyles.text, { marginLeft: 8 }]}>Rename</Text>
+          <Icon name="create" size={18} color={currentColors.text} />
+          <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Rename</Text>
         </TouchableOpacity>
         
         <TouchableOpacity
-          style={[themedStyles.dropdownItem]}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+          }}
           onPress={() => {
             handleDuplicateBudget(budget.id, budget.name);
             setDropdownBudgetId(null);
           }}
         >
-          <Icon name="copy" size={16} color={currentColors.text} />
-          <Text style={[themedStyles.text, { marginLeft: 8 }]}>Duplicate</Text>
+          <Icon name="copy" size={18} color={currentColors.text} />
+          <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Duplicate</Text>
         </TouchableOpacity>
         
         {budgets.length > 1 && (
           <TouchableOpacity
-            style={[themedStyles.dropdownItem]}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+            }}
             onPress={() => {
               handleDeleteBudget(budget.id, budget.name);
               setDropdownBudgetId(null);
             }}
           >
-            <Icon name="trash" size={16} color={currentColors.error} />
-            <Text style={[themedStyles.text, { marginLeft: 8, color: currentColors.error }]}>Delete</Text>
+            <Icon name="trash" size={18} color={currentColors.error} />
+            <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15, color: currentColors.error }]}>Delete</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -249,141 +270,125 @@ export default function BudgetsScreen() {
       />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
-        {/* Existing Budgets */}
-        {budgets.length > 0 && (
-          <View style={themedStyles.card}>
-            <Text style={[themedStyles.subtitle, { marginBottom: 16 }]}>
-              Your Budgets ({budgets.length})
-            </Text>
-            
-            {budgets.map((budget) => {
-              const isActive = activeBudget?.id === budget.id;
-              const isEditing = editingBudgetId === budget.id;
-              
-              return (
-                <View key={budget.id} style={{ position: 'relative' }}>
-                  <View style={[
-                    {
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      paddingVertical: 16,
-                      paddingHorizontal: 16,
-                      marginBottom: 8,
-                      backgroundColor: isActive ? currentColors.primary + '15' : currentColors.backgroundAlt,
-                      borderRadius: 12,
-                      borderWidth: isActive ? 1 : 0,
-                      borderColor: isActive ? currentColors.primary : 'transparent',
-                    }
-                  ]}>
-                    <View style={{ flex: 1 }}>
-                      {isEditing ? (
-                        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                          <TextInput
-                            style={[themedStyles.input, { flex: 1, marginBottom: 0 }]}
-                            value={editingName}
-                            onChangeText={setEditingName}
-                            autoFocus
-                            selectTextOnFocus
-                          />
-                          <TouchableOpacity
-                            onPress={() => handleRenameBudget(budget.id)}
-                            style={{ padding: 8 }}
-                          >
-                            <Icon name="checkmark" size={20} color={currentColors.success} />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() => {
-                              setEditingBudgetId(null);
-                              setEditingName('');
-                            }}
-                            style={{ padding: 8 }}
-                          >
-                            <Icon name="close" size={20} color={currentColors.error} />
-                          </TouchableOpacity>
-                        </View>
-                      ) : (
-                        <TouchableOpacity
-                          onPress={() => !isActive && handleSetActiveBudget(budget.id)}
-                          style={{ flex: 1 }}
-                        >
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+        {/* Individual Budget Cards */}
+        {budgets.length > 0 && budgets.map((budget) => {
+          const isActive = activeBudget?.id === budget.id;
+          const isEditing = editingBudgetId === budget.id;
+          
+          return (
+            <View key={budget.id} style={[themedStyles.card, { position: 'relative' }]}>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
+                <View style={{ flex: 1 }}>
+                  {isEditing ? (
+                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                      <TextInput
+                        style={[themedStyles.input, { flex: 1, marginBottom: 0 }]}
+                        value={editingName}
+                        onChangeText={setEditingName}
+                        autoFocus
+                        selectTextOnFocus
+                      />
+                      <TouchableOpacity
+                        onPress={() => handleRenameBudget(budget.id)}
+                        style={{ padding: 8 }}
+                      >
+                        <Icon name="checkmark" size={20} color={currentColors.success} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setEditingBudgetId(null);
+                          setEditingName('');
+                        }}
+                        style={{ padding: 8 }}
+                      >
+                        <Icon name="close" size={20} color={currentColors.error} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => !isActive && handleSetActiveBudget(budget.id)}
+                      style={{ flex: 1 }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                        <Text style={[
+                          themedStyles.text,
+                          { 
+                            fontWeight: isActive ? '700' : '600', 
+                            flex: 1,
+                            fontSize: 18,
+                            color: isActive ? currentColors.primary : currentColors.text
+                          }
+                        ]}>
+                          {budget.name}
+                        </Text>
+                        {isActive && (
+                          <View style={[
+                            {
+                              backgroundColor: currentColors.success,
+                              paddingHorizontal: 10,
+                              paddingVertical: 4,
+                              borderRadius: 8,
+                            }
+                          ]}>
                             <Text style={[
-                              themedStyles.text,
-                              { 
-                                fontWeight: isActive ? '600' : '500', 
-                                flex: 1,
-                                fontSize: 16,
-                                color: isActive ? currentColors.primary : currentColors.text
+                              {
+                                color: currentColors.background,
+                                fontSize: 12,
+                                fontWeight: '700'
                               }
                             ]}>
-                              {budget.name}
-                            </Text>
-                            {isActive && (
-                              <View style={[
-                                {
-                                  backgroundColor: currentColors.success,
-                                  paddingHorizontal: 8,
-                                  paddingVertical: 2,
-                                  borderRadius: 6,
-                                }
-                              ]}>
-                                <Text style={[
-                                  {
-                                    color: currentColors.background,
-                                    fontSize: 12,
-                                    fontWeight: '600'
-                                  }
-                                ]}>
-                                  Active
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-                          
-                          <View style={{ flexDirection: 'row', gap: 16 }}>
-                            <Text style={[themedStyles.textSecondary, { fontSize: 13 }]}>
-                              {budget.people?.length || 0} people
-                            </Text>
-                            <Text style={[themedStyles.textSecondary, { fontSize: 13 }]}>
-                              {budget.expenses?.length || 0} expenses
-                            </Text>
-                            <Text style={[themedStyles.textSecondary, { fontSize: 13 }]}>
-                              {formatDate(budget.modifiedAt)}
+                              Active
                             </Text>
                           </View>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                    
-                    {!isEditing && (
-                      <TouchableOpacity
-                        onPress={() => setDropdownBudgetId(dropdownBudgetId === budget.id ? null : budget.id)}
-                        style={{ 
-                          padding: 8, 
-                          marginLeft: 8,
-                          borderRadius: 6,
-                          backgroundColor: currentColors.background + '50'
-                        }}
-                      >
-                        <Icon name="help-circle" size={20} color={currentColors.textSecondary} />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                  
-                  {dropdownBudgetId === budget.id && <DropdownMenu budget={budget} />}
+                        )}
+                      </View>
+                      
+                      <View style={{ flexDirection: 'row', gap: 20 }}>
+                        <Text style={[themedStyles.textSecondary, { fontSize: 14 }]}>
+                          {budget.people?.length || 0} people
+                        </Text>
+                        <Text style={[themedStyles.textSecondary, { fontSize: 14 }]}>
+                          {budget.expenses?.length || 0} expenses
+                        </Text>
+                        <Text style={[themedStyles.textSecondary, { fontSize: 14 }]}>
+                          {formatDate(budget.modifiedAt)}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
                 </View>
-              );
-            })}
-          </View>
-        )}
+                
+                {!isEditing && (
+                  <TouchableOpacity
+                    onPress={() => setDropdownBudgetId(dropdownBudgetId === budget.id ? null : budget.id)}
+                    style={{ 
+                      padding: 8, 
+                      marginLeft: 12,
+                      borderRadius: 8,
+                      backgroundColor: currentColors.background + '80'
+                    }}
+                  >
+                    <Icon name="ellipsis-vertical" size={20} color={currentColors.text} />
+                  </TouchableOpacity>
+                )}
+              </View>
+              
+              {dropdownBudgetId === budget.id && <DropdownMenu budget={budget} />}
+            </View>
+          );
+        })}
 
         {budgets.length === 0 && (
-          <View style={[themedStyles.card, themedStyles.centerContent]}>
-            <Icon name="folder" size={48} color={currentColors.textSecondary} />
-            <Text style={[themedStyles.text, { marginTop: 16, textAlign: 'center' }]}>
+          <View style={[themedStyles.card, themedStyles.centerContent, { paddingVertical: 60 }]}>
+            <Icon name="folder" size={64} color={currentColors.textSecondary} />
+            <Text style={[themedStyles.text, { marginTop: 20, textAlign: 'center', fontSize: 18, fontWeight: '600' }]}>
               No budgets yet
             </Text>
-            <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginTop: 8 }]}>
+            <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginTop: 8, fontSize: 15 }]}>
               Tap the + button to create your first budget
             </Text>
           </View>
@@ -392,10 +397,29 @@ export default function BudgetsScreen() {
 
       {/* Create Budget Modal */}
       {showCreateModal && (
-        <View style={themedStyles.modalOverlay}>
-          <View style={themedStyles.modalContent}>
-            <View style={[themedStyles.modalHeader, { marginBottom: 20 }]}>
-              <Text style={themedStyles.modalTitle}>Create New Budget</Text>
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 2000,
+        }}>
+          <View style={{
+            backgroundColor: currentColors.backgroundAlt,
+            borderRadius: 16,
+            padding: 24,
+            margin: 20,
+            width: '90%',
+            maxWidth: 400,
+            borderWidth: 1,
+            borderColor: currentColors.border,
+          }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={[themedStyles.subtitle, { marginBottom: 0, fontSize: 20 }]}>Create New Budget</Text>
               <TouchableOpacity onPress={() => {
                 setShowCreateModal(false);
                 setNewBudgetName('');
