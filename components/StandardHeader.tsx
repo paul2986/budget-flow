@@ -49,14 +49,21 @@ export default function StandardHeader({
   const defaultRightIconColor = rightIconColor || '#FFFFFF';
   const defaultLeftIconColor = leftIconColor || currentColors.text;
 
-  // Fixed width for button areas to prevent layout shifts
-  // This ensures the plus icon always stays in the same position
-  const BUTTON_AREA_WIDTH = 140; // Fixed width to accommodate up to 3 buttons
+  // Calculate the width needed for left and right button areas to ensure title centering
+  const leftButtonsCount = leftButtons?.length || (showLeftIcon && onLeftPress ? 1 : 0);
+  const rightButtonsCount = rightButtons?.length || (showRightIcon && onRightPress ? 1 : 0);
+  
+  // Each button is 44px wide with 8px margin between them
+  const leftButtonsWidth = leftButtonsCount > 0 ? (leftButtonsCount * 44) + ((leftButtonsCount - 1) * 8) : 44;
+  const rightButtonsWidth = rightButtonsCount > 0 ? (rightButtonsCount * 44) + ((rightButtonsCount - 1) * 8) : 44;
+  
+  // Use the larger of the two widths to ensure symmetry
+  const sideWidth = Math.max(leftButtonsWidth, rightButtonsWidth);
 
   return (
     <View style={[themedStyles.header, { height: subtitle ? 76 : 64, boxShadow: '0px 1px 2px rgba(0,0,0,0.10)' }]}>
-      {/* Left side - fixed width to prevent layout shifts */}
-      <View style={{ width: BUTTON_AREA_WIDTH, height: 44, justifyContent: 'center', alignItems: 'flex-start', flexDirection: 'row' }}>
+      {/* Left side - supports multiple left buttons */}
+      <View style={{ width: sideWidth, height: 44, justifyContent: 'center', alignItems: 'flex-start', flexDirection: 'row' }}>
         {leftButtons && leftButtons.length > 0 ? (
           leftButtons.map((btn, idx) => (
             <TouchableOpacity
@@ -111,8 +118,8 @@ export default function StandardHeader({
         ) : null}
       </View>
 
-      {/* Right side - fixed width to prevent layout shifts */}
-      <View style={{ width: BUTTON_AREA_WIDTH, height: 44, justifyContent: 'center', alignItems: 'flex-end', flexDirection: 'row' }}>
+      {/* Right side - supports multiple header buttons */}
+      <View style={{ width: sideWidth, height: 44, justifyContent: 'center', alignItems: 'flex-end', flexDirection: 'row' }}>
         {rightButtons && rightButtons.length > 0 ? (
           rightButtons.map((btn, idx) => (
             <TouchableOpacity

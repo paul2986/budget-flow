@@ -20,19 +20,6 @@ const formatDate = (timestamp: number): string => {
   });
 };
 
-const formatRelativeDate = (timestamp: number): string => {
-  const now = Date.now();
-  const diff = now - timestamp;
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Yesterday';
-  if (days < 7) return `${days} days ago`;
-  if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-  if (days < 365) return `${Math.floor(days / 30)} months ago`;
-  return `${Math.floor(days / 365)} years ago`;
-};
-
 export default function BudgetsScreen() {
   const { appData, activeBudget, addBudget, renameBudget, deleteBudget, duplicateBudget, setActiveBudget, refreshData } = useBudgetData();
   const { currentColors } = useTheme();
@@ -46,7 +33,6 @@ export default function BudgetsScreen() {
   const [editingName, setEditingName] = useState('');
   const [dropdownBudgetId, setDropdownBudgetId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
   // Refresh data when screen comes into focus
   useFocusEffect(
@@ -90,7 +76,6 @@ export default function BudgetsScreen() {
       return;
     }
 
-    setActionInProgress('rename');
     try {
       const result = await renameBudget(budgetId, editingName.trim());
       if (result.success) {
@@ -104,8 +89,6 @@ export default function BudgetsScreen() {
     } catch (error) {
       console.error('Error renaming budget:', error);
       showToast('Failed to rename budget', 'error');
-    } finally {
-      setActionInProgress(null);
     }
   }, [editingName, renameBudget, showToast]);
 
@@ -119,7 +102,6 @@ export default function BudgetsScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            setActionInProgress('delete');
             try {
               const result = await deleteBudget(budgetId);
               if (result.success) {
@@ -131,8 +113,6 @@ export default function BudgetsScreen() {
             } catch (error) {
               console.error('Error deleting budget:', error);
               showToast('Failed to delete budget', 'error');
-            } finally {
-              setActionInProgress(null);
             }
           },
         },
@@ -141,7 +121,6 @@ export default function BudgetsScreen() {
   }, [deleteBudget, showToast]);
 
   const handleDuplicateBudget = useCallback(async (budgetId: string, budgetName: string) => {
-    setActionInProgress('duplicate');
     try {
       const result = await duplicateBudget(budgetId, `${budgetName} (Copy)`);
       if (result.success) {
@@ -153,17 +132,14 @@ export default function BudgetsScreen() {
     } catch (error) {
       console.error('Error duplicating budget:', error);
       showToast('Failed to duplicate budget', 'error');
-    } finally {
-      setActionInProgress(null);
     }
   }, [duplicateBudget, showToast]);
 
   const handleSetActiveBudget = useCallback(async (budgetId: string) => {
-    setActionInProgress('activate');
     try {
       const result = await setActiveBudget(budgetId);
       if (result.success) {
-        // Removed toast notification as requested
+        showToast('Active budget changed', 'success');
         setDropdownBudgetId(null); // Close dropdown after successful activation
       } else {
         showToast(result.error?.message || 'Failed to set active budget', 'error');
@@ -171,8 +147,6 @@ export default function BudgetsScreen() {
     } catch (error) {
       console.error('Error setting active budget:', error);
       showToast('Failed to set active budget', 'error');
-    } finally {
-      setActionInProgress(null);
     }
   }, [setActiveBudget, showToast]);
 
@@ -206,19 +180,11 @@ export default function BudgetsScreen() {
               alignItems: 'center',
               paddingHorizontal: 16,
               paddingVertical: 12,
-              opacity: actionInProgress === 'activate' ? 0.5 : 1,
             }}
-            onPress={() => {
-              if (actionInProgress) return;
-              handleSetActiveBudget(budget.id);
-            }}
-            disabled={!!actionInProgress}
+            onPress={() => handleSetActiveBudget(budget.id)}
           >
             <Icon name="checkmark-circle" size={18} color={currentColors.success} />
             <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Set as Active</Text>
-            {actionInProgress === 'activate' && (
-              <ActivityIndicator size="small" color={currentColors.success} style={{ marginLeft: 8 }} />
-            )}
           </TouchableOpacity>
         )}
         
@@ -228,15 +194,12 @@ export default function BudgetsScreen() {
             alignItems: 'center',
             paddingHorizontal: 16,
             paddingVertical: 12,
-            opacity: actionInProgress === 'rename' ? 0.5 : 1,
           }}
           onPress={() => {
-            if (actionInProgress) return;
             setEditingBudgetId(budget.id);
             setEditingName(budget.name);
             setDropdownBudgetId(null);
           }}
-          disabled={!!actionInProgress}
         >
           <Icon name="create" size={18} color={currentColors.text} />
           <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Rename</Text>
@@ -248,19 +211,11 @@ export default function BudgetsScreen() {
             alignItems: 'center',
             paddingHorizontal: 16,
             paddingVertical: 12,
-            opacity: actionInProgress === 'duplicate' ? 0.5 : 1,
           }}
-          onPress={() => {
-            if (actionInProgress) return;
-            handleDuplicateBudget(budget.id, budget.name);
-          }}
-          disabled={!!actionInProgress}
+          onPress={() => handleDuplicateBudget(budget.id, budget.name)}
         >
           <Icon name="copy" size={18} color={currentColors.text} />
           <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Duplicate</Text>
-          {actionInProgress === 'duplicate' && (
-            <ActivityIndicator size="small" color={currentColors.text} style={{ marginLeft: 8 }} />
-          )}
         </TouchableOpacity>
         
         {budgets.length > 1 && (
@@ -270,13 +225,8 @@ export default function BudgetsScreen() {
               alignItems: 'center',
               paddingHorizontal: 16,
               paddingVertical: 12,
-              opacity: actionInProgress === 'delete' ? 0.5 : 1,
             }}
-            onPress={() => {
-              if (actionInProgress) return;
-              handleDeleteBudget(budget.id, budget.name);
-            }}
-            disabled={!!actionInProgress}
+            onPress={() => handleDeleteBudget(budget.id, budget.name)}
           >
             <Icon name="trash" size={18} color={currentColors.error} />
             <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15, color: currentColors.error }]}>Delete</Text>
@@ -353,13 +303,8 @@ export default function BudgetsScreen() {
                       <TouchableOpacity
                         onPress={() => handleRenameBudget(budget.id)}
                         style={{ padding: 8 }}
-                        disabled={actionInProgress === 'rename'}
                       >
-                        {actionInProgress === 'rename' ? (
-                          <ActivityIndicator size="small" color={currentColors.success} />
-                        ) : (
-                          <Icon name="checkmark" size={20} color={currentColors.success} />
-                        )}
+                        <Icon name="checkmark" size={20} color={currentColors.success} />
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => {
@@ -367,16 +312,14 @@ export default function BudgetsScreen() {
                           setEditingName('');
                         }}
                         style={{ padding: 8 }}
-                        disabled={actionInProgress === 'rename'}
                       >
                         <Icon name="close" size={20} color={currentColors.error} />
                       </TouchableOpacity>
                     </View>
                   ) : (
                     <TouchableOpacity
-                      onPress={() => !isActive && !actionInProgress && handleSetActiveBudget(budget.id)}
+                      onPress={() => !isActive && handleSetActiveBudget(budget.id)}
                       style={{ flex: 1 }}
-                      disabled={!!actionInProgress}
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                         <Text style={[
@@ -415,32 +358,16 @@ export default function BudgetsScreen() {
                         )}
                       </View>
                       
-                      {/* Stats row */}
-                      <View style={{ flexDirection: 'row', gap: 20, marginBottom: 8 }}>
+                      <View style={{ flexDirection: 'row', gap: 20 }}>
                         <Text style={[themedStyles.textSecondary, { fontSize: 14 }]}>
                           {budget.people?.length || 0} people
                         </Text>
                         <Text style={[themedStyles.textSecondary, { fontSize: 14 }]}>
                           {budget.expenses?.length || 0} expenses
                         </Text>
-                      </View>
-                      
-                      {/* Date information */}
-                      <View style={{ flexDirection: 'row', gap: 20 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <Icon name="calendar" size={12} color={currentColors.textSecondary} style={{ marginRight: 4 }} />
-                          <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
-                            Created {formatRelativeDate(budget.createdAt)}
-                          </Text>
-                        </View>
-                        {budget.modifiedAt !== budget.createdAt && (
-                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Icon name="create" size={12} color={currentColors.textSecondary} style={{ marginRight: 4 }} />
-                            <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
-                              Modified {formatRelativeDate(budget.modifiedAt)}
-                            </Text>
-                          </View>
-                        )}
+                        <Text style={[themedStyles.textSecondary, { fontSize: 14 }]}>
+                          {formatDate(budget.modifiedAt)}
+                        </Text>
                       </View>
                     </TouchableOpacity>
                   )}
@@ -455,7 +382,6 @@ export default function BudgetsScreen() {
                       borderRadius: 8,
                       backgroundColor: currentColors.background + '80'
                     }}
-                    disabled={!!actionInProgress}
                   >
                     <Icon name="ellipsis-vertical" size={20} color={currentColors.text} />
                   </TouchableOpacity>
