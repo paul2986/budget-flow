@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -16,6 +16,7 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import { calculateMonthlyAmount } from '../utils/calculations';
 import Icon from './Icon';
 import { Expense, DEFAULT_CATEGORIES } from '../types/budget';
+import { router } from 'expo-router';
 
 interface ExpenseBreakdownSectionProps {
   expenses: Expense[];
@@ -206,6 +207,24 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
     };
   });
 
+  // Navigation handler for category taps
+  const handleCategoryPress = (expenseType: 'household' | 'personal', categoryName: string) => {
+    console.log('ExpenseBreakdownSection: Navigating to expenses with filters:', {
+      expenseType,
+      categoryName
+    });
+    
+    // Navigate to expenses page with pre-applied filters
+    router.push({
+      pathname: '/expenses',
+      params: {
+        filter: expenseType,
+        category: categoryName,
+        fromDashboard: 'true'
+      }
+    });
+  };
+
   if (!breakdownData.household && !breakdownData.personal) {
     console.log('ExpenseBreakdownSection: Rendering empty state');
     return (
@@ -298,11 +317,13 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
           </View>
         </View>
 
-        {/* Categories */}
+        {/* Categories - Now Interactive */}
         <View style={{ gap: 12 }}>
           {breakdown.categories.map((category, categoryIndex) => (
-            <View
+            <TouchableOpacity
               key={category.category}
+              onPress={() => handleCategoryPress(breakdown.type, category.category)}
+              activeOpacity={0.7}
               style={{
                 backgroundColor: currentColors.backgroundAlt,
                 borderRadius: 12,
@@ -312,10 +333,17 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
               }}
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <Text style={[themedStyles.text, { fontSize: 16, fontWeight: '600' }]}>
-                  {category.category}
-                </Text>
-                <Text style={[themedStyles.text, { fontSize: 14, fontWeight: '700', color: typeColor }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <Text style={[themedStyles.text, { fontSize: 16, fontWeight: '600', flex: 1 }]}>
+                    {category.category}
+                  </Text>
+                  <Icon 
+                    name="chevron-forward" 
+                    size={16} 
+                    style={{ color: currentColors.textSecondary, marginLeft: 8 }} 
+                  />
+                </View>
+                <Text style={[themedStyles.text, { fontSize: 14, fontWeight: '700', color: typeColor, marginLeft: 12 }]}>
                   {formatCurrency(category.amount)}
                 </Text>
               </View>
@@ -345,7 +373,7 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
                   }}
                 />
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       </Animated.View>
@@ -354,60 +382,7 @@ export default function ExpenseBreakdownSection({ expenses }: ExpenseBreakdownSe
 
   return (
     <Animated.View style={[containerAnimatedStyle]}>
-      {/* Summary Card */}
-      <View
-        style={[
-          themedStyles.card,
-          {
-            backgroundColor: currentColors.primary + '10',
-            borderColor: currentColors.primary + '30',
-            borderWidth: 2,
-            marginBottom: 24,
-          },
-        ]}
-      >
-        <View style={{ alignItems: 'center', marginBottom: 20 }}>
-          <View style={{
-            width: 64,
-            height: 64,
-            borderRadius: 32,
-            backgroundColor: currentColors.primary + '20',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 16,
-          }}>
-            <Icon name="pie-chart" size={32} style={{ color: currentColors.primary }} />
-          </View>
-          <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', textAlign: 'center', marginBottom: 8 }]}>
-            Expense Analysis
-          </Text>
-          <Text style={[themedStyles.textSecondary, { textAlign: 'center', fontSize: 16 }]}>
-            Monthly breakdown by type and category
-          </Text>
-        </View>
-
-        <View style={{
-          flexDirection: 'row',
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: currentColors.backgroundAlt,
-          borderRadius: 16,
-          padding: 20,
-          borderWidth: 1,
-          borderColor: currentColors.border,
-        }}>
-          <View style={{ alignItems: 'center' }}>
-            <Text style={[themedStyles.text, { fontSize: 24, fontWeight: '800', color: currentColors.primary }]}>
-              {formatCurrency(breakdownData.totalAmount)}
-            </Text>
-            <Text style={[themedStyles.textSecondary, { fontSize: 14, marginTop: 4 }]}>
-              Total Monthly Expenses
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Type Breakdowns */}
+      {/* Type Breakdowns - Removed the Summary Card */}
       <View>
         {breakdownData.household && <TypeBreakdownComponent breakdown={breakdownData.household} index={0} />}
         {breakdownData.personal && <TypeBreakdownComponent breakdown={breakdownData.personal} index={1} />}

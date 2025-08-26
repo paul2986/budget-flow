@@ -22,7 +22,12 @@ export default function ExpensesScreen() {
   const { themedStyles } = useThemedStyles();
   const { formatCurrency } = useCurrency();
   const toast = useToast();
-  const params = useLocalSearchParams<{ showRecurring?: string }>();
+  const params = useLocalSearchParams<{ 
+    showRecurring?: string;
+    filter?: string;
+    category?: string;
+    fromDashboard?: string;
+  }>();
 
   // Filter modal state
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -58,11 +63,45 @@ export default function ExpensesScreen() {
       const [customs, filters] = await Promise.all([getCustomExpenseCategories(), getExpensesFilters()]);
       console.log('ExpensesScreen: Loaded custom categories:', customs);
       setCustomCategories(customs);
-      setCategoryFilter(filters.category || null);
-      setSearchQuery(filters.search || '');
-      setSearchTerm(filters.search || '');
+      
+      // Check if we have URL parameters from dashboard navigation
+      if (params.fromDashboard === 'true') {
+        console.log('ExpensesScreen: Applying filters from dashboard navigation:', {
+          filter: params.filter,
+          category: params.category
+        });
+        
+        // Apply filters from URL parameters
+        if (params.filter && (params.filter === 'household' || params.filter === 'personal')) {
+          setFilter(params.filter);
+        }
+        if (params.category) {
+          setCategoryFilter(params.category);
+        }
+        
+        // Clear the search query when coming from dashboard
+        setSearchQuery('');
+        setSearchTerm('');
+        
+        // Announce the applied filters for accessibility
+        const filterMessages = [];
+        if (params.filter) {
+          filterMessages.push(`${params.filter} expenses`);
+        }
+        if (params.category) {
+          filterMessages.push(`${params.category} category`);
+        }
+        if (filterMessages.length > 0) {
+          announceFilter(`Filtered by ${filterMessages.join(' and ')}`);
+        }
+      } else {
+        // Use persisted filters if not coming from dashboard
+        setCategoryFilter(filters.category || null);
+        setSearchQuery(filters.search || '');
+        setSearchTerm(filters.search || '');
+      }
     })();
-  }, []);
+  }, [params.filter, params.category, params.fromDashboard, announceFilter]);
 
   // Reload custom categories when data changes (e.g., after clearing all data)
   useEffect(() => {
@@ -78,13 +117,15 @@ export default function ExpensesScreen() {
     })();
   }, [data.people.length, data.expenses.length, categoryFilter]); // Reload when core data changes
 
-  // Persist category + search with debounce
+  // Persist category + search with debounce (but not when coming from dashboard)
   useEffect(() => {
-    const t = setTimeout(() => {
-      saveExpensesFilters({ category: categoryFilter, search: searchQuery });
-    }, 300);
-    return () => clearTimeout(t);
-  }, [categoryFilter, searchQuery]);
+    if (params.fromDashboard !== 'true') {
+      const t = setTimeout(() => {
+        saveExpensesFilters({ category: categoryFilter, search: searchQuery });
+      }, 300);
+      return () => clearTimeout(t);
+    }
+  }, [categoryFilter, searchQuery, params.fromDashboard]);
 
   // Debounce search for filtering perf
   useEffect(() => {
@@ -290,6 +331,29 @@ export default function ExpensesScreen() {
         rightButtons={rightButtons}
         loading={saving || deletingExpenseId !== null} 
       />
+
+      {/* Show navigation breadcrumb when coming from dashboard */}
+      {params.fromDashboard === 'true' && (
+        <View style={[themedStyles.section, { paddingBottom: 0, paddingTop: 8, paddingHorizontal: 16 }]}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 8,
+              paddingHorizontal: 12,
+              backgroundColor: currentColors.backgroundAlt,
+              borderRadius: 8,
+              alignSelf: 'flex-start',
+            }}
+          >
+            <Icon name="chevron-back" size={16} style={{ color: currentColors.primary, marginRight: 4 }} />
+            <Text style={[themedStyles.text, { color: currentColors.primary, fontSize: 14, fontWeight: '600' }]}>
+              Back to Dashboard
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Sort options - now more prominent */}
       <View style={[themedStyles.section, { paddingBottom: 0, paddingTop: 12, paddingHorizontal: 16 }]}>
