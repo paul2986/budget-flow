@@ -93,6 +93,12 @@ export default function BudgetsScreen() {
   }, [editingName, renameBudget, showToast]);
 
   const handleDeleteBudget = useCallback(async (budgetId: string, budgetName: string) => {
+    // Prevent deletion of active budget
+    if (activeBudget?.id === budgetId) {
+      showToast('Cannot delete the active budget. Please set another budget as active first.', 'error');
+      return;
+    }
+
     Alert.alert(
       'Delete Budget',
       `Are you sure you want to delete "${budgetName}"? This action cannot be undone.`,
@@ -118,7 +124,7 @@ export default function BudgetsScreen() {
         },
       ]
     );
-  }, [deleteBudget, showToast]);
+  }, [deleteBudget, showToast, activeBudget]);
 
   const handleDuplicateBudget = useCallback(async (budgetId: string, budgetName: string) => {
     try {
@@ -139,7 +145,8 @@ export default function BudgetsScreen() {
     try {
       const result = await setActiveBudget(budgetId);
       if (result.success) {
-        showToast('Active budget changed', 'success');
+        // Remove toast notification when switching active budgets
+        console.log('Active budget changed successfully');
         setDropdownBudgetId(null); // Close dropdown after successful activation
       } else {
         showToast(result.error?.message || 'Failed to set active budget', 'error');
@@ -181,7 +188,10 @@ export default function BudgetsScreen() {
               paddingHorizontal: 16,
               paddingVertical: 12,
             }}
-            onPress={() => handleSetActiveBudget(budget.id)}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleSetActiveBudget(budget.id);
+            }}
           >
             <Icon name="checkmark-circle" size={18} color={currentColors.success} />
             <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Set as Active</Text>
@@ -195,7 +205,8 @@ export default function BudgetsScreen() {
             paddingHorizontal: 16,
             paddingVertical: 12,
           }}
-          onPress={() => {
+          onPress={(e) => {
+            e.stopPropagation();
             setEditingBudgetId(budget.id);
             setEditingName(budget.name);
             setDropdownBudgetId(null);
@@ -212,7 +223,10 @@ export default function BudgetsScreen() {
             paddingHorizontal: 16,
             paddingVertical: 12,
           }}
-          onPress={() => handleDuplicateBudget(budget.id, budget.name)}
+          onPress={(e) => {
+            e.stopPropagation();
+            handleDuplicateBudget(budget.id, budget.name);
+          }}
         >
           <Icon name="copy" size={18} color={currentColors.text} />
           <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Duplicate</Text>
@@ -225,11 +239,22 @@ export default function BudgetsScreen() {
               alignItems: 'center',
               paddingHorizontal: 16,
               paddingVertical: 12,
+              opacity: isActive ? 0.5 : 1, // Visual indication that active budget cannot be deleted
             }}
-            onPress={() => handleDeleteBudget(budget.id, budget.name)}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleDeleteBudget(budget.id, budget.name);
+            }}
+            disabled={isActive} // Disable delete button for active budget
           >
-            <Icon name="trash" size={18} color={currentColors.error} />
-            <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15, color: currentColors.error }]}>Delete</Text>
+            <Icon name="trash" size={18} color={isActive ? currentColors.textSecondary : currentColors.error} />
+            <Text style={[themedStyles.text, { 
+              marginLeft: 12, 
+              fontSize: 15, 
+              color: isActive ? currentColors.textSecondary : currentColors.error 
+            }]}>
+              {isActive ? 'Cannot Delete Active' : 'Delete'}
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -358,16 +383,23 @@ export default function BudgetsScreen() {
                         )}
                       </View>
                       
-                      <View style={{ flexDirection: 'row', gap: 20 }}>
-                        <Text style={[themedStyles.textSecondary, { fontSize: 14 }]}>
-                          {budget.people?.length || 0} people
-                        </Text>
-                        <Text style={[themedStyles.textSecondary, { fontSize: 14 }]}>
-                          {budget.expenses?.length || 0} expenses
-                        </Text>
-                        <Text style={[themedStyles.textSecondary, { fontSize: 14 }]}>
-                          {formatDate(budget.modifiedAt)}
-                        </Text>
+                      <View style={{ flexDirection: 'column', gap: 4 }}>
+                        <View style={{ flexDirection: 'row', gap: 20 }}>
+                          <Text style={[themedStyles.textSecondary, { fontSize: 14 }]}>
+                            {budget.people?.length || 0} people
+                          </Text>
+                          <Text style={[themedStyles.textSecondary, { fontSize: 14 }]}>
+                            {budget.expenses?.length || 0} expenses
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: 20 }}>
+                          <Text style={[themedStyles.textSecondary, { fontSize: 13 }]}>
+                            Created: {formatDate(budget.createdAt)}
+                          </Text>
+                          <Text style={[themedStyles.textSecondary, { fontSize: 13 }]}>
+                            Modified: {formatDate(budget.modifiedAt)}
+                          </Text>
+                        </View>
                       </View>
                     </TouchableOpacity>
                   )}
@@ -375,7 +407,10 @@ export default function BudgetsScreen() {
                 
                 {!isEditing && (
                   <TouchableOpacity
-                    onPress={() => setDropdownBudgetId(dropdownBudgetId === budget.id ? null : budget.id)}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      setDropdownBudgetId(dropdownBudgetId === budget.id ? null : budget.id);
+                    }}
                     style={{ 
                       padding: 8, 
                       marginLeft: 12,
