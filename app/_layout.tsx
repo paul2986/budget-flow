@@ -124,6 +124,8 @@ function RootLayoutContent() {
   const { themedStyles } = useThemedStyles();
   const insets = useSafeAreaInsets();
   const { toasts, hideToast } = useToast();
+  const { appData, activeBudget } = useBudgetData();
+  const pathname = usePathname();
 
   useEffect(() => {
     setupErrorLogging();
@@ -132,6 +134,18 @@ function RootLayoutContent() {
   useEffect(() => {
     console.log('RootLayoutContent: Theme updated', { isDarkMode, themeMode, currentColors });
   }, [isDarkMode, themeMode, currentColors]);
+
+  // Determine if this is the welcome page (first-time user experience)
+  const isWelcomePage = useMemo(() => {
+    // Welcome page is when user is on index route AND it's first-time user experience
+    if (pathname !== '/') return false;
+    
+    // First-time user if no budgets exist or no active budget
+    const hasNoBudgets = !appData || !appData.budgets || appData.budgets.length === 0;
+    const hasNoActiveBudget = !activeBudget;
+    
+    return hasNoBudgets || hasNoActiveBudget;
+  }, [pathname, appData, activeBudget]);
 
   // Deep link handler: route to /import-link and prefill "q" with the incoming URL
   // Only handle actual deep links, not the app's initial launch
@@ -182,16 +196,22 @@ function RootLayoutContent() {
     };
   }, []);
 
+  // Use page background color for safe zone only on welcome page, otherwise use default system color
+  const safeZoneBackgroundColor = isWelcomePage ? currentColors.background : undefined;
+
   return (
-    // Outer wrapper paints the top safe area the same color as the page background for welcome page
-    <View style={{ flex: 1, backgroundColor: currentColors.background }}>
-      {/* Status bar matches page background color */}
-      <StatusBar style={isDarkMode ? 'light' : 'dark'} backgroundColor={currentColors.background} />
+    // Outer wrapper paints the top safe area with conditional background color
+    <View style={{ flex: 1, backgroundColor: safeZoneBackgroundColor }}>
+      {/* Status bar matches page background color only on welcome page */}
+      <StatusBar 
+        style={isDarkMode ? 'light' : 'dark'} 
+        backgroundColor={isWelcomePage ? currentColors.background : undefined} 
+      />
 
-      {/* Explicit top safe area spacer with page background color */}
-      <View style={{ height: insets.top, backgroundColor: currentColors.background }} />
+      {/* Explicit top safe area spacer with conditional background color */}
+      <View style={{ height: insets.top, backgroundColor: safeZoneBackgroundColor }} />
 
-      {/* Content area uses the page background color; no bottom safe area padding */}
+      {/* Content area always uses the page background color */}
       <View style={{ flex: 1, backgroundColor: currentColors.background }}>
         <Tabs
           screenOptions={{
