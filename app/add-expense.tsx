@@ -88,6 +88,17 @@ export default function AddExpenseScreen() {
   const origin = params.origin || 'expenses'; // Default to expenses if no origin specified
   const expenseToEdit = isEditMode ? data.expenses.find(e => e.id === params.id) : null;
 
+  // Get combined list of people (existing + temporary) - memoized to prevent infinite loops
+  const getAllPeople = useCallback(() => {
+    return [...data.people, ...tempPeople];
+  }, [data.people, tempPeople]);
+
+  // Get combined list of categories (existing + temporary) - memoized to prevent infinite loops
+  const getAllCategories = useCallback(() => {
+    const tempCategoryNames = tempCategories.map(tc => tc.name);
+    return [...EXPENSE_CATEGORIES, ...customCategories, ...tempCategoryNames];
+  }, [customCategories, tempCategories]);
+
   // Load custom categories initially and scroll to top
   useEffect(() => {
     const loadCustomCategories = async () => {
@@ -114,6 +125,7 @@ export default function AddExpenseScreen() {
   }, []);
 
   // Reload custom categories when data changes (e.g., after clearing all data)
+  // Fixed: Removed categoryTag and tempCategories from dependencies to prevent infinite loop
   useEffect(() => {
     const reloadCustomCategories = async () => {
       try {
@@ -123,29 +135,33 @@ export default function AddExpenseScreen() {
           'getCustomExpenseCategories-reload'
         );
         console.log('AddExpenseScreen: Reloaded custom categories after data change:', list);
-        
-        // Check if current categoryTag is still valid before updating the list
-        const currentCategoryStillValid = DEFAULT_CATEGORIES.includes(categoryTag) || list.includes(categoryTag) || tempCategories.some(tc => tc.name === categoryTag);
-        
         setCustomCategories(list);
-        
-        // If current categoryTag is not in the updated list and not a default and not a temp category, reset to 'Misc'
-        if (categoryTag && !currentCategoryStillValid) {
-          console.log('AddExpenseScreen: Current category tag not found in updated list, resetting to Misc:', {
-            currentCategoryTag: categoryTag,
-            availableDefaults: DEFAULT_CATEGORIES,
-            availableCustom: list,
-            tempCategories: tempCategories.map(tc => tc.name)
-          });
-          setCategoryTag('Misc');
-        }
       } catch (error) {
         console.error('AddExpenseScreen: Error reloading custom categories:', error);
       }
     };
     
     reloadCustomCategories();
-  }, [data.people.length, data.expenses.length, refreshTrigger, categoryTag, tempCategories]);
+  }, [data.people.length, data.expenses.length, refreshTrigger]);
+
+  // Separate effect to validate categoryTag when custom categories change
+  useEffect(() => {
+    // Check if current categoryTag is still valid
+    const currentCategoryStillValid = DEFAULT_CATEGORIES.includes(categoryTag) || 
+                                     customCategories.includes(categoryTag) || 
+                                     tempCategories.some(tc => tc.name === categoryTag);
+    
+    // If current categoryTag is not valid, reset to 'Misc'
+    if (categoryTag && !currentCategoryStillValid) {
+      console.log('AddExpenseScreen: Current category tag not found in updated list, resetting to Misc:', {
+        currentCategoryTag: categoryTag,
+        availableDefaults: DEFAULT_CATEGORIES,
+        availableCustom: customCategories,
+        tempCategories: tempCategories.map(tc => tc.name)
+      });
+      setCategoryTag('Misc');
+    }
+  }, [customCategories, tempCategories, categoryTag]);
 
   // Load expense data for editing
   useEffect(() => {
@@ -210,17 +226,6 @@ export default function AddExpenseScreen() {
       }
     }, 100);
   }, []);
-
-  // Get combined list of people (existing + temporary)
-  const getAllPeople = useCallback(() => {
-    return [...data.people, ...tempPeople];
-  }, [data.people, tempPeople]);
-
-  // Get combined list of categories (existing + temporary)
-  const getAllCategories = useCallback(() => {
-    const tempCategoryNames = tempCategories.map(tc => tc.name);
-    return [...EXPENSE_CATEGORIES, ...customCategories, ...tempCategoryNames];
-  }, [customCategories, tempCategories]);
 
   const handleSaveExpense = useCallback(async () => {
     if (!description.trim()) {
