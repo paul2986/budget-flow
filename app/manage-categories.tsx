@@ -71,9 +71,13 @@ export default function ManageCategoriesScreen() {
 
   return (
     <View style={themedStyles.container}>
-      <StandardHeader title="Manage Categories" onLeftPress={() => router.back()} showRightIcon={false} />
+      <StandardHeader 
+        title="Manage Categories" 
+        onLeftPress={() => router.back()} 
+        showRightIcon={false} 
+      />
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16, paddingTop: 16 }]}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0, paddingTop: 16 }]}>
         <View style={themedStyles.section}>
           <Text style={themedStyles.subtitle}>Default Categories</Text>
           <View style={themedStyles.card}>

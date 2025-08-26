@@ -60,7 +60,11 @@ export default function SettingsScreen() {
 
   return (
     <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
-      <StandardHeader title="Settings" />
+      <StandardHeader 
+        title="Settings" 
+        showLeftIcon={false}
+        showRightIcon={false}
+      />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0, paddingTop: 16 }]}>
         {/* App Info */}

@@ -46,8 +46,35 @@ export default function StandardHeader({
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
 
-  const defaultRightIconColor = rightIconColor || '#FFFFFF';
-  const defaultLeftIconColor = leftIconColor || currentColors.text;
+  // Standardized button styling
+  const getButtonStyle = (type: 'left' | 'right', isActive?: boolean, customBg?: string) => {
+    let backgroundColor = customBg;
+    
+    if (!backgroundColor) {
+      if (type === 'left') {
+        backgroundColor = currentColors.backgroundAlt;
+      } else {
+        backgroundColor = currentColors.primary;
+      }
+    }
+
+    return {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor,
+      justifyContent: 'center' as const,
+      alignItems: 'center' as const,
+      boxShadow: '0px 2px 4px rgba(0,0,0,0.15)',
+      borderWidth: 1,
+      borderColor: type === 'left' ? currentColors.border : 'transparent',
+    };
+  };
+
+  const getIconColor = (type: 'left' | 'right', customColor?: string) => {
+    if (customColor) return customColor;
+    return type === 'left' ? currentColors.text : '#FFFFFF';
+  };
 
   // Calculate the width needed for left and right button areas to ensure title centering
   const leftButtonsCount = leftButtons?.length || (showLeftIcon && onLeftPress ? 1 : 0);
@@ -70,21 +97,19 @@ export default function StandardHeader({
               key={`hlb_${idx}`}
               onPress={btn.onPress}
               disabled={loading}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: btn.backgroundColor || currentColors.border + '40',
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginRight: idx < leftButtons.length - 1 ? 8 : 0,
-                boxShadow: '0px 2px 4px rgba(0,0,0,0.15)',
-              }}
+              style={[
+                getButtonStyle('left', false, btn.backgroundColor),
+                { marginRight: idx < leftButtons.length - 1 ? 8 : 0 }
+              ]}
             >
               {loading ? (
-                <ActivityIndicator size="small" color={btn.iconColor || currentColors.text} />
+                <ActivityIndicator size="small" color={getIconColor('left', btn.iconColor)} />
               ) : (
-                <Icon name={btn.icon as any} size={22} style={{ color: btn.iconColor || currentColors.text }} />
+                <Icon 
+                  name={btn.icon as any} 
+                  size={22} 
+                  style={{ color: getIconColor('left', btn.iconColor) }} 
+                />
               )}
             </TouchableOpacity>
           ))
@@ -92,16 +117,13 @@ export default function StandardHeader({
           <TouchableOpacity
             onPress={onLeftPress}
             disabled={loading}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: currentColors.border + '40',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
+            style={getButtonStyle('left')}
           >
-            <Icon name={leftIcon as any} size={24} style={{ color: defaultLeftIconColor }} />
+            <Icon 
+              name={leftIcon as any} 
+              size={24} 
+              style={{ color: getIconColor('left', leftIconColor) }} 
+            />
           </TouchableOpacity>
         ) : null}
       </View>
@@ -126,21 +148,19 @@ export default function StandardHeader({
               key={`hrb_${idx}`}
               onPress={btn.onPress}
               disabled={loading}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: btn.backgroundColor || currentColors.primary,
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginLeft: idx > 0 ? 8 : 0,
-                boxShadow: '0px 2px 4px rgba(0,0,0,0.20)',
-              }}
+              style={[
+                getButtonStyle('right', false, btn.backgroundColor),
+                { marginLeft: idx > 0 ? 8 : 0 }
+              ]}
             >
               {loading ? (
-                <ActivityIndicator size="small" color={btn.iconColor || '#FFFFFF'} />
+                <ActivityIndicator size="small" color={getIconColor('right', btn.iconColor)} />
               ) : (
-                <Icon name={btn.icon as any} size={22} style={{ color: btn.iconColor || '#FFFFFF' }} />
+                <Icon 
+                  name={btn.icon as any} 
+                  size={22} 
+                  style={{ color: getIconColor('right', btn.iconColor) }} 
+                />
               )}
             </TouchableOpacity>
           ))
@@ -148,23 +168,15 @@ export default function StandardHeader({
           <TouchableOpacity
             onPress={onRightPress}
             disabled={loading}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: rightIcon === 'checkmark' ? '#22C55E' : currentColors.primary,
-              justifyContent: 'center',
-              alignItems: 'center',
-              boxShadow: '0px 2px 4px rgba(0,0,0,0.20)',
-            }}
+            style={getButtonStyle('right', rightIcon === 'checkmark')}
           >
             {loading ? (
-              <ActivityIndicator size="small" color={rightIcon === 'checkmark' ? '#FFFFFF' : defaultRightIconColor} />
+              <ActivityIndicator size="small" color={getIconColor('right', rightIconColor)} />
             ) : (
               <Icon
                 name={rightIcon as any}
                 size={24}
-                style={{ color: rightIcon === 'checkmark' ? '#FFFFFF' : defaultRightIconColor }}
+                style={{ color: getIconColor('right', rightIconColor) }}
               />
             )}
           </TouchableOpacity>

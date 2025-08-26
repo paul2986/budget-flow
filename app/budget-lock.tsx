@@ -46,7 +46,11 @@ export default function BudgetLockScreen() {
   if (dataLoading || lockLoading || !budget) {
     return (
       <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
-        <StandardHeader title="Budget Lock Settings" showBack />
+        <StandardHeader 
+          title="Budget Lock Settings" 
+          onLeftPress={() => router.back()}
+          showRightIcon={false}
+        />
         <View style={[themedStyles.content, { justifyContent: 'center', alignItems: 'center' }]}>
           <Text style={themedStyles.textSecondary}>Loading...</Text>
         </View>
@@ -120,9 +124,13 @@ export default function BudgetLockScreen() {
 
   return (
     <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
-      <StandardHeader title="Budget Lock Settings" showBack />
+      <StandardHeader 
+        title="Budget Lock Settings" 
+        onLeftPress={() => router.back()}
+        showRightIcon={false}
+      />
       
-      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 16, paddingTop: 16 }]}>
+      <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0, paddingTop: 16 }]}>
         {/* Budget Info */}
         <View style={[themedStyles.card, { marginBottom: 24 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>

@@ -234,15 +234,6 @@ export default function PeopleScreen() {
         title="People"
         showLeftIcon={false}
         rightButtons={[
-          ...(data.people.length > 0 ? [{
-            icon: 'cash-outline' as const,
-            onPress: () => {
-              setSelectedPersonId(null);
-              setShowIncomeModal(true);
-            },
-            backgroundColor: currentColors.income,
-            iconColor: '#FFFFFF',
-          }] : []),
           {
             icon: 'add' as const,
             onPress: handleNavigateToAddPerson,
