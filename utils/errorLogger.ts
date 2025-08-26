@@ -1,3 +1,4 @@
+
 // Global error logging for runtime errors
 
 import { Platform } from "react-native";
@@ -96,9 +97,12 @@ const getCallerInfo = (): string => {
 };
 
 export const setupErrorLogging = () => {
+  console.log('🔧 Setting up comprehensive error logging...');
+
   // Capture unhandled errors in web environment
   if (typeof window !== 'undefined') {
     // Override window.onerror to catch JavaScript errors
+    const originalOnError = window.onerror;
     window.onerror = (message, source, lineno, colno, error) => {
       const sourceFile = source ? source.split('/').pop() : 'unknown';
       const errorData = {
@@ -112,96 +116,165 @@ export const setupErrorLogging = () => {
 
       console.error('🚨 RUNTIME ERROR:', errorData);
       sendErrorToParent('error', 'JavaScript Runtime Error', errorData);
+      
+      // Call original handler if it exists
+      if (originalOnError && typeof originalOnError === 'function') {
+        try {
+          return originalOnError.call(window, message, source, lineno, colno, error);
+        } catch (e) {
+          console.error('Error in original error handler:', e);
+        }
+      }
+      
       return false; // Don't prevent default error handling
     };
-    // check if platform is web
-    if (Platform.OS === 'web') {
-      // Capture unhandled promise rejections
-      window.addEventListener('unhandledrejection', (event) => {
-          const errorData = {
-          reason: event.reason,
-          timestamp: new Date().toISOString()
-        };
 
-        console.error('🚨 UNHANDLED PROMISE REJECTION:', errorData);
-        sendErrorToParent('error', 'Unhandled Promise Rejection', errorData);
-      });
-    }
-  }
+    // Capture unhandled promise rejections with comprehensive handling
+    const originalUnhandledRejection = window.onunhandledrejection;
+    window.onunhandledrejection = (event) => {
+      const errorData = {
+        reason: event.reason,
+        promise: event.promise,
+        timestamp: new Date().toISOString(),
+        stack: event.reason?.stack || 'No stack trace available',
+        message: event.reason?.message || String(event.reason)
+      };
 
-  // Store original console methods
-  const originalConsoleError = console.error;
-  const originalConsoleWarn = console.warn;
-  const originalConsoleLog = console.log;
-
-  // UNCOMMENT BELOW CODE TO GET MORE SENSITIVE ERROR LOGGING (usually many errors triggered per 1 uncaught runtime error)
-
-  // Override console.error to capture more detailed information
-  // console.error = (...args: any[]) => {
-  //   const stack = new Error().stack || '';
-  //   const sourceInfo = extractSourceLocation(stack);
-  //   const callerInfo = getCallerInfo();
-
-  //   // Create enhanced message with source information
-  //   const enhancedMessage = args.join(' ') + sourceInfo + callerInfo;
-
-  //   // Add timestamp and make it stand out in Metro logs
-  //   originalConsoleError('🔥🔥🔥 ERROR:', new Date().toISOString(), enhancedMessage);
-
-  //   // Also send to parent
-  //   sendErrorToParent('error', 'Console Error', enhancedMessage);
-  // };
-
-  // Override console.warn to capture warnings with source location
-  // console.warn = (...args: any[]) => {
-  //   const stack = new Error().stack || '';
-  //   const sourceInfo = extractSourceLocation(stack);
-  //   const callerInfo = getCallerInfo();
-
-  //   // Create enhanced message with source information
-  //   const enhancedMessage = args.join(' ') + sourceInfo + callerInfo;
-
-  //   originalConsoleWarn('⚠️ WARNING:', new Date().toISOString(), enhancedMessage);
-
-  //   // Also send to parent
-  //   sendErrorToParent('warn', 'Console Warning', enhancedMessage);
-  // };
-
-  // // Also override console.log to catch any logs that might contain error information
-  // console.log = (...args: any[]) => {
-  //   const message = args.join(' ');
-
-  //   // Check if this log message contains warning/error keywords
-  //   if (message.indexOf('deprecated') !== -1 || message.indexOf('warning') !== -1 || message.indexOf('error') !== -1) {
-  //     const stack = new Error().stack || '';
-  //     const sourceInfo = extractSourceLocation(stack);
-  //     const callerInfo = getCallerInfo();
-
-  //     const enhancedMessage = message + sourceInfo + callerInfo;
-
-  //     originalConsoleLog('📝 LOG (potential issue):', new Date().toISOString(), enhancedMessage);
-  //     sendErrorToParent('info', 'Console Log (potential issue)', enhancedMessage);
-  //   } else {
-  //     // Normal log, just pass through
-  //     originalConsoleLog(...args);
-  //   }
-  // };
-
-  // Try to intercept React Native warnings at a lower level
-  if (typeof window !== 'undefined' && (window as any).__DEV__) {
-    // Override React's warning system if available
-    const originalWarn = (window as any).console?.warn || console.warn;
-
-    // Monkey patch any React warning functions
-    if ((window as any).React && (window as any).React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED) {
-      const internals = (window as any).React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
-      if (internals.ReactDebugCurrentFrame) {
-        const originalGetStackAddendum = internals.ReactDebugCurrentFrame.getStackAddendum;
-        internals.ReactDebugCurrentFrame.getStackAddendum = function() {
-          const stack = originalGetStackAddendum ? originalGetStackAddendum.call(this) : '';
-          return stack + ' | Enhanced by error logger';
-        };
+      console.error('🚨 UNHANDLED PROMISE REJECTION:', errorData);
+      sendErrorToParent('error', 'Unhandled Promise Rejection', errorData);
+      
+      // Call original handler if it exists
+      if (originalUnhandledRejection && typeof originalUnhandledRejection === 'function') {
+        try {
+          return originalUnhandledRejection.call(window, event);
+        } catch (e) {
+          console.error('Error in original unhandled rejection handler:', e);
+        }
       }
-    }
+      
+      // Prevent the default behavior (which would log to console)
+      event.preventDefault();
+    };
+
+    // Also add event listener as backup
+    window.addEventListener('unhandledrejection', (event) => {
+      const errorData = {
+        reason: event.reason,
+        timestamp: new Date().toISOString(),
+        stack: event.reason?.stack || 'No stack trace available',
+        message: event.reason?.message || String(event.reason)
+      };
+
+      console.error('🚨 UNHANDLED PROMISE REJECTION (listener):', errorData);
+      sendErrorToParent('error', 'Unhandled Promise Rejection', errorData);
+    });
+
+    // Add error event listener for additional coverage
+    window.addEventListener('error', (event) => {
+      const errorData = {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        error: event.error?.stack || event.error,
+        timestamp: new Date().toISOString()
+      };
+
+      console.error('🚨 ERROR EVENT:', errorData);
+      sendErrorToParent('error', 'Error Event', errorData);
+    });
   }
+
+  // React Native specific error handling
+  if (Platform.OS !== 'web') {
+    // Set up React Native error handler
+    const originalHandler = global.ErrorUtils?.getGlobalHandler?.();
+    
+    global.ErrorUtils?.setGlobalHandler?.((error, isFatal) => {
+      const errorData = {
+        message: error.message,
+        stack: error.stack,
+        isFatal,
+        timestamp: new Date().toISOString()
+      };
+
+      console.error('🚨 REACT NATIVE ERROR:', errorData);
+      sendErrorToParent('error', 'React Native Error', errorData);
+      
+      // Call original handler if it exists
+      if (originalHandler && typeof originalHandler === 'function') {
+        try {
+          originalHandler(error, isFatal);
+        } catch (e) {
+          console.error('Error in original React Native error handler:', e);
+        }
+      }
+    });
+  }
+
+  // Wrap common async operations to catch unhandled rejections
+  const originalFetch = global.fetch;
+  if (originalFetch) {
+    global.fetch = (...args) => {
+      return originalFetch(...args).catch((error) => {
+        console.error('🚨 FETCH ERROR:', error);
+        sendErrorToParent('error', 'Fetch Error', {
+          url: args[0],
+          error: error.message,
+          stack: error.stack,
+          timestamp: new Date().toISOString()
+        });
+        throw error; // Re-throw to maintain original behavior
+      });
+    };
+  }
+
+  // Wrap setTimeout and setInterval to catch errors
+  const originalSetTimeout = global.setTimeout;
+  global.setTimeout = (callback, delay, ...args) => {
+    const wrappedCallback = (...callbackArgs: any[]) => {
+      try {
+        if (typeof callback === 'function') {
+          return callback(...callbackArgs);
+        } else if (typeof callback === 'string') {
+          // Handle string callbacks (eval)
+          return eval(callback);
+        }
+      } catch (error) {
+        console.error('🚨 SETTIMEOUT ERROR:', error);
+        sendErrorToParent('error', 'SetTimeout Error', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : 'No stack trace',
+          timestamp: new Date().toISOString()
+        });
+        throw error;
+      }
+    };
+    return originalSetTimeout(wrappedCallback, delay, ...args);
+  };
+
+  const originalSetInterval = global.setInterval;
+  global.setInterval = (callback, delay, ...args) => {
+    const wrappedCallback = (...callbackArgs: any[]) => {
+      try {
+        if (typeof callback === 'function') {
+          return callback(...callbackArgs);
+        } else if (typeof callback === 'string') {
+          // Handle string callbacks (eval)
+          return eval(callback);
+        }
+      } catch (error) {
+        console.error('🚨 SETINTERVAL ERROR:', error);
+        sendErrorToParent('error', 'SetInterval Error', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : 'No stack trace',
+          timestamp: new Date().toISOString()
+        });
+        throw error;
+      }
+    };
+    return originalSetInterval(wrappedCallback, delay, ...args);
+  };
+
+  console.log('✅ Comprehensive error logging setup complete');
 };

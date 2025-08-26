@@ -20,6 +20,35 @@ type BudgetSlice = {
   householdSettings: HouseholdSettings;
 };
 
+// Helper function to safely handle async operations
+const safeAsync = async <T>(
+  operation: () => Promise<T>,
+  fallback: T,
+  operationName: string
+): Promise<T> => {
+  try {
+    const result = await operation();
+    return result;
+  } catch (error) {
+    console.error(`useBudgetData: Error in ${operationName}:`, error);
+    return fallback;
+  }
+};
+
+// Helper function to safely handle async operations that return result objects
+const safeAsyncResult = async <T>(
+  operation: () => Promise<{ success: boolean; error?: Error } & T>,
+  operationName: string
+): Promise<{ success: boolean; error?: Error } & T> => {
+  try {
+    const result = await operation();
+    return result;
+  } catch (error) {
+    console.error(`useBudgetData: Error in ${operationName}:`, error);
+    return { success: false, error: error as Error } as { success: boolean; error?: Error } & T;
+  }
+};
+
 export const useBudgetData = () => {
   const [appData, setAppData] = useState<AppDataV2>({ version: 2, budgets: [], activeBudgetId: '' });
   const [data, setData] = useState<BudgetSlice>({
@@ -41,12 +70,18 @@ export const useBudgetData = () => {
   const refreshFromStorage = useCallback(async () => {
     console.log('useBudgetData: refreshFromStorage called');
     try {
-      const loadedApp = await loadAppData();
+      const loadedApp = await safeAsync(
+        () => loadAppData(),
+        { version: 2, budgets: [], activeBudgetId: '' },
+        'loadAppData'
+      );
+      
       console.log('useBudgetData: loaded app data:', {
         budgetsCount: loadedApp.budgets?.length || 0,
         activeBudgetId: loadedApp.activeBudgetId,
         budgetNames: loadedApp.budgets?.map(b => b.name) || []
       });
+      
       setAppData(loadedApp);
       const active = getActiveBudget(loadedApp);
       if (active) {
@@ -67,6 +102,13 @@ export const useBudgetData = () => {
       }
     } catch (error) {
       console.error('useBudgetData: Error in refreshFromStorage:', error);
+      // Set safe fallback state
+      setAppData({ version: 2, budgets: [], activeBudgetId: '' });
+      setData({
+        people: [],
+        expenses: [],
+        householdSettings: { distributionMethod: 'even' },
+      });
     }
   }, []);
 
@@ -74,7 +116,12 @@ export const useBudgetData = () => {
   const getCurrentData = useCallback(async (): Promise<BudgetSlice> => {
     console.log('useBudgetData: getCurrentData called, loading fresh app data from AsyncStorage');
     try {
-      const loadedApp = await loadAppData();
+      const loadedApp = await safeAsync(
+        () => loadAppData(),
+        { version: 2, budgets: [], activeBudgetId: '' },
+        'getCurrentData-loadAppData'
+      );
+      
       const active = getActiveBudget(loadedApp);
       if (!active) {
         console.log('useBudgetData: No active budget found, returning empty data');
@@ -103,21 +150,31 @@ export const useBudgetData = () => {
 
   // Helper function to create deep copy of data for immutability
   const createDataCopy = useCallback(async (sourceData?: BudgetSlice): Promise<BudgetSlice> => {
-    const dataToUse = sourceData || (await getCurrentData());
-    const copy: BudgetSlice = {
-      people: dataToUse.people.map((person) => ({
-        ...person,
-        income: [...person.income.map((income) => ({ ...income }))],
-      })),
-      expenses: [...dataToUse.expenses.map((expense) => ({ ...expense }))],
-      householdSettings: { ...dataToUse.householdSettings },
-    };
-    console.log('useBudgetData: Created data copy:', {
-      peopleCount: copy.people.length,
-      expensesCount: copy.expenses.length,
-      expenseIds: copy.expenses.map((e) => e.id),
-    });
-    return copy;
+    try {
+      const dataToUse = sourceData || (await getCurrentData());
+      const copy: BudgetSlice = {
+        people: dataToUse.people.map((person) => ({
+          ...person,
+          income: [...person.income.map((income) => ({ ...income }))],
+        })),
+        expenses: [...dataToUse.expenses.map((expense) => ({ ...expense }))],
+        householdSettings: { ...dataToUse.householdSettings },
+      };
+      console.log('useBudgetData: Created data copy:', {
+        peopleCount: copy.people.length,
+        expensesCount: copy.expenses.length,
+        expenseIds: copy.expenses.map((e) => e.id),
+      });
+      return copy;
+    } catch (error) {
+      console.error('useBudgetData: Error creating data copy:', error);
+      // Return safe fallback
+      return {
+        people: [],
+        expenses: [],
+        householdSettings: { distributionMethod: 'even' },
+      };
+    }
   }, [getCurrentData]);
 
   // Stable loadData function that doesn't change on every render
@@ -143,7 +200,16 @@ export const useBudgetData = () => {
 
   // Load data only once on mount
   useEffect(() => {
-    loadData();
+    // Wrap in async function to handle any potential promise rejections
+    const initializeData = async () => {
+      try {
+        await loadData();
+      } catch (error) {
+        console.error('useBudgetData: Error initializing data:', error);
+      }
+    };
+    
+    initializeData();
   }, [loadData]);
 
   const runQueue = useCallback(async () => {
@@ -194,9 +260,14 @@ export const useBudgetData = () => {
 
         saveQueue.current.push(wrappedSaveFn);
 
-        if (!isQueueRunning.current) {
-          runQueue();
-        }
+        // Use setTimeout to avoid potential synchronous promise rejection
+        setTimeout(() => {
+          if (!isQueueRunning.current) {
+            runQueue().catch((error) => {
+              console.error('useBudgetData: Error running queue:', error);
+            });
+          }
+        }, 0);
       });
     },
     [runQueue]
@@ -217,7 +288,12 @@ export const useBudgetData = () => {
         setData(newData);
 
         // Ensure we have a valid active budget to update
-        const baseApp = appData.budgets.length > 0 ? appData : await loadAppData();
+        const baseApp = appData.budgets.length > 0 ? appData : await safeAsync(
+          () => loadAppData(),
+          { version: 2, budgets: [], activeBudgetId: '' },
+          'saveData-loadAppData'
+        );
+        
         const active = getActiveBudget(baseApp);
         if (!active || !active.id) {
           throw new Error('Active budget not available - cannot save data without a budget');
@@ -228,7 +304,11 @@ export const useBudgetData = () => {
           ...active,
           ...newData,
         };
-        const result = await storageUpdateBudget(updatedActive);
+        
+        const result = await safeAsyncResult(
+          () => storageUpdateBudget(updatedActive),
+          'storageUpdateBudget'
+        );
 
         if (result.success) {
           console.log('useBudgetData: Data saved successfully');
@@ -248,24 +328,35 @@ export const useBudgetData = () => {
       } catch (error) {
         console.error('useBudgetData: Error in atomic save operation:', error);
         // Revert state by reloading from storage
-        await refreshFromStorage();
+        try {
+          await refreshFromStorage();
+        } catch (refreshError) {
+          console.error('useBudgetData: Error reverting state:', refreshError);
+        }
         return { success: false, error: error as Error };
       }
     },
     [appData, refreshFromStorage]
   );
 
-  // Budget management APIs
+  // Budget management APIs with comprehensive error handling
   const addBudget = useCallback(
     async (name: string) => {
       console.log('useBudgetData: addBudget called with name:', name);
-      const res = await storageAddBudget(name);
+      const res = await safeAsyncResult(
+        () => storageAddBudget(name),
+        'storageAddBudget'
+      );
       console.log('useBudgetData: addBudget storage result:', res);
       if (res.success) {
         console.log('useBudgetData: addBudget success, refreshing from storage');
-        await refreshFromStorage();
-        // Trigger a refresh to ensure components re-render with new data
-        setRefreshTrigger(prev => prev + 1);
+        try {
+          await refreshFromStorage();
+          // Trigger a refresh to ensure components re-render with new data
+          setRefreshTrigger(prev => prev + 1);
+        } catch (error) {
+          console.error('useBudgetData: Error refreshing after addBudget:', error);
+        }
       }
       return res;
     },
@@ -274,8 +365,17 @@ export const useBudgetData = () => {
 
   const renameBudget = useCallback(
     async (budgetId: string, newName: string) => {
-      const res = await storageRenameBudget(budgetId, newName);
-      if (res.success) await refreshFromStorage();
+      const res = await safeAsyncResult(
+        () => storageRenameBudget(budgetId, newName),
+        'storageRenameBudget'
+      );
+      if (res.success) {
+        try {
+          await refreshFromStorage();
+        } catch (error) {
+          console.error('useBudgetData: Error refreshing after renameBudget:', error);
+        }
+      }
       return res;
     },
     [refreshFromStorage]
@@ -283,8 +383,17 @@ export const useBudgetData = () => {
 
   const deleteBudget = useCallback(
     async (budgetId: string) => {
-      const res = await storageDeleteBudget(budgetId);
-      if (res.success) await refreshFromStorage();
+      const res = await safeAsyncResult(
+        () => storageDeleteBudget(budgetId),
+        'storageDeleteBudget'
+      );
+      if (res.success) {
+        try {
+          await refreshFromStorage();
+        } catch (error) {
+          console.error('useBudgetData: Error refreshing after deleteBudget:', error);
+        }
+      }
       return res;
     },
     [refreshFromStorage]
@@ -292,8 +401,17 @@ export const useBudgetData = () => {
 
   const duplicateBudget = useCallback(
     async (budgetId: string, customName?: string) => {
-      const res = await storageDuplicateBudget(budgetId, customName);
-      if (res.success) await refreshFromStorage();
+      const res = await safeAsyncResult(
+        () => storageDuplicateBudget(budgetId, customName),
+        'storageDuplicateBudget'
+      );
+      if (res.success) {
+        try {
+          await refreshFromStorage();
+        } catch (error) {
+          console.error('useBudgetData: Error refreshing after duplicateBudget:', error);
+        }
+      }
       return res;
     },
     [refreshFromStorage]
@@ -302,13 +420,20 @@ export const useBudgetData = () => {
   const setActiveBudget = useCallback(
     async (budgetId: string) => {
       console.log('useBudgetData: setActiveBudget called with:', budgetId);
-      const res = await storageSetActiveBudget(budgetId);
+      const res = await safeAsyncResult(
+        () => storageSetActiveBudget(budgetId),
+        'storageSetActiveBudget'
+      );
       console.log('useBudgetData: setActiveBudget storage result:', res);
       if (res.success) {
         console.log('useBudgetData: setActiveBudget success, refreshing from storage');
-        await refreshFromStorage();
-        // Trigger a refresh to ensure components re-render with new data
-        setRefreshTrigger(prev => prev + 1);
+        try {
+          await refreshFromStorage();
+          // Trigger a refresh to ensure components re-render with new data
+          setRefreshTrigger(prev => prev + 1);
+        } catch (error) {
+          console.error('useBudgetData: Error refreshing after setActiveBudget:', error);
+        }
       }
       return res;
     },
@@ -679,8 +804,12 @@ export const useBudgetData = () => {
       }
 
       console.log('useBudgetData: Executing refresh...');
-      await refreshFromStorage();
-      lastRefreshTimeRef.current = Date.now();
+      try {
+        await refreshFromStorage();
+        lastRefreshTimeRef.current = Date.now();
+      } catch (error) {
+        console.error('useBudgetData: Error during refresh:', error);
+      }
     },
     [refreshFromStorage, saving, loading] // Remove dependencies that could cause loops
   );
@@ -689,12 +818,19 @@ export const useBudgetData = () => {
   const clearAllData = useCallback(async (): Promise<{ success: boolean; error?: Error }> => {
     console.log('useBudgetData: Clearing ALL app data - deleting all budgets, people, expenses, and custom categories...');
     try {
-      const result = await storageClearAllAppData();
+      const result = await safeAsyncResult(
+        () => storageClearAllAppData(),
+        'storageClearAllAppData'
+      );
       if (result.success) {
         console.log('useBudgetData: All app data cleared successfully, refreshing from storage');
-        await refreshFromStorage();
-        // Trigger a refresh to ensure components re-render with new data
-        setRefreshTrigger(prev => prev + 1);
+        try {
+          await refreshFromStorage();
+          // Trigger a refresh to ensure components re-render with new data
+          setRefreshTrigger(prev => prev + 1);
+        } catch (error) {
+          console.error('useBudgetData: Error refreshing after clearAllData:', error);
+        }
       }
       return result;
     } catch (error) {

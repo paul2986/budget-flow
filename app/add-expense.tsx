@@ -27,6 +27,21 @@ type TempCategory = {
   isTemp: true;
 };
 
+// Helper function to safely handle async operations
+const safeAsync = async <T>(
+  operation: () => Promise<T>,
+  fallback: T,
+  operationName: string
+): Promise<T> => {
+  try {
+    const result = await operation();
+    return result;
+  } catch (error) {
+    console.error(`AddExpenseScreen: Error in ${operationName}:`, error);
+    return fallback;
+  }
+};
+
 export default function AddExpenseScreen() {
   const { data, addExpense, updateExpense, removeExpense, addPerson, saving, refreshTrigger } = useBudgetData();
   const { currentColors } = useTheme();
@@ -75,11 +90,22 @@ export default function AddExpenseScreen() {
 
   // Load custom categories initially and scroll to top
   useEffect(() => {
-    (async () => {
-      const list = await getCustomExpenseCategories();
-      console.log('AddExpenseScreen: Loaded custom categories:', list);
-      setCustomCategories(list);
-    })();
+    const loadCustomCategories = async () => {
+      try {
+        const list = await safeAsync(
+          () => getCustomExpenseCategories(),
+          [],
+          'getCustomExpenseCategories'
+        );
+        console.log('AddExpenseScreen: Loaded custom categories:', list);
+        setCustomCategories(list);
+      } catch (error) {
+        console.error('AddExpenseScreen: Error loading custom categories:', error);
+        setCustomCategories([]);
+      }
+    };
+    
+    loadCustomCategories();
     
     // Scroll to top when component mounts
     setTimeout(() => {
@@ -89,26 +115,36 @@ export default function AddExpenseScreen() {
 
   // Reload custom categories when data changes (e.g., after clearing all data)
   useEffect(() => {
-    (async () => {
-      const list = await getCustomExpenseCategories();
-      console.log('AddExpenseScreen: Reloaded custom categories after data change:', list);
-      
-      // Check if current categoryTag is still valid before updating the list
-      const currentCategoryStillValid = DEFAULT_CATEGORIES.includes(categoryTag) || list.includes(categoryTag) || tempCategories.some(tc => tc.name === categoryTag);
-      
-      setCustomCategories(list);
-      
-      // If current categoryTag is not in the updated list and not a default and not a temp category, reset to 'Misc'
-      if (categoryTag && !currentCategoryStillValid) {
-        console.log('AddExpenseScreen: Current category tag not found in updated list, resetting to Misc:', {
-          currentCategoryTag: categoryTag,
-          availableDefaults: DEFAULT_CATEGORIES,
-          availableCustom: list,
-          tempCategories: tempCategories.map(tc => tc.name)
-        });
-        setCategoryTag('Misc');
+    const reloadCustomCategories = async () => {
+      try {
+        const list = await safeAsync(
+          () => getCustomExpenseCategories(),
+          [],
+          'getCustomExpenseCategories-reload'
+        );
+        console.log('AddExpenseScreen: Reloaded custom categories after data change:', list);
+        
+        // Check if current categoryTag is still valid before updating the list
+        const currentCategoryStillValid = DEFAULT_CATEGORIES.includes(categoryTag) || list.includes(categoryTag) || tempCategories.some(tc => tc.name === categoryTag);
+        
+        setCustomCategories(list);
+        
+        // If current categoryTag is not in the updated list and not a default and not a temp category, reset to 'Misc'
+        if (categoryTag && !currentCategoryStillValid) {
+          console.log('AddExpenseScreen: Current category tag not found in updated list, resetting to Misc:', {
+            currentCategoryTag: categoryTag,
+            availableDefaults: DEFAULT_CATEGORIES,
+            availableCustom: list,
+            tempCategories: tempCategories.map(tc => tc.name)
+          });
+          setCategoryTag('Misc');
+        }
+      } catch (error) {
+        console.error('AddExpenseScreen: Error reloading custom categories:', error);
       }
-    })();
+    };
+    
+    reloadCustomCategories();
   }, [data.people.length, data.expenses.length, refreshTrigger, categoryTag, tempCategories]);
 
   // Load expense data for editing
@@ -138,7 +174,11 @@ export default function AddExpenseScreen() {
       if (normalized && !DEFAULT_CATEGORIES.includes(normalized) && !customCategories.includes(normalized)) {
         const next = [...customCategories, normalized];
         setCustomCategories(next);
-        saveCustomExpenseCategories(next).then(() => console.log('Saved missing custom category from edited expense'));
+        safeAsync(
+          () => saveCustomExpenseCategories(next),
+          undefined,
+          'saveCustomExpenseCategories-missing'
+        ).then(() => console.log('Saved missing custom category from edited expense'));
       }
     } else if (!isEditMode) {
       // Reset form for new expense
@@ -163,7 +203,11 @@ export default function AddExpenseScreen() {
     
     // Small delay to ensure state is updated before navigation
     setTimeout(() => {
-      router.replace('/expenses');
+      try {
+        router.replace('/expenses');
+      } catch (error) {
+        console.error('AddExpenseScreen: Error navigating back:', error);
+      }
     }, 100);
   }, []);
 
@@ -285,7 +329,11 @@ export default function AddExpenseScreen() {
         }
         
         if (newCustomCategories.length > customCategories.length) {
-          await saveCustomExpenseCategories(newCustomCategories);
+          await safeAsync(
+            () => saveCustomExpenseCategories(newCustomCategories),
+            undefined,
+            'saveCustomExpenseCategories-temp'
+          );
           setCustomCategories(newCustomCategories);
           console.log('AddExpenseScreen: Saved new custom categories:', newCustomCategories);
         }
@@ -383,7 +431,11 @@ export default function AddExpenseScreen() {
   }, [isEditMode, expenseToEdit, removeExpense, navigateToOrigin]);
 
   const handleGoBack = useCallback(() => {
-    router.replace('/expenses');
+    try {
+      router.replace('/expenses');
+    } catch (error) {
+      console.error('AddExpenseScreen: Error going back:', error);
+    }
   }, []);
 
   const OwnershipPicker = useCallback(() => (

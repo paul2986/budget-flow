@@ -38,7 +38,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadThemeMode();
+    // Wrap in async function to handle potential promise rejections
+    const initializeTheme = async () => {
+      try {
+        await loadThemeMode();
+      } catch (error) {
+        console.error('ThemeProvider: Error initializing theme:', error);
+        setLoading(false);
+      }
+    };
+    
+    initializeTheme();
   }, []);
 
   useEffect(() => {
@@ -71,6 +81,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.log('ThemeProvider: Theme mode saved and state updated');
     } catch (error) {
       console.error('ThemeProvider: Error saving theme mode:', error);
+      // Still update the state even if storage fails
+      setThemeModeState(mode);
     }
   };
 
