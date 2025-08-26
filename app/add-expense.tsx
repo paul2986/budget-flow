@@ -592,125 +592,12 @@ export default function AddExpenseScreen() {
   }, [newPersonName, description, amount, category, categoryTag, frequency, startDateYMD, endDateYMD, tempPeople]);
 
   const PersonPicker = useCallback(() => {
-    const allPeople = getAllPeople();
-
-    // For household expenses, show optional person picker
+    // Don't show person picker for household expenses
     if (category === 'household') {
-      return (
-        <View style={themedStyles.section}>
-          <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
-            Assign to Person <Text style={[themedStyles.textSecondary, { fontWeight: '400' }]}>(optional)</Text>
-          </Text>
-          
-          {allPeople.length === 0 ? (
-            <View style={[themedStyles.card, { backgroundColor: currentColors.border + '20', borderColor: currentColors.border, borderWidth: 1 }]}>
-              <View style={themedStyles.centerContent}>
-                <Icon name="people-outline" size={24} style={{ color: currentColors.textSecondary, marginBottom: 8 }} />
-                <Text style={[themedStyles.textSecondary, { textAlign: 'center', fontSize: 14 }]}>
-                  No people added yet. You can add people later or assign this household expense to someone specific.
-                </Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    console.log('AddExpenseScreen: Opening add person modal for household expense, preserving form state:', { 
-                      description, 
-                      amount, 
-                      category, 
-                      categoryTag, 
-                      frequency, 
-                      startDateYMD, 
-                      endDateYMD 
-                    });
-                    setShowAddPersonModal(true);
-                  }}
-                  style={[
-                    themedStyles.badge,
-                    { 
-                      backgroundColor: currentColors.primary,
-                      paddingHorizontal: 16,
-                      paddingVertical: 10,
-                      borderRadius: 20,
-                      marginTop: 12,
-                    }
-                  ]}
-                >
-                  <Text style={[themedStyles.badgeText, { color: '#FFFFFF', fontWeight: '600' }]}>
-                    Add Person
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <>
-              <View style={[themedStyles.row, { marginTop: 8, flexWrap: 'wrap' }]}>
-                {/* None option for household expenses */}
-                <TouchableOpacity
-                  style={[
-                    themedStyles.badge,
-                    { 
-                      backgroundColor: !personId ? currentColors.secondary : currentColors.border,
-                      marginRight: 8,
-                      marginBottom: 8,
-                      paddingHorizontal: 16,
-                      paddingVertical: 10,
-                      borderRadius: 20,
-                    }
-                  ]}
-                  onPress={() => setPersonId('')}
-                  disabled={saving || deleting}
-                >
-                  <Text style={[
-                    themedStyles.badgeText,
-                    { 
-                      color: !personId ? '#FFFFFF' : currentColors.text,
-                      fontWeight: '600',
-                    }
-                  ]}>
-                    None (Household)
-                  </Text>
-                </TouchableOpacity>
-                
-                {allPeople.map((person) => {
-                  const isTemp = 'isTemp' in person && person.isTemp;
-                  return (
-                    <TouchableOpacity
-                      key={person.id}
-                      style={[
-                        themedStyles.badge,
-                        { 
-                          backgroundColor: personId === person.id ? currentColors.secondary : currentColors.border,
-                          marginRight: 8,
-                          marginBottom: 8,
-                          paddingHorizontal: 16,
-                          paddingVertical: 10,
-                          borderRadius: 20,
-                          borderWidth: isTemp ? 2 : 0,
-                          borderColor: isTemp ? currentColors.primary : 'transparent',
-                        }
-                      ]}
-                      onPress={() => setPersonId(person.id)}
-                      disabled={saving || deleting}
-                    >
-                      <Text style={[
-                        themedStyles.badgeText,
-                        { 
-                          color: personId === person.id ? '#FFFFFF' : currentColors.text,
-                          fontWeight: '600',
-                        }
-                      ]}>
-                        {person.name}{isTemp ? ' (new)' : ''}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              <Text style={[themedStyles.textSecondary, { fontSize: 12, marginTop: 4 }]}>
-                Household expenses can be unassigned or assigned to a specific person. {tempPeople.length > 0 ? 'New people will be created when you save.' : ''}
-              </Text>
-            </>
-          )}
-        </View>
-      );
+      return null;
     }
+
+    const allPeople = getAllPeople();
 
     // Show message when personal is selected but no people exist
     if (category === 'personal' && allPeople.length === 0) {

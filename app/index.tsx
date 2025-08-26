@@ -751,7 +751,7 @@ export default function HomeScreen() {
           contentContainerStyle={[
             themedStyles.scrollContent,
             {
-              paddingHorizontal: 16, // Keep some padding for partial setup
+              paddingHorizontal: 0, // Changed from 16 to 0 to match other screens
               paddingTop: 32,
               paddingBottom: 120, // Ensure bottom content is visible above nav bar
             }
