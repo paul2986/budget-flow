@@ -204,19 +204,31 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
     const personalExpenses = expenses.filter(e => e && e.category === 'personal' && e.personId);
     const peopleIds = new Set(personalExpenses.map(e => e.personId));
     
+    const result = people.filter(person => peopleIds.has(person.id));
+    
     console.log('ExpenseBreakdownSection: peopleWithPersonalExpenses calculation:', {
       totalPeople: people.length,
       personalExpenses: personalExpenses.length,
-      peopleWithExpensesCount: people.filter(person => peopleIds.has(person.id)).length
+      peopleWithExpensesCount: result.length
     });
     
-    return people.filter(person => peopleIds.has(person.id));
+    return result;
   }, [people, expenses]);
+
+  // Check if switcher should be shown (2 or more people with personal expenses)
+  const shouldShowPersonSwitcher = useMemo(() => {
+    const shouldShow = peopleWithPersonalExpenses.length >= 2;
+    console.log('ExpenseBreakdownSection: shouldShowPersonSwitcher:', {
+      peopleWithPersonalExpensesCount: peopleWithPersonalExpenses.length,
+      shouldShow
+    });
+    return shouldShow;
+  }, [peopleWithPersonalExpenses]);
 
   // Person switcher component
   const PersonSwitcher = () => {
-    if (!people || people.length === 0 || peopleWithPersonalExpenses.length === 0) {
-      console.log('ExpenseBreakdownSection: PersonSwitcher not rendering - no people with personal expenses');
+    if (!shouldShowPersonSwitcher) {
+      console.log('ExpenseBreakdownSection: PersonSwitcher not rendering - less than 2 people with personal expenses');
       return null;
     }
 
@@ -367,7 +379,7 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
           </View>
         </View>
 
-        {/* Person Switcher for Personal Expenses */}
+        {/* Person Switcher for Personal Expenses - Only show if 2+ people with personal expenses */}
         {!isHousehold && <PersonSwitcher />}
 
         {/* Categories - Interactive */}
@@ -438,7 +450,8 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
     hasPersonal: !!breakdownData.personal,
     selectedPersonId,
     totalExpenses: expenses?.length || 0,
-    personalExpensesInData: expenses?.filter(e => e && e.category === 'personal').length || 0
+    personalExpensesInData: expenses?.filter(e => e && e.category === 'personal').length || 0,
+    shouldShowPersonSwitcher
   });
 
   return (
