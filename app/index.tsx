@@ -43,6 +43,10 @@ export default function HomeScreen() {
   const [showBudgetReady, setShowBudgetReady] = useState(false);
   const [budgetName, setBudgetName] = useState('');
   const [creatingBudget, setCreatingBudget] = useState(false);
+  
+  // State for global view mode
+  const [globalViewMode, setGlobalViewMode] = useState<'daily' | 'monthly' | 'yearly'>('monthly');
+  
   const appState = useRef(AppState.currentState);
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -120,6 +124,12 @@ export default function HomeScreen() {
       remaining,
     };
   }, [appData, activeBudget, data, refreshTrigger]);
+
+  // Handler for view mode changes from OverviewSection
+  const handleViewModeChange = useCallback((mode: 'daily' | 'monthly' | 'yearly') => {
+    console.log('HomeScreen: Global view mode changed to:', mode);
+    setGlobalViewMode(mode);
+  }, []);
 
   // Check lock status when app becomes active
   const handleAppStateChange = useCallback((nextAppState: string) => {
@@ -971,6 +981,7 @@ export default function HomeScreen() {
                   people={people}
                   expenses={expenses}
                   householdSettings={data.householdSettings}
+                  onViewModeChange={handleViewModeChange}
                 />
               </View>
             </View>
@@ -1001,6 +1012,7 @@ export default function HomeScreen() {
                 expenses={expenses}
                 householdSettings={data.householdSettings}
                 totalHouseholdExpenses={calculations.householdExpenses}
+                viewMode={globalViewMode}
               />
             </View>
 
@@ -1028,7 +1040,8 @@ export default function HomeScreen() {
               <ExpenseBreakdownSection 
                 key={`expense-breakdown-${activeBudget?.id || 'no-budget'}`}
                 expenses={expenses} 
-                people={people} 
+                people={people}
+                viewMode={globalViewMode}
               />
             </View>
 

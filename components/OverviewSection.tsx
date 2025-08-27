@@ -19,6 +19,7 @@ interface OverviewSectionProps {
   people: Person[];
   expenses: Expense[];
   householdSettings?: HouseholdSettings;
+  onViewModeChange?: (mode: 'daily' | 'monthly' | 'yearly') => void;
 }
 
 type ViewMode = 'daily' | 'monthly' | 'yearly';
@@ -27,7 +28,8 @@ export default function OverviewSection({
   calculations, 
   people, 
   expenses, 
-  householdSettings 
+  householdSettings,
+  onViewModeChange
 }: OverviewSectionProps) {
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
@@ -35,6 +37,14 @@ export default function OverviewSection({
   
   // Default to monthly as requested
   const [viewMode, setViewMode] = useState<ViewMode>('monthly');
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    console.log('OverviewSection: View mode changed to:', mode);
+    setViewMode(mode);
+    if (onViewModeChange) {
+      onViewModeChange(mode);
+    }
+  };
 
   const displayValues = useMemo(() => {
     if (viewMode === 'daily') {
@@ -59,7 +69,7 @@ export default function OverviewSection({
 
   const TabButton = ({ mode, label }: { mode: ViewMode; label: string }) => (
     <TouchableOpacity
-      onPress={() => setViewMode(mode)}
+      onPress={() => handleViewModeChange(mode)}
       style={[
         {
           flex: 1,

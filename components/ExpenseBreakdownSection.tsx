@@ -11,7 +11,8 @@ import { router } from 'expo-router';
 
 interface ExpenseBreakdownSectionProps {
   expenses: Expense[];
-  people?: Person[]; // Add people prop to enable person switching
+  people?: Person[];
+  viewMode?: 'daily' | 'monthly' | 'yearly';
 }
 
 interface CategoryBreakdown {
@@ -29,13 +30,21 @@ interface TypeBreakdown {
   categories: CategoryBreakdown[];
 }
 
-export default function ExpenseBreakdownSection({ expenses, people = [] }: ExpenseBreakdownSectionProps) {
+export default function ExpenseBreakdownSection({ 
+  expenses, 
+  people = [], 
+  viewMode = 'monthly' 
+}: ExpenseBreakdownSectionProps) {
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
   const { themedStyles } = useThemedStyles();
   
   // State for personal expenses person filter
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  
+  // State for collapsible sections - default to closed
+  const [householdExpanded, setHouseholdExpanded] = useState(false);
+  const [personalExpanded, setPersonalExpanded] = useState(false);
 
   // Reset selectedPersonId when expenses change (e.g., budget switch)
   useEffect(() => {
@@ -46,14 +55,26 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
   console.log('ExpenseBreakdownSection: Component rendered with expenses:', {
     expensesLength: expenses?.length || 0,
     peopleLength: people?.length || 0,
-    selectedPersonId
+    selectedPersonId,
+    viewMode
   });
+
+  // Helper function to convert amounts based on view mode
+  const convertAmount = (amount: number): number => {
+    if (viewMode === 'daily') {
+      return calculateMonthlyAmount(amount, 'yearly') / 30.44; // Average days per month
+    } else if (viewMode === 'monthly') {
+      return calculateMonthlyAmount(amount, 'yearly');
+    }
+    return amount; // yearly
+  };
 
   // Calculate breakdown data
   const breakdownData = useMemo(() => {
     console.log('ExpenseBreakdownSection: Processing expenses for breakdown:', {
       expensesLength: expenses?.length || 0,
-      selectedPersonId
+      selectedPersonId,
+      viewMode
     });
 
     if (!expenses || !Array.isArray(expenses) || expenses.length === 0) {
@@ -69,7 +90,7 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
     console.log('ExpenseBreakdownSection: Active expenses count:', activeExpenses.length);
 
     const totalAmount = activeExpenses.reduce((sum, expense) => {
-      return sum + calculateMonthlyAmount(expense.amount, expense.frequency);
+      return sum + convertAmount(calculateMonthlyAmount(expense.amount, expense.frequency) * 12); // Convert to annual first, then to view mode
     }, 0);
 
     console.log('ExpenseBreakdownSection: Total amount calculated:', totalAmount);
@@ -104,7 +125,7 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
       }
 
       const typeAmount = typeExpenses.reduce((sum, expense) => {
-        return sum + calculateMonthlyAmount(expense.amount, expense.frequency);
+        return sum + convertAmount(calculateMonthlyAmount(expense.amount, expense.frequency) * 12); // Convert to annual first, then to view mode
       }, 0);
 
       // Group by category tag
@@ -112,17 +133,17 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
       
       typeExpenses.forEach(expense => {
         const category = expense.categoryTag || 'Misc';
-        const monthlyAmount = calculateMonthlyAmount(expense.amount, expense.frequency);
+        const convertedAmount = convertAmount(calculateMonthlyAmount(expense.amount, expense.frequency) * 12); // Convert to annual first, then to view mode
         
         if (categoryMap.has(category)) {
           const existing = categoryMap.get(category)!;
           categoryMap.set(category, {
-            amount: existing.amount + monthlyAmount,
+            amount: existing.amount + convertedAmount,
             count: existing.count + 1,
           });
         } else {
           categoryMap.set(category, {
-            amount: monthlyAmount,
+            amount: convertedAmount,
             count: 1,
           });
         }
@@ -158,7 +179,8 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
       totalAmount,
       hasHousehold: !!household,
       hasPersonal: !!personal,
-      selectedPersonId
+      selectedPersonId,
+      viewMode
     });
 
     return {
@@ -166,7 +188,7 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
       personal,
       totalAmount,
     };
-  }, [expenses, selectedPersonId]);
+  }, [expenses, selectedPersonId, viewMode, convertAmount]);
 
   // FIXED: Navigation handler for category taps with proper URL parameter handling
   const handleCategoryPress = (expenseType: 'household' | 'personal', categoryName: string) => {
@@ -323,11 +345,13 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
 
   console.log('ExpenseBreakdownSection: Rendering breakdown with data');
 
-  // Type breakdown component without animations
+  // Type breakdown component with collapsible functionality
   const TypeBreakdownComponent = ({ breakdown }: { breakdown: TypeBreakdown }) => {
     const isHousehold = breakdown.type === 'household';
     const typeColor = isHousehold ? currentColors.household : currentColors.personal;
     const typeIcon = isHousehold ? 'home' : 'person';
+    const isExpanded = isHousehold ? householdExpanded : personalExpanded;
+    const setExpanded = isHousehold ? setHouseholdExpanded : setPersonalExpanded;
 
     // Get selected person name for personal expenses header
     const selectedPersonName = selectedPersonId && people 
@@ -347,8 +371,12 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
           },
         ]}
       >
-        {/* Type Header */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+        {/* Collapsible Type Header */}
+        <TouchableOpacity
+          onPress={() => setExpanded(!isExpanded)}
+          activeOpacity={0.7}
+          style={{ flexDirection: 'row', alignItems: 'center', marginBottom: isExpanded ? 20 : 0 }}
+        >
           <View style={{
             width: 48,
             height: 48,
@@ -373,7 +401,7 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
               {breakdown.count} {breakdown.count === 1 ? 'expense' : 'expenses'} • {breakdown.percentage.toFixed(1)}% of total
             </Text>
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
+          <View style={{ alignItems: 'flex-end', marginRight: 12 }}>
             <Text style={[
               themedStyles.text,
               { fontSize: 18, fontWeight: '700', color: typeColor }
@@ -381,73 +409,83 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
               {formatCurrency(breakdown.amount)}
             </Text>
             <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
-              per month
+              per {viewMode === 'yearly' ? 'year' : viewMode === 'daily' ? 'day' : 'month'}
             </Text>
           </View>
-        </View>
+          <Icon 
+            name={isExpanded ? "chevron-up" : "chevron-down"} 
+            size={20} 
+            style={{ color: currentColors.textSecondary }} 
+          />
+        </TouchableOpacity>
 
-        {/* Person Switcher for Personal Expenses - Only show if 2+ people with personal expenses */}
-        {!isHousehold && <PersonSwitcher />}
+        {/* Expandable Content */}
+        {isExpanded && (
+          <View>
+            {/* Person Switcher for Personal Expenses - Only show if 2+ people with personal expenses */}
+            {!isHousehold && <PersonSwitcher />}
 
-        {/* Categories - Interactive */}
-        <View style={{ gap: 12 }}>
-          {breakdown.categories.map((category, categoryIndex) => (
-            <TouchableOpacity
-              key={`${breakdown.type}-${category.category}-${categoryIndex}`}
-              onPress={() => handleCategoryPress(breakdown.type, category.category)}
-              activeOpacity={0.7}
-              style={{
-                backgroundColor: currentColors.backgroundAlt,
-                borderRadius: 12,
-                padding: 16,
-                borderWidth: 1,
-                borderColor: currentColors.border,
-              }}
-            >
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                  <Text style={[themedStyles.text, { fontSize: 16, fontWeight: '600', flex: 1 }]}>
-                    {category.category}
-                  </Text>
-                  <Icon 
-                    name="chevron-forward" 
-                    size={16} 
-                    style={{ color: currentColors.textSecondary, marginLeft: 8 }} 
-                  />
-                </View>
-                <Text style={[themedStyles.text, { fontSize: 14, fontWeight: '700', color: typeColor, marginLeft: 12 }]}>
-                  {formatCurrency(category.amount)}
-                </Text>
-              </View>
-              
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
-                  {category.count} {category.count === 1 ? 'expense' : 'expenses'}
-                </Text>
-                <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
-                  {category.percentage.toFixed(1)}% of {breakdown.type}
-                </Text>
-              </View>
-
-              {/* Progress Bar */}
-              <View style={{
-                height: 6,
-                backgroundColor: currentColors.border,
-                borderRadius: 3,
-                overflow: 'hidden',
-              }}>
-                <View
+            {/* Categories - Interactive */}
+            <View style={{ gap: 12 }}>
+              {breakdown.categories.map((category, categoryIndex) => (
+                <TouchableOpacity
+                  key={`${breakdown.type}-${category.category}-${categoryIndex}`}
+                  onPress={() => handleCategoryPress(breakdown.type, category.category)}
+                  activeOpacity={0.7}
                   style={{
-                    height: '100%',
-                    backgroundColor: typeColor,
-                    borderRadius: 3,
-                    width: `${category.percentage}%`,
+                    backgroundColor: currentColors.backgroundAlt,
+                    borderRadius: 12,
+                    padding: 16,
+                    borderWidth: 1,
+                    borderColor: currentColors.border,
                   }}
-                />
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+                >
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <Text style={[themedStyles.text, { fontSize: 16, fontWeight: '600', flex: 1 }]}>
+                        {category.category}
+                      </Text>
+                      <Icon 
+                        name="chevron-forward" 
+                        size={16} 
+                        style={{ color: currentColors.textSecondary, marginLeft: 8 }} 
+                      />
+                    </View>
+                    <Text style={[themedStyles.text, { fontSize: 14, fontWeight: '700', color: typeColor, marginLeft: 12 }]}>
+                      {formatCurrency(category.amount)}
+                    </Text>
+                  </View>
+                  
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
+                      {category.count} {category.count === 1 ? 'expense' : 'expenses'}
+                    </Text>
+                    <Text style={[themedStyles.textSecondary, { fontSize: 12 }]}>
+                      {category.percentage.toFixed(1)}% of {breakdown.type}
+                    </Text>
+                  </View>
+
+                  {/* Progress Bar */}
+                  <View style={{
+                    height: 6,
+                    backgroundColor: currentColors.border,
+                    borderRadius: 3,
+                    overflow: 'hidden',
+                  }}>
+                    <View
+                      style={{
+                        height: '100%',
+                        backgroundColor: typeColor,
+                        borderRadius: 3,
+                        width: `${category.percentage}%`,
+                      }}
+                    />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
       </View>
     );
   };
@@ -458,7 +496,10 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
     selectedPersonId,
     totalExpenses: expenses?.length || 0,
     personalExpensesInData: expenses?.filter(e => e && e.category === 'personal').length || 0,
-    shouldShowPersonSwitcher
+    shouldShowPersonSwitcher,
+    viewMode,
+    householdExpanded,
+    personalExpanded
   });
 
   return (
