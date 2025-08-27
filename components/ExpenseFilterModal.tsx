@@ -17,6 +17,8 @@ interface ExpenseFilterModalProps {
   setPersonFilter: (personId: string | null) => void;
   categoryFilter: string | null;
   setCategoryFilter: (category: string | null) => void;
+  categoryFilters: string[];
+  setCategoryFilters: (categories: string[]) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   hasEndDateFilter: boolean;
@@ -39,6 +41,8 @@ export default function ExpenseFilterModal({
   setPersonFilter,
   categoryFilter,
   setCategoryFilter,
+  categoryFilters,
+  setCategoryFilters,
   searchQuery,
   setSearchQuery,
   hasEndDateFilter,
@@ -71,11 +75,13 @@ export default function ExpenseFilterModal({
       });
       setTempFilter(filter);
       setTempPersonFilter(personFilter);
-      setTempCategoryFilters(categoryFilter ? [categoryFilter] : []);
+      // Initialize with multiple categories if available, otherwise single category
+      const initialCategories = categoryFilters.length > 0 ? categoryFilters : (categoryFilter ? [categoryFilter] : []);
+      setTempCategoryFilters(initialCategories);
       setTempSearchQuery(searchQuery);
       setTempHasEndDateFilter(hasEndDateFilter);
     }
-  }, [visible, filter, personFilter, categoryFilter, searchQuery, hasEndDateFilter]);
+  }, [visible, filter, personFilter, categoryFilter, categoryFilters, searchQuery, hasEndDateFilter]);
 
   const availableCategories = (() => {
     // Union of defaults + custom + any tag appearing in expenses (normalized)
@@ -97,6 +103,7 @@ export default function ExpenseFilterModal({
       filter?: 'all' | 'household' | 'personal';
       personFilter?: string | null;
       categoryFilter?: string | null;
+      categoryFilters?: string[];
       searchQuery?: string;
       hasEndDateFilter?: boolean;
     }) => {
@@ -119,12 +126,15 @@ export default function ExpenseFilterModal({
         });
       }
       
-      // Apply category filter
-      if (testFilters.categoryFilter) {
-        const selected = normalizeCategoryName(testFilters.categoryFilter);
+      // Apply category filter (support both single and multiple)
+      const activeCategories = testFilters.categoryFilters && testFilters.categoryFilters.length > 0 
+        ? testFilters.categoryFilters 
+        : (testFilters.categoryFilter ? [testFilters.categoryFilter] : []);
+      if (activeCategories.length > 0) {
+        const selectedCategories = activeCategories.map(cat => normalizeCategoryName(cat));
         filtered = filtered.filter((e) => {
           const expenseCategory = normalizeCategoryName((e as any).categoryTag || 'Misc');
-          return expenseCategory === selected;
+          return selectedCategories.includes(expenseCategory);
         });
       }
       
@@ -149,7 +159,7 @@ export default function ExpenseFilterModal({
     const allCount = countExpensesWithFilters({
       filter: 'all',
       personFilter: tempPersonFilter,
-      categoryFilter: tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null,
+      categoryFilters: tempCategoryFilters,
       searchQuery: tempSearchQuery,
       hasEndDateFilter: tempHasEndDateFilter
     });
@@ -157,7 +167,7 @@ export default function ExpenseFilterModal({
     const householdCount = countExpensesWithFilters({
       filter: 'household',
       personFilter: tempPersonFilter,
-      categoryFilter: tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null,
+      categoryFilters: tempCategoryFilters,
       searchQuery: tempSearchQuery,
       hasEndDateFilter: tempHasEndDateFilter
     });
@@ -165,7 +175,7 @@ export default function ExpenseFilterModal({
     const personalCount = countExpensesWithFilters({
       filter: 'personal',
       personFilter: tempPersonFilter,
-      categoryFilter: tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null,
+      categoryFilters: tempCategoryFilters,
       searchQuery: tempSearchQuery,
       hasEndDateFilter: tempHasEndDateFilter
     });
@@ -176,7 +186,7 @@ export default function ExpenseFilterModal({
       peopleCounts[person.id] = countExpensesWithFilters({
         filter: tempFilter,
         personFilter: person.id,
-        categoryFilter: tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null,
+        categoryFilters: tempCategoryFilters,
         searchQuery: tempSearchQuery,
         hasEndDateFilter: tempHasEndDateFilter
       });
@@ -186,7 +196,7 @@ export default function ExpenseFilterModal({
     const allPeopleCount = countExpensesWithFilters({
       filter: tempFilter,
       personFilter: null,
-      categoryFilter: tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null,
+      categoryFilters: tempCategoryFilters,
       searchQuery: tempSearchQuery,
       hasEndDateFilter: tempHasEndDateFilter
     });
@@ -216,7 +226,7 @@ export default function ExpenseFilterModal({
     const withEndDateCount = countExpensesWithFilters({
       filter: tempFilter,
       personFilter: tempPersonFilter,
-      categoryFilter: tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null,
+      categoryFilters: tempCategoryFilters,
       searchQuery: tempSearchQuery,
       hasEndDateFilter: true
     });
@@ -224,7 +234,7 @@ export default function ExpenseFilterModal({
     const withoutEndDateCount = countExpensesWithFilters({
       filter: tempFilter,
       personFilter: tempPersonFilter,
-      categoryFilter: tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null,
+      categoryFilters: tempCategoryFilters,
       searchQuery: tempSearchQuery,
       hasEndDateFilter: false
     });
@@ -255,7 +265,9 @@ export default function ExpenseFilterModal({
     // Reset temp state to original values and close without applying
     setTempFilter(filter);
     setTempPersonFilter(personFilter);
-    setTempCategoryFilters(categoryFilter ? [categoryFilter] : []);
+    // Reset with current categories
+    const currentCategories = categoryFilters.length > 0 ? categoryFilters : (categoryFilter ? [categoryFilter] : []);
+    setTempCategoryFilters(currentCategories);
     setTempSearchQuery(searchQuery);
     setTempHasEndDateFilter(hasEndDateFilter);
     onClose();
@@ -274,9 +286,10 @@ export default function ExpenseFilterModal({
     setFilter(tempFilter);
     setPersonFilter(tempPersonFilter);
     
-    // For categories, if multiple selected, we'll apply the first one for now
-    // (since the current system only supports single category filter)
-    const newCategoryFilter = tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null;
+    // Apply multiple categories
+    setCategoryFilters(tempCategoryFilters);
+    // For storage compatibility, also set single category filter to first selected
+    const newCategoryFilter = tempCategoryFilters;
     setCategoryFilter(newCategoryFilter);
     setSearchQuery(tempSearchQuery);
     setHasEndDateFilter(tempHasEndDateFilter);
@@ -286,7 +299,13 @@ export default function ExpenseFilterModal({
     if (hasActiveFilters) {
       const activeFilters = [];
       if (tempSearchQuery.trim()) activeFilters.push(`search: "${tempSearchQuery.trim()}"`);
-      if (tempCategoryFilters.length > 0) activeFilters.push(`categories: ${tempCategoryFilters.join(', ')}`);
+      if (tempCategoryFilters.length > 0) {
+        if (tempCategoryFilters.length === 1) {
+          activeFilters.push(`category: ${tempCategoryFilters[0]}`);
+        } else {
+          activeFilters.push(`categories: ${tempCategoryFilters.join(', ')}`);
+        }
+      }
       if (tempFilter !== 'all') activeFilters.push(`type: ${tempFilter}`);
       if (tempPersonFilter) {
         const personName = people.find(p => p.id === tempPersonFilter)?.name || 'Unknown';
@@ -477,7 +496,7 @@ export default function ExpenseFilterModal({
           <View style={[themedStyles.section, { paddingBottom: 0 }]}>
             <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Expense Type</Text>
             <View style={{ flexDirection: 'row', marginBottom: 0 }}>
-              <FilterButton filterType="all" label="All Expenses" />
+              <FilterButton filterType="all" label="All" />
               <FilterButton filterType="household" label="Household" />
               <FilterButton filterType="personal" label="Personal" />
             </View>

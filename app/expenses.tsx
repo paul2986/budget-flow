@@ -37,6 +37,7 @@ export default function ExpensesScreen() {
   const [personFilter, setPersonFilter] = useState<string | null>(null);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [categoryFilters, setCategoryFilters] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>(''); // debounced
   const [hasEndDateFilter, setHasEndDateFilter] = useState<boolean>(false);
@@ -106,6 +107,7 @@ export default function ExpensesScreen() {
       console.log('ExpensesScreen: Loaded persisted filters:', filters);
       
       setCategoryFilter(filters.category || null);
+      setCategoryFilters([]);
       setSearchQuery(filters.search || '');
       setSearchTerm(filters.search || '');
       setHasEndDateFilter(filters.hasEndDate || false);
@@ -158,8 +160,10 @@ export default function ExpensesScreen() {
             
             if (params.category) {
               setCategoryFilter(params.category);
+              setCategoryFilters([]);
             } else {
               setCategoryFilter(null);
+              setCategoryFilters([]);
             }
             
             if (params.personId) {
@@ -233,13 +237,21 @@ export default function ExpensesScreen() {
           console.log('ExpensesScreen: Clearing invalid category filter:', categoryFilter);
           setCategoryFilter(null);
         }
+        // Clear invalid category filters from multiple selection
+        const validCategoryFilters = categoryFilters.filter(cat => 
+          customs.includes(cat) || DEFAULT_CATEGORIES.includes(cat)
+        );
+        if (validCategoryFilters.length !== categoryFilters.length) {
+          console.log('ExpensesScreen: Clearing invalid category filters:', categoryFilters);
+          setCategoryFilters(validCategoryFilters);
+        }
       } catch (error) {
         console.error('ExpensesScreen: Error reloading custom categories:', error);
       }
     };
 
     reloadCustomCategories();
-  }, [data.people.length, data.expenses.length, categoryFilter]);
+  }, [data.people.length, data.expenses.length, categoryFilter, categoryFilters]);
 
   // FIXED: Persist filters properly - including dashboard filters after they're applied
   useEffect(() => {
@@ -269,7 +281,7 @@ export default function ExpensesScreen() {
       }, 500);
       return () => clearTimeout(timeoutId);
     }
-  }, [categoryFilter, searchQuery, hasEndDateFilter, filter, personFilter, params.fromDashboard]);
+  }, [categoryFilter, categoryFilters, searchQuery, hasEndDateFilter, filter, personFilter, params.fromDashboard]);
 
   // Debounce search for filtering performance
   useEffect(() => {
@@ -346,6 +358,7 @@ export default function ExpensesScreen() {
   const handleClearFilters = useCallback(() => {
     console.log('ExpensesScreen: Clearing all filters');
     setCategoryFilter(null);
+    setCategoryFilters([]);
     setSearchQuery('');
     setSearchTerm('');
     setFilter('all');
@@ -477,15 +490,16 @@ export default function ExpensesScreen() {
     console.log('ExpensesScreen: Person filter applied. Before:', beforeCount, 'After:', filteredExpenses.length);
   }
 
-  // Apply category filter
-  if (categoryFilter) {
+  // Apply category filter (support both single and multiple categories)
+  const activeCategories = categoryFilters.length > 0 ? categoryFilters : (categoryFilter ? [categoryFilter] : []);
+  if (activeCategories.length > 0) {
     const beforeCount = filteredExpenses.length;
-    const selected = normalizeCategoryName(categoryFilter);
+    const selectedCategories = activeCategories.map(cat => normalizeCategoryName(cat));
     filteredExpenses = filteredExpenses.filter((e) => {
       const expenseCategory = normalizeCategoryName((e as any).categoryTag || 'Misc');
-      return expenseCategory === selected;
+      return selectedCategories.includes(expenseCategory);
     });
-    console.log('ExpensesScreen: Category filter applied. Before:', beforeCount, 'After:', filteredExpenses.length);
+    console.log('ExpensesScreen: Category filter applied. Before:', beforeCount, 'After:', filteredExpenses.length, 'Categories:', activeCategories);
   }
 
   // Apply search filter
@@ -530,7 +544,7 @@ export default function ExpensesScreen() {
 
   console.log('ExpensesScreen: Final filtered expenses count:', filteredExpenses.length);
 
-  const hasActiveFilters = !!categoryFilter || !!searchTerm || (filter !== 'all') || !!personFilter || hasEndDateFilter;
+  const hasActiveFilters = !!categoryFilter || categoryFilters.length > 0 || !!searchTerm || (filter !== 'all') || !!personFilter || hasEndDateFilter;
 
   // Header buttons - filter button on left, add button on right
   const leftButtons = [
@@ -605,22 +619,25 @@ export default function ExpensesScreen() {
         </View>
       )}
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
-        {filteredExpenses.length === 0 ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 60 }}>
-            <View style={[themedStyles.card, { alignItems: 'center', paddingVertical: 60, width: '100%', maxWidth: 400 }]}>
-              <Icon name="receipt-outline" size={64} style={{ color: currentColors.textSecondary, marginBottom: 20 }} />
-              <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8, color: currentColors.textSecondary }]}>
-                {hasActiveFilters ? 'No matching expenses' : 'No expenses yet'}
-              </Text>
-              <Text style={[themedStyles.textSecondary, { textAlign: 'center', lineHeight: 22 }]}>
-                {hasActiveFilters
-                  ? 'Try adjusting your filters to see more expenses'
-                  : 'Add your first expense to get started tracking your spending'}
-              </Text>
-            </View>
+      {/* No matching expenses message - moved to top */}
+      {filteredExpenses.length === 0 && (
+        <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 }}>
+          <View style={[themedStyles.card, { alignItems: 'center', paddingVertical: 40, width: '100%' }]}>
+            <Icon name="receipt-outline" size={48} style={{ color: currentColors.textSecondary, marginBottom: 16 }} />
+            <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8, color: currentColors.textSecondary }]}>
+              {hasActiveFilters ? 'No matching expenses' : 'No expenses yet'}
+            </Text>
+            <Text style={[themedStyles.textSecondary, { textAlign: 'center', lineHeight: 22 }]}>
+              {hasActiveFilters
+                ? 'Try adjusting your filters to see more expenses'
+                : 'Add your first expense to get started tracking your spending'}
+            </Text>
           </View>
-        ) : (
+        </View>
+      )}
+
+      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
+        {filteredExpenses.length > 0 && (
           <View style={{ gap: 8 }}>
             {filteredExpenses.map((expense) => {
               const person = expense.personId ? data.people.find((p) => p.id === expense.personId) : null;
@@ -809,6 +826,8 @@ export default function ExpensesScreen() {
         setPersonFilter={setPersonFilter}
         categoryFilter={categoryFilter}
         setCategoryFilter={setCategoryFilter}
+        categoryFilters={categoryFilters}
+        setCategoryFilters={setCategoryFilters}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         hasEndDateFilter={hasEndDateFilter}
