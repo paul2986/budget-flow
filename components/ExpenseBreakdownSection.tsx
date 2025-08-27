@@ -168,7 +168,7 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
     };
   }, [expenses, selectedPersonId]);
 
-  // Navigation handler for category taps
+  // FIXED: Navigation handler for category taps with proper URL parameter handling
   const handleCategoryPress = (expenseType: 'household' | 'personal', categoryName: string) => {
     console.log('ExpenseBreakdownSection: Navigating to expenses with filters:', {
       expenseType,
@@ -176,11 +176,15 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
       selectedPersonId
     });
     
+    // FIXED: Create a unique timestamp to ensure fresh navigation each time
+    const timestamp = Date.now();
+    
     // Navigate to expenses page with pre-applied filters
     const params: Record<string, string> = {
       filter: expenseType,
       category: categoryName,
-      fromDashboard: 'true'
+      fromDashboard: 'true',
+      _t: timestamp.toString() // Add timestamp to force fresh navigation
     };
     
     // If personal expenses and a specific person is selected, add person filter
@@ -190,7 +194,8 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
     
     console.log('ExpenseBreakdownSection: Navigation params:', params);
     
-    router.push({
+    // FIXED: Use replace instead of push to avoid navigation stack issues
+    router.replace({
       pathname: '/expenses',
       params
     });
