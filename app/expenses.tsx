@@ -636,8 +636,9 @@ export default function ExpensesScreen() {
         </View>
       )}
 
-      <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
-        {filteredExpenses.length > 0 && (
+      {/* Conditionally render ScrollView only when there are expenses to show */}
+      {filteredExpenses.length > 0 ? (
+        <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
           <View style={{ gap: 8 }}>
             {filteredExpenses.map((expense) => {
               const person = expense.personId ? data.people.find((p) => p.id === expense.personId) : null;
@@ -813,8 +814,11 @@ export default function ExpensesScreen() {
               );
             })}
           </View>
-        )}
-      </ScrollView>
+        </ScrollView>
+      ) : (
+        // When no expenses, render a non-scrollable view to prevent empty scrollable area
+        <View style={themedStyles.content} />
+      )}
 
       {/* Filter Modal */}
       <ExpenseFilterModal
