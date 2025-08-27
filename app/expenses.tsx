@@ -120,7 +120,7 @@ export default function ExpensesScreen() {
     }
   }, []);
 
-  // FIXED: Better dashboard navigation handling with proper state reset
+  // FIXED: Better dashboard navigation handling with proper filter persistence
   useEffect(() => {
     const loadInitialData = async () => {
       try {
@@ -139,14 +139,14 @@ export default function ExpensesScreen() {
           dashboardParamsChanged,
           currentKey: dashboardParamsKey,
           lastKey: lastDashboardParams.current,
-          isInitialLoad: isInitialLoad.current
+          isInitialLoad: isInitialLoad.current,
+          filtersLoaded: filtersLoaded.current
         });
         
         if (isDashboardNavigation) {
-          // FIXED: Reset filter loading state for dashboard navigation
+          // FIXED: Apply dashboard filters and mark as loaded
           if (dashboardParamsChanged || isInitialLoad.current) {
             console.log('ExpensesScreen: Applying filters from dashboard navigation');
-            filtersLoaded.current = false; // Reset to allow new dashboard filters
             lastDashboardParams.current = dashboardParamsKey;
             
             // Apply filters from URL parameters
@@ -192,6 +192,11 @@ export default function ExpensesScreen() {
             }
             
             filtersLoaded.current = true;
+          } else if (!filtersLoaded.current) {
+            // FIXED: If returning to screen with same dashboard params, load persisted filters
+            // This handles the case where user navigates away and comes back
+            console.log('ExpensesScreen: Returning to screen with same dashboard params, loading persisted filters');
+            await loadPersistedFilters();
           }
         } else {
           // For normal navigation, load persisted filters only if not already loaded
@@ -236,22 +241,23 @@ export default function ExpensesScreen() {
     reloadCustomCategories();
   }, [data.people.length, data.expenses.length, categoryFilter]);
 
-  // FIXED: Only persist filters when NOT coming from dashboard and filters are loaded
+  // FIXED: Persist filters properly - including dashboard filters after they're applied
   useEffect(() => {
-    // Only persist filters if:
-    // 1. Not coming from dashboard
-    // 2. Filters have been loaded (to prevent overwriting during initial load)
-    // 3. Not on initial load
+    // Persist filters if:
+    // 1. Filters have been loaded (to prevent overwriting during initial load)
+    // 2. Not on initial load
+    // 3. Either not from dashboard OR dashboard filters have been applied and should be persisted
     const isDashboardNavigation = params.fromDashboard === 'true';
     
-    if (!isDashboardNavigation && filtersLoaded.current && !isInitialLoad.current) {
+    if (filtersLoaded.current && !isInitialLoad.current) {
       const timeoutId = setTimeout(() => {
         console.log('ExpensesScreen: Persisting filters:', { 
           category: categoryFilter, 
           search: searchQuery, 
           hasEndDate: hasEndDateFilter,
           filter: filter,
-          personFilter: personFilter
+          personFilter: personFilter,
+          isDashboardNavigation
         });
         saveExpensesFilters({ 
           category: categoryFilter, 
@@ -271,7 +277,7 @@ export default function ExpensesScreen() {
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
-  // FIXED: Better focus effect handling
+  // FIXED: Better focus effect handling with proper filter persistence
   useFocusEffect(
     useCallback(() => {
       console.log('ExpensesScreen: Focus effect triggered');
@@ -281,26 +287,14 @@ export default function ExpensesScreen() {
         refreshData(true);
         // Also refresh custom categories (in case new one added)
         getCustomExpenseCategories().then(setCustomCategories).catch((e) => console.log('Failed to refresh custom categories', e));
-        
-        // Load persisted filters when coming back to the screen (unless coming from dashboard)
-        if (params.fromDashboard !== 'true' && !filtersLoaded.current) {
-          loadPersistedFilters();
-        }
       }
       
       return () => {
         hasRefreshedOnFocus.current = false;
-        // FIXED: Reset state when leaving the screen to ensure fresh state on return
-        if (params.fromDashboard === 'true') {
-          // Reset dashboard tracking when leaving after dashboard navigation
-          setTimeout(() => {
-            lastDashboardParams.current = '';
-            filtersLoaded.current = false;
-            isInitialLoad.current = true;
-          }, 100);
-        }
+        // FIXED: Only reset dashboard state when actually leaving the screen for good
+        // Don't reset when just navigating away temporarily
       };
-    }, [refreshData, params.fromDashboard, loadPersistedFilters])
+    }, [refreshData])
   );
 
   const handleRemoveExpense = useCallback(
