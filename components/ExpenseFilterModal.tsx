@@ -521,29 +521,31 @@ export default function ExpenseFilterModal({
             </View>
           </View>
 
-          {/* FIXED: End Date Filter with content-based width */}
+          {/* FIXED: End Date Filter with content-based width and timer icon always */}
           <View style={[themedStyles.section, { paddingBottom: 0 }]}>
             <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Expiration</Text>
-            <TouchableOpacity
-              style={getFilterButtonStyle(tempHasEndDateFilter)}
-              onPress={() => {
-                console.log('ExpenseFilterModal: End date filter toggled from', tempHasEndDateFilter, 'to', !tempHasEndDateFilter);
-                setTempHasEndDateFilter(!tempHasEndDateFilter);
-              }}
-            >
-              <Icon 
-                name={tempHasEndDateFilter ? "checkmark-circle" : "timer-outline"} 
-                size={14} 
-                style={{ 
-                  color: tempHasEndDateFilter ? '#FFFFFF' : currentColors.text,
-                  marginRight: 6 
-                }} 
-              />
-              <Text style={getFilterTextStyle(tempHasEndDateFilter)}>
-                Only expenses with end dates
-              </Text>
-              <CountBubble count={expenseCounts.endDate.with} isSelected={tempHasEndDateFilter} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 }}>
+              <TouchableOpacity
+                style={getFilterButtonStyle(tempHasEndDateFilter)}
+                onPress={() => {
+                  console.log('ExpenseFilterModal: End date filter toggled from', tempHasEndDateFilter, 'to', !tempHasEndDateFilter);
+                  setTempHasEndDateFilter(!tempHasEndDateFilter);
+                }}
+              >
+                <Icon 
+                  name="timer-outline"
+                  size={14} 
+                  style={{ 
+                    color: tempHasEndDateFilter ? '#FFFFFF' : currentColors.text,
+                    marginRight: 6 
+                  }} 
+                />
+                <Text style={getFilterTextStyle(tempHasEndDateFilter)}>
+                  Only expenses with end dates
+                </Text>
+                <CountBubble count={expenseCounts.endDate.with} isSelected={tempHasEndDateFilter} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* FIXED: Person filter with content-based width */}
@@ -577,8 +579,8 @@ export default function ExpenseFilterModal({
               Categories {tempCategoryFilters.length > 0 && `(${tempCategoryFilters.length} selected)`}
             </Text>
             
-            {/* All Categories button */}
-            <View style={{ marginBottom: 12 }}>
+            {/* FIXED: All Categories button with content-based width */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4, marginBottom: 12 }}>
               <TouchableOpacity
                 style={getFilterButtonStyle(tempCategoryFilters.length === 0)}
                 onPress={() => {
