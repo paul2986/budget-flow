@@ -177,7 +177,7 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
     });
     
     // Navigate to expenses page with pre-applied filters
-    const params: any = {
+    const params: Record<string, string> = {
       filter: expenseType,
       category: categoryName,
       fromDashboard: 'true'
@@ -187,6 +187,8 @@ export default function ExpenseBreakdownSection({ expenses, people = [] }: Expen
     if (expenseType === 'personal' && selectedPersonId) {
       params.personId = selectedPersonId;
     }
+    
+    console.log('ExpenseBreakdownSection: Navigation params:', params);
     
     router.push({
       pathname: '/expenses',

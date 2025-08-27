@@ -181,6 +181,9 @@ export default function ExpensesScreen() {
           }
           if (filterMessages.length > 0) {
             announceFilter(`Filtered by ${filterMessages.join(' and ')}`);
+            
+            // Show toast notification about applied filters
+            toast.show(`Showing ${filterMessages.join(' and ')}`, 'success');
           }
           
           filtersLoaded.current = true;
@@ -198,7 +201,7 @@ export default function ExpensesScreen() {
       isInitialLoad.current = false;
       loadInitialData();
     }
-  }, [params.filter, params.category, params.fromDashboard, params.personId, announceFilter, data.people, loadPersistedFilters]);
+  }, [params.filter, params.category, params.fromDashboard, params.personId, announceFilter, data.people, loadPersistedFilters, toast]);
 
   // Reload custom categories when data changes (e.g., after clearing all data)
   useEffect(() => {
@@ -337,7 +340,10 @@ export default function ExpensesScreen() {
       filter: 'all',
       personFilter: null
     });
-  }, [announceFilter]);
+    
+    // Show toast notification
+    toast.show('All filters cleared', 'success');
+  }, [announceFilter, toast]);
 
   // Enhanced sort button handler
   const handleSortPress = useCallback((sortType: SortOption) => {
