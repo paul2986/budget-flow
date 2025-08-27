@@ -170,17 +170,18 @@ export default function ExpenseFilterModal({
             flex: 1,
             marginHorizontal: 4,
             paddingHorizontal: 12,
-            paddingVertical: 8,
+            paddingVertical: 12,
             borderRadius: 20,
             alignItems: 'center',
             justifyContent: 'center',
             borderWidth: isSelected ? 2 : 1,
             borderColor: isSelected ? currentColors.primary : currentColors.border,
             boxShadow: isSelected ? '0px 2px 4px rgba(0,0,0,0.1)' : 'none',
+            minHeight: 44,
           },
         ]}
         onPress={() => {
-          console.log('ExpenseFilterModal: FilterButton pressed:', filterType);
+          console.log('ExpenseFilterModal: FilterButton pressed:', filterType, 'current:', tempFilter);
           setTempFilter(filterType);
           if (filterType !== 'personal') {
             setTempPersonFilter(null);
@@ -195,7 +196,7 @@ export default function ExpenseFilterModal({
               color: isSelected ? '#FFFFFF' : currentColors.text,
               fontWeight: '600',
               textAlign: 'center',
-              fontSize: 13,
+              fontSize: 14,
             },
           ]}
         >
