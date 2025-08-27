@@ -607,16 +607,18 @@ export default function ExpensesScreen() {
 
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
         {filteredExpenses.length === 0 ? (
-          <View style={[themedStyles.card, { alignItems: 'center', paddingVertical: 60, marginHorizontal: 20 }]}>
-            <Icon name="receipt-outline" size={64} style={{ color: currentColors.textSecondary, marginBottom: 20 }} />
-            <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8, color: currentColors.textSecondary }]}>
-              {hasActiveFilters ? 'No matching expenses' : 'No expenses yet'}
-            </Text>
-            <Text style={[themedStyles.textSecondary, { textAlign: 'center', lineHeight: 22 }]}>
-              {hasActiveFilters
-                ? 'Try adjusting your filters to see more expenses'
-                : 'Add your first expense to get started tracking your spending'}
-            </Text>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 60 }}>
+            <View style={[themedStyles.card, { alignItems: 'center', paddingVertical: 60, width: '100%', maxWidth: 400 }]}>
+              <Icon name="receipt-outline" size={64} style={{ color: currentColors.textSecondary, marginBottom: 20 }} />
+              <Text style={[themedStyles.subtitle, { textAlign: 'center', marginBottom: 8, color: currentColors.textSecondary }]}>
+                {hasActiveFilters ? 'No matching expenses' : 'No expenses yet'}
+              </Text>
+              <Text style={[themedStyles.textSecondary, { textAlign: 'center', lineHeight: 22 }]}>
+                {hasActiveFilters
+                  ? 'Try adjusting your filters to see more expenses'
+                  : 'Add your first expense to get started tracking your spending'}
+              </Text>
+            </View>
           </View>
         ) : (
           <View style={{ gap: 8 }}>

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { useThemedStyles } from '../hooks/useThemedStyles';
@@ -88,6 +88,166 @@ export default function ExpenseFilterModal({
     return Array.from(combined);
   })().sort((a, b) => a.localeCompare(b));
 
+  // NEW: Calculate expense counts for each filter option dynamically
+  const expenseCounts = useMemo(() => {
+    console.log('ExpenseFilterModal: Calculating expense counts...');
+    
+    // Helper function to apply filters and count results
+    const countExpensesWithFilters = (testFilters: {
+      filter?: 'all' | 'household' | 'personal';
+      personFilter?: string | null;
+      categoryFilter?: string | null;
+      searchQuery?: string;
+      hasEndDateFilter?: boolean;
+    }) => {
+      let filtered = [...expenses];
+      
+      // Apply expense type filter
+      if (testFilters.filter === 'household') {
+        filtered = filtered.filter((e) => e.category === 'household');
+      } else if (testFilters.filter === 'personal') {
+        filtered = filtered.filter((e) => e.category === 'personal');
+      }
+      
+      // Apply person filter
+      if (testFilters.personFilter) {
+        filtered = filtered.filter((e) => {
+          if (e.category === 'household') {
+            return e.personId === testFilters.personFilter;
+          }
+          return e.personId === testFilters.personFilter;
+        });
+      }
+      
+      // Apply category filter
+      if (testFilters.categoryFilter) {
+        const selected = normalizeCategoryName(testFilters.categoryFilter);
+        filtered = filtered.filter((e) => {
+          const expenseCategory = normalizeCategoryName((e as any).categoryTag || 'Misc');
+          return expenseCategory === selected;
+        });
+      }
+      
+      // Apply search filter
+      if (testFilters.searchQuery && testFilters.searchQuery.trim()) {
+        const q = testFilters.searchQuery.toLowerCase();
+        filtered = filtered.filter((e) => e.description.toLowerCase().includes(q));
+      }
+      
+      // Apply end date filter
+      if (testFilters.hasEndDateFilter) {
+        filtered = filtered.filter((e) => {
+          const hasEndDate = e.endDate && e.frequency !== 'one-time';
+          return hasEndDate;
+        });
+      }
+      
+      return filtered.length;
+    };
+
+    // Calculate counts for expense types
+    const allCount = countExpensesWithFilters({
+      filter: 'all',
+      personFilter: tempPersonFilter,
+      categoryFilter: tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null,
+      searchQuery: tempSearchQuery,
+      hasEndDateFilter: tempHasEndDateFilter
+    });
+    
+    const householdCount = countExpensesWithFilters({
+      filter: 'household',
+      personFilter: tempPersonFilter,
+      categoryFilter: tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null,
+      searchQuery: tempSearchQuery,
+      hasEndDateFilter: tempHasEndDateFilter
+    });
+    
+    const personalCount = countExpensesWithFilters({
+      filter: 'personal',
+      personFilter: tempPersonFilter,
+      categoryFilter: tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null,
+      searchQuery: tempSearchQuery,
+      hasEndDateFilter: tempHasEndDateFilter
+    });
+
+    // Calculate counts for people
+    const peopleCounts: { [personId: string]: number } = {};
+    people.forEach(person => {
+      peopleCounts[person.id] = countExpensesWithFilters({
+        filter: tempFilter,
+        personFilter: person.id,
+        categoryFilter: tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null,
+        searchQuery: tempSearchQuery,
+        hasEndDateFilter: tempHasEndDateFilter
+      });
+    });
+    
+    // Count for "All People"
+    const allPeopleCount = countExpensesWithFilters({
+      filter: tempFilter,
+      personFilter: null,
+      categoryFilter: tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null,
+      searchQuery: tempSearchQuery,
+      hasEndDateFilter: tempHasEndDateFilter
+    });
+
+    // Calculate counts for categories
+    const categoryCounts: { [category: string]: number } = {};
+    availableCategories.forEach(category => {
+      categoryCounts[category] = countExpensesWithFilters({
+        filter: tempFilter,
+        personFilter: tempPersonFilter,
+        categoryFilter: category,
+        searchQuery: tempSearchQuery,
+        hasEndDateFilter: tempHasEndDateFilter
+      });
+    });
+    
+    // Count for "All Categories"
+    const allCategoriesCount = countExpensesWithFilters({
+      filter: tempFilter,
+      personFilter: tempPersonFilter,
+      categoryFilter: null,
+      searchQuery: tempSearchQuery,
+      hasEndDateFilter: tempHasEndDateFilter
+    });
+
+    // Calculate count for end date filter
+    const withEndDateCount = countExpensesWithFilters({
+      filter: tempFilter,
+      personFilter: tempPersonFilter,
+      categoryFilter: tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null,
+      searchQuery: tempSearchQuery,
+      hasEndDateFilter: true
+    });
+    
+    const withoutEndDateCount = countExpensesWithFilters({
+      filter: tempFilter,
+      personFilter: tempPersonFilter,
+      categoryFilter: tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null,
+      searchQuery: tempSearchQuery,
+      hasEndDateFilter: false
+    });
+
+    console.log('ExpenseFilterModal: Calculated counts:', {
+      expenseTypes: { all: allCount, household: householdCount, personal: personalCount },
+      people: peopleCounts,
+      allPeople: allPeopleCount,
+      categories: categoryCounts,
+      allCategories: allCategoriesCount,
+      endDate: { with: withEndDateCount, without: withoutEndDateCount }
+    });
+
+    return {
+      expenseTypes: { all: allCount, household: householdCount, personal: personalCount },
+      people: peopleCounts,
+      allPeople: allPeopleCount,
+      categories: categoryCounts,
+      allCategories: allCategoriesCount,
+      endDate: { with: withEndDateCount, without: withoutEndDateCount }
+    };
+  }, [expenses, tempFilter, tempPersonFilter, tempCategoryFilters, tempSearchQuery, tempHasEndDateFilter, people, availableCategories]);
+
   const hasActiveFilters = tempCategoryFilters.length > 0 || !!tempSearchQuery.trim() || (tempFilter !== 'all') || !!tempPersonFilter || tempHasEndDateFilter;
 
   const handleCancel = () => {
@@ -160,9 +320,10 @@ export default function ExpenseFilterModal({
     });
   };
 
-  // FIXED: FilterButton component with proper state handling
+  // FIXED: FilterButton component with proper state handling and expense counts
   const FilterButton = ({ filterType, label }: { filterType: 'all' | 'household' | 'personal'; label: string }) => {
     const isSelected = tempFilter === filterType;
+    const count = expenseCounts.expenseTypes[filterType];
     
     return (
       <TouchableOpacity
@@ -201,10 +362,24 @@ export default function ExpenseFilterModal({
               fontWeight: '600',
               textAlign: 'center',
               fontSize: 14,
+              marginBottom: 2,
             },
           ]}
         >
           {label}
+        </Text>
+        <Text
+          style={[
+            themedStyles.badgeText,
+            {
+              color: isSelected ? '#FFFFFF' + '80' : currentColors.textSecondary,
+              fontWeight: '500',
+              textAlign: 'center',
+              fontSize: 11,
+            },
+          ]}
+        >
+          {count} expense{count !== 1 ? 's' : ''}
         </Text>
       </TouchableOpacity>
     );
@@ -261,7 +436,7 @@ export default function ExpenseFilterModal({
             />
           </View>
 
-          {/* FIXED: Ownership filter buttons with proper state management */}
+          {/* FIXED: Ownership filter buttons with proper state management and counts */}
           <View style={[themedStyles.section, { paddingBottom: 0 }]}>
             <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Expense Type</Text>
             <View style={{ flexDirection: 'row', marginBottom: 0 }}>
@@ -271,7 +446,7 @@ export default function ExpenseFilterModal({
             </View>
           </View>
 
-          {/* End Date Filter */}
+          {/* End Date Filter with count */}
           <View style={[themedStyles.section, { paddingBottom: 0 }]}>
             <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Expiration</Text>
             <TouchableOpacity
@@ -301,22 +476,37 @@ export default function ExpenseFilterModal({
                   marginRight: 8 
                 }} 
               />
-              <Text
-                style={[
-                  themedStyles.badgeText,
-                  {
-                    color: tempHasEndDateFilter ? '#FFFFFF' : currentColors.text,
-                    fontWeight: '600',
-                    fontSize: 14,
-                  },
-                ]}
-              >
-                Only expenses with end dates
-              </Text>
+              <View style={{ alignItems: 'center' }}>
+                <Text
+                  style={[
+                    themedStyles.badgeText,
+                    {
+                      color: tempHasEndDateFilter ? '#FFFFFF' : currentColors.text,
+                      fontWeight: '600',
+                      fontSize: 14,
+                      marginBottom: 2,
+                    },
+                  ]}
+                >
+                  Only expenses with end dates
+                </Text>
+                <Text
+                  style={[
+                    themedStyles.badgeText,
+                    {
+                      color: tempHasEndDateFilter ? '#FFFFFF' + '80' : currentColors.textSecondary,
+                      fontWeight: '500',
+                      fontSize: 11,
+                    },
+                  ]}
+                >
+                  {expenseCounts.endDate.with} expense{expenseCounts.endDate.with !== 1 ? 's' : ''}
+                </Text>
+              </View>
             </TouchableOpacity>
           </View>
 
-          {/* Person filter - available for all expense types */}
+          {/* Person filter - available for all expense types with counts */}
           {people.length > 0 && (
             <View style={[themedStyles.section, { paddingBottom: 0 }]}>
               <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Person</Text>
@@ -331,6 +521,7 @@ export default function ExpenseFilterModal({
                         paddingHorizontal: 12,
                         paddingVertical: 8,
                         borderRadius: 16,
+                        alignItems: 'center',
                       },
                     ]}
                     onPress={() => {
@@ -341,10 +532,18 @@ export default function ExpenseFilterModal({
                     <Text
                       style={[
                         themedStyles.badgeText,
-                        { color: tempPersonFilter === null ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13 },
+                        { color: tempPersonFilter === null ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13, marginBottom: 2 },
                       ]}
                     >
                       All People
+                    </Text>
+                    <Text
+                      style={[
+                        themedStyles.badgeText,
+                        { color: tempPersonFilter === null ? '#FFFFFF' + '80' : currentColors.textSecondary, fontWeight: '500', fontSize: 10 },
+                      ]}
+                    >
+                      {expenseCounts.allPeople} expense{expenseCounts.allPeople !== 1 ? 's' : ''}
                     </Text>
                   </TouchableOpacity>
 
@@ -359,6 +558,7 @@ export default function ExpenseFilterModal({
                           paddingHorizontal: 12,
                           paddingVertical: 8,
                           borderRadius: 16,
+                          alignItems: 'center',
                         },
                       ]}
                       onPress={() => {
@@ -369,10 +569,18 @@ export default function ExpenseFilterModal({
                       <Text
                         style={[
                           themedStyles.badgeText,
-                          { color: tempPersonFilter === person.id ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13 },
+                          { color: tempPersonFilter === person.id ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13, marginBottom: 2 },
                         ]}
                       >
                         {person.name}
+                      </Text>
+                      <Text
+                        style={[
+                          themedStyles.badgeText,
+                          { color: tempPersonFilter === person.id ? '#FFFFFF' + '80' : currentColors.textSecondary, fontWeight: '500', fontSize: 10 },
+                        ]}
+                      >
+                        {expenseCounts.people[person.id] || 0} expense{(expenseCounts.people[person.id] || 0) !== 1 ? 's' : ''}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -381,13 +589,13 @@ export default function ExpenseFilterModal({
             </View>
           )}
 
-          {/* Category selection - Grid layout for all categories */}
+          {/* Category selection - Grid layout for all categories with counts */}
           <View style={[themedStyles.section, { paddingBottom: 0 }]}>
             <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>
               Categories {tempCategoryFilters.length > 0 && `(${tempCategoryFilters.length} selected)`}
             </Text>
             
-            {/* All Categories button */}
+            {/* All Categories button with count */}
             <TouchableOpacity
               style={[
                 themedStyles.badge,
@@ -398,6 +606,7 @@ export default function ExpenseFilterModal({
                   paddingVertical: 8,
                   borderRadius: 16,
                   alignSelf: 'flex-start',
+                  alignItems: 'center',
                 },
               ]}
               onPress={() => {
@@ -408,14 +617,22 @@ export default function ExpenseFilterModal({
               <Text
                 style={[
                   themedStyles.badgeText,
-                  { color: tempCategoryFilters.length === 0 ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13 },
+                  { color: tempCategoryFilters.length === 0 ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13, marginBottom: 2 },
                 ]}
               >
                 All Categories
               </Text>
+              <Text
+                style={[
+                  themedStyles.badgeText,
+                  { color: tempCategoryFilters.length === 0 ? '#FFFFFF' + '80' : currentColors.textSecondary, fontWeight: '500', fontSize: 10 },
+                ]}
+              >
+                {expenseCounts.allCategories} expense{expenseCounts.allCategories !== 1 ? 's' : ''}
+              </Text>
             </TouchableOpacity>
 
-            {/* Category grid */}
+            {/* Category grid with counts */}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 }}>
               {availableCategories.map((cat) => (
                 <TouchableOpacity
@@ -441,14 +658,24 @@ export default function ExpenseFilterModal({
                   {tempCategoryFilters.includes(cat) && (
                     <Icon name="checkmark" size={14} style={{ color: '#FFFFFF', marginRight: 4 }} />
                   )}
-                  <Text
-                    style={[
-                      themedStyles.badgeText,
-                      { color: tempCategoryFilters.includes(cat) ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13 },
-                    ]}
-                  >
-                    {cat}
-                  </Text>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text
+                      style={[
+                        themedStyles.badgeText,
+                        { color: tempCategoryFilters.includes(cat) ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13, marginBottom: 2 },
+                      ]}
+                    >
+                      {cat}
+                    </Text>
+                    <Text
+                      style={[
+                        themedStyles.badgeText,
+                        { color: tempCategoryFilters.includes(cat) ? '#FFFFFF' + '80' : currentColors.textSecondary, fontWeight: '500', fontSize: 10 },
+                      ]}
+                    >
+                      {expenseCounts.categories[cat] || 0}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
