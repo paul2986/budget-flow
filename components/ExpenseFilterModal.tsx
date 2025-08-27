@@ -320,7 +320,34 @@ export default function ExpenseFilterModal({
     });
   };
 
-  // FIXED: FilterButton component with proper state handling and expense counts
+  // Count bubble component
+  const CountBubble = ({ count }: { count: number }) => (
+    <View
+      style={{
+        backgroundColor: currentColors.textSecondary + '20',
+        borderRadius: 12,
+        minWidth: 24,
+        height: 24,
+        paddingHorizontal: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 8,
+      }}
+    >
+      <Text
+        style={{
+          color: currentColors.textSecondary,
+          fontSize: 12,
+          fontWeight: '600',
+          textAlign: 'center',
+        }}
+      >
+        {count}
+      </Text>
+    </View>
+  );
+
+  // FIXED: FilterButton component with proper state handling and count bubbles
   const FilterButton = ({ filterType, label }: { filterType: 'all' | 'household' | 'personal'; label: string }) => {
     const isSelected = tempFilter === filterType;
     const count = expenseCounts.expenseTypes[filterType];
@@ -342,6 +369,7 @@ export default function ExpenseFilterModal({
             borderColor: isSelected ? currentColors.primary : currentColors.border,
             boxShadow: isSelected ? '0px 2px 4px rgba(0,0,0,0.1)' : 'none',
             minHeight: 44,
+            flexDirection: 'row',
           },
         ]}
         onPress={() => {
@@ -362,25 +390,34 @@ export default function ExpenseFilterModal({
               fontWeight: '600',
               textAlign: 'center',
               fontSize: 14,
-              marginBottom: 2,
+              flex: 1,
             },
           ]}
         >
           {label}
         </Text>
-        <Text
-          style={[
-            themedStyles.badgeText,
-            {
-              color: isSelected ? '#FFFFFF' + '80' : currentColors.textSecondary,
-              fontWeight: '500',
-              textAlign: 'center',
-              fontSize: 11,
-            },
-          ]}
+        <View
+          style={{
+            backgroundColor: isSelected ? '#FFFFFF' + '20' : currentColors.textSecondary + '20',
+            borderRadius: 12,
+            minWidth: 24,
+            height: 24,
+            paddingHorizontal: 8,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
         >
-          {count} expense{count !== 1 ? 's' : ''}
-        </Text>
+          <Text
+            style={{
+              color: isSelected ? '#FFFFFF' : currentColors.textSecondary,
+              fontSize: 12,
+              fontWeight: '600',
+              textAlign: 'center',
+            }}
+          >
+            {count}
+          </Text>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -436,7 +473,7 @@ export default function ExpenseFilterModal({
             />
           </View>
 
-          {/* FIXED: Ownership filter buttons with proper state management and counts */}
+          {/* FIXED: Ownership filter buttons with proper state management and count bubbles */}
           <View style={[themedStyles.section, { paddingBottom: 0 }]}>
             <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Expense Type</Text>
             <View style={{ flexDirection: 'row', marginBottom: 0 }}>
@@ -446,7 +483,7 @@ export default function ExpenseFilterModal({
             </View>
           </View>
 
-          {/* End Date Filter with count */}
+          {/* End Date Filter with count bubble */}
           <View style={[themedStyles.section, { paddingBottom: 0 }]}>
             <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Expiration</Text>
             <TouchableOpacity
@@ -476,37 +513,46 @@ export default function ExpenseFilterModal({
                   marginRight: 8 
                 }} 
               />
-              <View style={{ alignItems: 'center' }}>
+              <Text
+                style={[
+                  themedStyles.badgeText,
+                  {
+                    color: tempHasEndDateFilter ? '#FFFFFF' : currentColors.text,
+                    fontWeight: '600',
+                    fontSize: 14,
+                    flex: 1,
+                  },
+                ]}
+              >
+                Only expenses with end dates
+              </Text>
+              <View
+                style={{
+                  backgroundColor: tempHasEndDateFilter ? '#FFFFFF' + '20' : currentColors.textSecondary + '20',
+                  borderRadius: 12,
+                  minWidth: 24,
+                  height: 24,
+                  paddingHorizontal: 8,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginLeft: 8,
+                }}
+              >
                 <Text
-                  style={[
-                    themedStyles.badgeText,
-                    {
-                      color: tempHasEndDateFilter ? '#FFFFFF' : currentColors.text,
-                      fontWeight: '600',
-                      fontSize: 14,
-                      marginBottom: 2,
-                    },
-                  ]}
+                  style={{
+                    color: tempHasEndDateFilter ? '#FFFFFF' : currentColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: '600',
+                    textAlign: 'center',
+                  }}
                 >
-                  Only expenses with end dates
-                </Text>
-                <Text
-                  style={[
-                    themedStyles.badgeText,
-                    {
-                      color: tempHasEndDateFilter ? '#FFFFFF' + '80' : currentColors.textSecondary,
-                      fontWeight: '500',
-                      fontSize: 11,
-                    },
-                  ]}
-                >
-                  {expenseCounts.endDate.with} expense{expenseCounts.endDate.with !== 1 ? 's' : ''}
+                  {expenseCounts.endDate.with}
                 </Text>
               </View>
             </TouchableOpacity>
           </View>
 
-          {/* Person filter - available for all expense types with counts */}
+          {/* Person filter - available for all expense types with count bubbles */}
           {people.length > 0 && (
             <View style={[themedStyles.section, { paddingBottom: 0 }]}>
               <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Person</Text>
@@ -522,6 +568,7 @@ export default function ExpenseFilterModal({
                         paddingVertical: 8,
                         borderRadius: 16,
                         alignItems: 'center',
+                        flexDirection: 'row',
                       },
                     ]}
                     onPress={() => {
@@ -532,19 +579,34 @@ export default function ExpenseFilterModal({
                     <Text
                       style={[
                         themedStyles.badgeText,
-                        { color: tempPersonFilter === null ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13, marginBottom: 2 },
+                        { color: tempPersonFilter === null ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13 },
                       ]}
                     >
                       All People
                     </Text>
-                    <Text
-                      style={[
-                        themedStyles.badgeText,
-                        { color: tempPersonFilter === null ? '#FFFFFF' + '80' : currentColors.textSecondary, fontWeight: '500', fontSize: 10 },
-                      ]}
+                    <View
+                      style={{
+                        backgroundColor: tempPersonFilter === null ? '#FFFFFF' + '20' : currentColors.textSecondary + '20',
+                        borderRadius: 12,
+                        minWidth: 24,
+                        height: 24,
+                        paddingHorizontal: 8,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        marginLeft: 8,
+                      }}
                     >
-                      {expenseCounts.allPeople} expense{expenseCounts.allPeople !== 1 ? 's' : ''}
-                    </Text>
+                      <Text
+                        style={{
+                          color: tempPersonFilter === null ? '#FFFFFF' : currentColors.textSecondary,
+                          fontSize: 12,
+                          fontWeight: '600',
+                          textAlign: 'center',
+                        }}
+                      >
+                        {expenseCounts.allPeople}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
 
                   {people.map((person) => (
@@ -559,6 +621,7 @@ export default function ExpenseFilterModal({
                           paddingVertical: 8,
                           borderRadius: 16,
                           alignItems: 'center',
+                          flexDirection: 'row',
                         },
                       ]}
                       onPress={() => {
@@ -569,19 +632,34 @@ export default function ExpenseFilterModal({
                       <Text
                         style={[
                           themedStyles.badgeText,
-                          { color: tempPersonFilter === person.id ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13, marginBottom: 2 },
+                          { color: tempPersonFilter === person.id ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13 },
                         ]}
                       >
                         {person.name}
                       </Text>
-                      <Text
-                        style={[
-                          themedStyles.badgeText,
-                          { color: tempPersonFilter === person.id ? '#FFFFFF' + '80' : currentColors.textSecondary, fontWeight: '500', fontSize: 10 },
-                        ]}
+                      <View
+                        style={{
+                          backgroundColor: tempPersonFilter === person.id ? '#FFFFFF' + '20' : currentColors.textSecondary + '20',
+                          borderRadius: 12,
+                          minWidth: 24,
+                          height: 24,
+                          paddingHorizontal: 8,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          marginLeft: 8,
+                        }}
                       >
-                        {expenseCounts.people[person.id] || 0} expense{(expenseCounts.people[person.id] || 0) !== 1 ? 's' : ''}
-                      </Text>
+                        <Text
+                          style={{
+                            color: tempPersonFilter === person.id ? '#FFFFFF' : currentColors.textSecondary,
+                            fontSize: 12,
+                            fontWeight: '600',
+                            textAlign: 'center',
+                          }}
+                        >
+                          {expenseCounts.people[person.id] || 0}
+                        </Text>
+                      </View>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -589,13 +667,13 @@ export default function ExpenseFilterModal({
             </View>
           )}
 
-          {/* Category selection - Grid layout for all categories with counts */}
+          {/* Category selection - Grid layout for all categories with count bubbles */}
           <View style={[themedStyles.section, { paddingBottom: 0 }]}>
             <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>
               Categories {tempCategoryFilters.length > 0 && `(${tempCategoryFilters.length} selected)`}
             </Text>
             
-            {/* All Categories button with count */}
+            {/* All Categories button with count bubble */}
             <TouchableOpacity
               style={[
                 themedStyles.badge,
@@ -607,6 +685,7 @@ export default function ExpenseFilterModal({
                   borderRadius: 16,
                   alignSelf: 'flex-start',
                   alignItems: 'center',
+                  flexDirection: 'row',
                 },
               ]}
               onPress={() => {
@@ -617,22 +696,37 @@ export default function ExpenseFilterModal({
               <Text
                 style={[
                   themedStyles.badgeText,
-                  { color: tempCategoryFilters.length === 0 ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13, marginBottom: 2 },
+                  { color: tempCategoryFilters.length === 0 ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13 },
                 ]}
               >
                 All Categories
               </Text>
-              <Text
-                style={[
-                  themedStyles.badgeText,
-                  { color: tempCategoryFilters.length === 0 ? '#FFFFFF' + '80' : currentColors.textSecondary, fontWeight: '500', fontSize: 10 },
-                ]}
+              <View
+                style={{
+                  backgroundColor: tempCategoryFilters.length === 0 ? '#FFFFFF' + '20' : currentColors.textSecondary + '20',
+                  borderRadius: 12,
+                  minWidth: 24,
+                  height: 24,
+                  paddingHorizontal: 8,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginLeft: 8,
+                }}
               >
-                {expenseCounts.allCategories} expense{expenseCounts.allCategories !== 1 ? 's' : ''}
-              </Text>
+                <Text
+                  style={{
+                    color: tempCategoryFilters.length === 0 ? '#FFFFFF' : currentColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: '600',
+                    textAlign: 'center',
+                  }}
+                >
+                  {expenseCounts.allCategories}
+                </Text>
+              </View>
             </TouchableOpacity>
 
-            {/* Category grid with counts */}
+            {/* Category grid with count bubbles */}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 }}>
               {availableCategories.map((cat) => (
                 <TouchableOpacity
@@ -658,20 +752,33 @@ export default function ExpenseFilterModal({
                   {tempCategoryFilters.includes(cat) && (
                     <Icon name="checkmark" size={14} style={{ color: '#FFFFFF', marginRight: 4 }} />
                   )}
-                  <View style={{ alignItems: 'center' }}>
+                  <Text
+                    style={[
+                      themedStyles.badgeText,
+                      { color: tempCategoryFilters.includes(cat) ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13 },
+                    ]}
+                  >
+                    {cat}
+                  </Text>
+                  <View
+                    style={{
+                      backgroundColor: tempCategoryFilters.includes(cat) ? '#FFFFFF' + '20' : currentColors.textSecondary + '20',
+                      borderRadius: 12,
+                      minWidth: 24,
+                      height: 24,
+                      paddingHorizontal: 8,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginLeft: 8,
+                    }}
+                  >
                     <Text
-                      style={[
-                        themedStyles.badgeText,
-                        { color: tempCategoryFilters.includes(cat) ? '#FFFFFF' : currentColors.text, fontWeight: '600', fontSize: 13, marginBottom: 2 },
-                      ]}
-                    >
-                      {cat}
-                    </Text>
-                    <Text
-                      style={[
-                        themedStyles.badgeText,
-                        { color: tempCategoryFilters.includes(cat) ? '#FFFFFF' + '80' : currentColors.textSecondary, fontWeight: '500', fontSize: 10 },
-                      ]}
+                      style={{
+                        color: tempCategoryFilters.includes(cat) ? '#FFFFFF' : currentColors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: '600',
+                        textAlign: 'center',
+                      }}
                     >
                       {expenseCounts.categories[cat] || 0}
                     </Text>
