@@ -339,18 +339,18 @@ export default function ExpenseFilterModal({
     });
   };
 
-  // STANDARDIZED: Common styles for all tappable filter options
+  // STANDARDIZED: Common styles for all tappable filter options (compact and blue)
   const getFilterButtonStyle = (isSelected: boolean, isFullWidth: boolean = false) => ({
-    backgroundColor: isSelected ? currentColors.primary : currentColors.backgroundAlt,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
+    backgroundColor: isSelected ? currentColors.secondary : currentColors.backgroundAlt,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
     borderWidth: isSelected ? 2 : 1,
-    borderColor: isSelected ? currentColors.primary : currentColors.border,
+    borderColor: isSelected ? currentColors.secondary : currentColors.border,
     boxShadow: isSelected ? '0px 2px 4px rgba(0,0,0,0.1)' : 'none',
-    minHeight: 48,
+    minHeight: 40,
     flexDirection: 'row' as const,
     ...(isFullWidth ? { flex: 1, marginHorizontal: 4 } : { marginRight: 8 }),
   });
@@ -358,24 +358,24 @@ export default function ExpenseFilterModal({
   const getFilterTextStyle = (isSelected: boolean) => ({
     color: isSelected ? '#FFFFFF' : currentColors.text,
     fontWeight: '600' as const,
-    fontSize: 14,
+    fontSize: 13,
     textAlign: 'center' as const,
   });
 
   const getCountBubbleStyle = (isSelected: boolean) => ({
     backgroundColor: isSelected ? '#FFFFFF' + '20' : currentColors.textSecondary + '20',
-    borderRadius: 12,
-    minWidth: 24,
-    height: 24,
-    paddingHorizontal: 8,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 6,
     justifyContent: 'center' as const,
     alignItems: 'center' as const,
-    marginLeft: 8,
+    marginLeft: 6,
   });
 
   const getCountTextStyle = (isSelected: boolean) => ({
     color: isSelected ? '#FFFFFF' : currentColors.textSecondary,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600' as const,
     textAlign: 'center' as const,
   });
@@ -449,7 +449,7 @@ export default function ExpenseFilterModal({
         accessibilityLabel={`Toggle category ${category}${isSelected ? ', selected' : ''}`}
       >
         {isSelected && (
-          <Icon name="checkmark" size={14} style={{ color: '#FFFFFF', marginRight: 4 }} />
+          <Icon name="checkmark" size={12} style={{ color: '#FFFFFF', marginRight: 4 }} />
         )}
         <Text style={getFilterTextStyle(isSelected)}>
           {category}
@@ -532,10 +532,10 @@ export default function ExpenseFilterModal({
             >
               <Icon 
                 name={tempHasEndDateFilter ? "checkmark-circle" : "timer-outline"} 
-                size={16} 
+                size={14} 
                 style={{ 
                   color: tempHasEndDateFilter ? '#FFFFFF' : currentColors.text,
-                  marginRight: 8 
+                  marginRight: 6 
                 }} 
               />
               <Text style={[getFilterTextStyle(tempHasEndDateFilter), { flex: 1 }]}>
