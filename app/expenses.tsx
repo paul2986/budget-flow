@@ -34,17 +34,13 @@ export default function ExpensesScreen() {
   // Filter modal state
   const [showFilterModal, setShowFilterModal] = useState(false);
 
-  // Ownership filter (existing)
+  // Filter state - FIXED: Initialize with proper defaults
   const [filter, setFilter] = useState<'all' | 'household' | 'personal'>('all');
   const [personFilter, setPersonFilter] = useState<string | null>(null);
-
-  // New: Category + Search filters (persisted)
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>(''); // debounced
-
-  // New: End date filter
   const [hasEndDateFilter, setHasEndDateFilter] = useState<boolean>(false);
 
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
@@ -56,8 +52,9 @@ export default function ExpensesScreen() {
   // Use ref to track if we've already refreshed on this focus
   const hasRefreshedOnFocus = useRef(false);
   
-  // Use ref to track if filters have been loaded to prevent overwriting modal changes
+  // FIXED: Use ref to track if filters have been loaded to prevent race conditions
   const filtersLoaded = useRef(false);
+  const isInitialLoad = useRef(true);
 
   // Wrap announceFilter in useCallback to fix exhaustive deps warning
   const announceFilter = useCallback((msg: string) => {
@@ -97,102 +94,140 @@ export default function ExpensesScreen() {
     }
   }, []);
 
-  // Load persisted filters on mount and when screen comes into focus
+  // FIXED: Load persisted filters function with better error handling
   const loadPersistedFilters = useCallback(async () => {
+    if (filtersLoaded.current) {
+      console.log('ExpensesScreen: Filters already loaded, skipping...');
+      return;
+    }
+
     try {
       console.log('ExpensesScreen: Loading persisted filters...');
       const filters = await getExpensesFilters();
       console.log('ExpensesScreen: Loaded persisted filters:', filters);
       
-      setCategoryFilter(filters.category || null);
-      setSearchQuery(filters.search || '');
-      setSearchTerm(filters.search || '');
-      setHasEndDateFilter(filters.hasEndDate || false);
-      setFilter(filters.filter || 'all');
-      setPersonFilter(filters.personFilter || null);
+      // FIXED: Only apply persisted filters if not coming from dashboard
+      if (params.fromDashboard !== 'true') {
+        setCategoryFilter(filters.category || null);
+        setSearchQuery(filters.search || '');
+        setSearchTerm(filters.search || '');
+        setHasEndDateFilter(filters.hasEndDate || false);
+        setFilter(filters.filter || 'all');
+        setPersonFilter(filters.personFilter || null);
+      }
       
       filtersLoaded.current = true;
+      console.log('ExpensesScreen: Filters loaded successfully');
     } catch (e) {
       console.error('ExpensesScreen: Failed to load persisted filters:', e);
+      filtersLoaded.current = true; // Mark as loaded even on error to prevent infinite retries
     }
-  }, []);
+  }, [params.fromDashboard]);
 
-  // Load custom categories and persisted filters
+  // FIXED: Load custom categories and handle dashboard navigation properly
   useEffect(() => {
-    (async () => {
-      const customs = await getCustomExpenseCategories();
-      console.log('ExpensesScreen: Loaded custom categories:', customs);
-      setCustomCategories(customs);
-      
-      // Check if we have URL parameters from dashboard navigation
-      if (params.fromDashboard === 'true') {
-        console.log('ExpensesScreen: Applying filters from dashboard navigation:', {
-          filter: params.filter,
-          category: params.category,
-          personId: params.personId
-        });
+    const loadInitialData = async () => {
+      try {
+        // Always load custom categories
+        const customs = await getCustomExpenseCategories();
+        console.log('ExpensesScreen: Loaded custom categories:', customs);
+        setCustomCategories(customs);
         
-        // Apply filters from URL parameters
-        if (params.filter && (params.filter === 'household' || params.filter === 'personal')) {
-          setFilter(params.filter);
-        }
-        if (params.category) {
-          setCategoryFilter(params.category);
-        }
-        if (params.personId) {
-          setPersonFilter(params.personId);
-        }
-        
-        // Clear the search query and end date filter when coming from dashboard
-        setSearchQuery('');
-        setSearchTerm('');
-        setHasEndDateFilter(false);
-        
-        // Announce the applied filters for accessibility
-        const filterMessages = [];
-        if (params.filter) {
-          filterMessages.push(`${params.filter} expenses`);
-        }
-        if (params.category) {
-          filterMessages.push(`${params.category} category`);
-        }
-        if (params.personId) {
-          const person = data.people.find(p => p.id === params.personId);
-          if (person) {
-            filterMessages.push(`${person.name}'s expenses`);
+        // Handle dashboard navigation parameters
+        if (params.fromDashboard === 'true') {
+          console.log('ExpensesScreen: Applying filters from dashboard navigation:', {
+            filter: params.filter,
+            category: params.category,
+            personId: params.personId
+          });
+          
+          // Apply filters from URL parameters
+          if (params.filter && (params.filter === 'household' || params.filter === 'personal')) {
+            setFilter(params.filter);
+          } else {
+            setFilter('all');
           }
+          
+          if (params.category) {
+            setCategoryFilter(params.category);
+          } else {
+            setCategoryFilter(null);
+          }
+          
+          if (params.personId) {
+            setPersonFilter(params.personId);
+          } else {
+            setPersonFilter(null);
+          }
+          
+          // Clear other filters when coming from dashboard
+          setSearchQuery('');
+          setSearchTerm('');
+          setHasEndDateFilter(false);
+          
+          // Announce the applied filters for accessibility
+          const filterMessages = [];
+          if (params.filter) {
+            filterMessages.push(`${params.filter} expenses`);
+          }
+          if (params.category) {
+            filterMessages.push(`${params.category} category`);
+          }
+          if (params.personId) {
+            const person = data.people.find(p => p.id === params.personId);
+            if (person) {
+              filterMessages.push(`${person.name}'s expenses`);
+            }
+          }
+          if (filterMessages.length > 0) {
+            announceFilter(`Filtered by ${filterMessages.join(' and ')}`);
+          }
+          
+          filtersLoaded.current = true;
+        } else {
+          // For normal navigation, load persisted filters
+          await loadPersistedFilters();
         }
-        if (filterMessages.length > 0) {
-          announceFilter(`Filtered by ${filterMessages.join(' and ')}`);
-        }
-        
+      } catch (error) {
+        console.error('ExpensesScreen: Error loading initial data:', error);
         filtersLoaded.current = true;
-      } else {
-        // For all other navigation (including bottom nav bar), load persisted filters
-        await loadPersistedFilters();
       }
-    })();
-  }, [params.filter, params.category, params.fromDashboard, params.personId, announceFilter, data.people, params, loadPersistedFilters]);
+    };
+
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
+      loadInitialData();
+    }
+  }, [params.filter, params.category, params.fromDashboard, params.personId, announceFilter, data.people, loadPersistedFilters]);
 
   // Reload custom categories when data changes (e.g., after clearing all data)
   useEffect(() => {
-    (async () => {
-      const customs = await getCustomExpenseCategories();
-      console.log('ExpensesScreen: Reloaded custom categories after data change:', customs);
-      setCustomCategories(customs);
-      // If current category filter is no longer valid, clear it
-      if (categoryFilter && !customs.includes(categoryFilter) && !DEFAULT_CATEGORIES.includes(categoryFilter)) {
-        console.log('ExpensesScreen: Clearing invalid category filter:', categoryFilter);
-        setCategoryFilter(null);
+    const reloadCustomCategories = async () => {
+      try {
+        const customs = await getCustomExpenseCategories();
+        console.log('ExpensesScreen: Reloaded custom categories after data change:', customs);
+        setCustomCategories(customs);
+        // If current category filter is no longer valid, clear it
+        if (categoryFilter && !customs.includes(categoryFilter) && !DEFAULT_CATEGORIES.includes(categoryFilter)) {
+          console.log('ExpensesScreen: Clearing invalid category filter:', categoryFilter);
+          setCategoryFilter(null);
+        }
+      } catch (error) {
+        console.error('ExpensesScreen: Error reloading custom categories:', error);
       }
-    })();
-  }, [data.people.length, data.expenses.length, categoryFilter]); // Reload when core data changes
+    };
 
-  // Persist all filters with debounce (but not when coming from dashboard)
+    reloadCustomCategories();
+  }, [data.people.length, data.expenses.length, categoryFilter]);
+
+  // FIXED: Persist filters with proper debouncing and conditions
   useEffect(() => {
-    // Only persist filters if not coming from dashboard and filters have been loaded
-    if (params.fromDashboard !== 'true' && filtersLoaded.current) {
-      const t = setTimeout(() => {
+    // Only persist filters if:
+    // 1. Not coming from dashboard
+    // 2. Filters have been loaded (to prevent overwriting during initial load)
+    // 3. Not on initial load
+    if (params.fromDashboard !== 'true' && filtersLoaded.current && !isInitialLoad.current) {
+      const timeoutId = setTimeout(() => {
         console.log('ExpensesScreen: Persisting filters:', { 
           category: categoryFilter, 
           search: searchQuery, 
@@ -207,15 +242,15 @@ export default function ExpensesScreen() {
           filter: filter,
           personFilter: personFilter
         });
-      }, 500); // Increased delay to prevent interference with modal state
-      return () => clearTimeout(t);
+      }, 500);
+      return () => clearTimeout(timeoutId);
     }
-  }, [categoryFilter, searchQuery, hasEndDateFilter, filter, personFilter, params]);
+  }, [categoryFilter, searchQuery, hasEndDateFilter, filter, personFilter, params.fromDashboard]);
 
-  // Debounce search for filtering perf
+  // Debounce search for filtering performance
   useEffect(() => {
-    const t = setTimeout(() => setSearchTerm(searchQuery.trim()), 300);
-    return () => clearTimeout(t);
+    const timeoutId = setTimeout(() => setSearchTerm(searchQuery.trim()), 300);
+    return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
   // Refresh data when screen comes into focus, but only once per focus
@@ -228,13 +263,12 @@ export default function ExpensesScreen() {
         getCustomExpenseCategories().then(setCustomCategories).catch((e) => console.log('Failed to refresh custom categories', e));
         
         // Load persisted filters when coming back to the screen (unless coming from dashboard)
-        if (params.fromDashboard !== 'true') {
+        if (params.fromDashboard !== 'true' && !filtersLoaded.current) {
           loadPersistedFilters();
         }
       }
       return () => {
         hasRefreshedOnFocus.current = false;
-        // Don't reset filtersLoaded.current here - let it persist until filters are actually loaded
       };
     }, [refreshData, params.fromDashboard, loadPersistedFilters])
   );
@@ -382,18 +416,10 @@ export default function ExpensesScreen() {
     [sortBy, sortOrder, currentColors, saving, deletingExpenseId, handleSortPress, getSortIcon, getSortLabel]
   );
 
-  // Apply filters
-  let filteredExpenses = data.expenses;
+  // FIXED: Apply filters with proper logic and error handling
+  let filteredExpenses = [...data.expenses]; // Create a copy to avoid mutating original
 
-  console.log('ExpensesScreen: All expenses before filtering:', data.expenses.map(e => ({ 
-    id: e.id, 
-    description: e.description, 
-    category: e.category, 
-    amount: e.amount,
-    personId: e.personId,
-    endDate: e.endDate
-  })));
-
+  console.log('ExpensesScreen: Starting filter process with', filteredExpenses.length, 'total expenses');
   console.log('ExpensesScreen: Current filter state:', {
     filter,
     personFilter,
@@ -404,15 +430,18 @@ export default function ExpensesScreen() {
 
   // FIXED: Apply household/personal filter correctly
   if (filter === 'household') {
+    const beforeCount = filteredExpenses.length;
     filteredExpenses = filteredExpenses.filter((e) => e.category === 'household');
-    console.log('ExpensesScreen: Household expenses after filtering:', filteredExpenses.length);
+    console.log('ExpensesScreen: Household filter applied. Before:', beforeCount, 'After:', filteredExpenses.length);
   } else if (filter === 'personal') {
+    const beforeCount = filteredExpenses.length;
     filteredExpenses = filteredExpenses.filter((e) => e.category === 'personal');
-    console.log('ExpensesScreen: Personal expenses after filtering:', filteredExpenses.length);
+    console.log('ExpensesScreen: Personal filter applied. Before:', beforeCount, 'After:', filteredExpenses.length);
   }
 
-  // Apply person filter - FIXED: Handle household expenses without personId correctly
+  // FIXED: Apply person filter with proper logic for household vs personal expenses
   if (personFilter) {
+    const beforeCount = filteredExpenses.length;
     filteredExpenses = filteredExpenses.filter((e) => {
       // For household expenses, only filter if they have a personId assigned
       if (e.category === 'household') {
@@ -421,29 +450,34 @@ export default function ExpensesScreen() {
       // For personal expenses, always filter by personId
       return e.personId === personFilter;
     });
-    console.log('ExpensesScreen: Expenses after person filter:', filteredExpenses.length);
+    console.log('ExpensesScreen: Person filter applied. Before:', beforeCount, 'After:', filteredExpenses.length);
   }
 
+  // Apply category filter
   if (categoryFilter) {
+    const beforeCount = filteredExpenses.length;
     const selected = normalizeCategoryName(categoryFilter);
-    filteredExpenses = filteredExpenses.filter((e) => normalizeCategoryName((e as any).categoryTag || 'Misc') === selected);
+    filteredExpenses = filteredExpenses.filter((e) => {
+      const expenseCategory = normalizeCategoryName((e as any).categoryTag || 'Misc');
+      return expenseCategory === selected;
+    });
+    console.log('ExpensesScreen: Category filter applied. Before:', beforeCount, 'After:', filteredExpenses.length);
   }
 
+  // Apply search filter
   if (searchTerm) {
+    const beforeCount = filteredExpenses.length;
     const q = searchTerm.toLowerCase();
     filteredExpenses = filteredExpenses.filter((e) => e.description.toLowerCase().includes(q));
+    console.log('ExpensesScreen: Search filter applied. Before:', beforeCount, 'After:', filteredExpenses.length);
   }
 
   // Apply end date filter
   if (hasEndDateFilter) {
-    console.log('ExpensesScreen: Applying end date filter. hasEndDateFilter:', hasEndDateFilter);
     const beforeCount = filteredExpenses.length;
     filteredExpenses = filteredExpenses.filter((e) => {
       // Only include expenses that have an end date and are not one-time
       const hasEndDate = e.endDate && e.frequency !== 'one-time';
-      if (hasEndDate) {
-        console.log('ExpensesScreen: Expense with end date:', e.description, e.endDate, e.frequency);
-      }
       return hasEndDate;
     });
     console.log('ExpensesScreen: End date filter applied. Before:', beforeCount, 'After:', filteredExpenses.length);
@@ -469,6 +503,8 @@ export default function ExpensesScreen() {
     
     return sortOrder === 'asc' ? comparison : -comparison;
   });
+
+  console.log('ExpensesScreen: Final filtered expenses count:', filteredExpenses.length);
 
   const hasActiveFilters = !!categoryFilter || !!searchTerm || (filter !== 'all') || !!personFilter || hasEndDateFilter;
 
@@ -542,8 +578,6 @@ export default function ExpensesScreen() {
               <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>Clear</Text>
             </TouchableOpacity>
           </View>
-          
-
         </View>
       )}
 
@@ -563,14 +597,6 @@ export default function ExpensesScreen() {
         ) : (
           <View style={{ gap: 8 }}>
             {filteredExpenses.map((expense) => {
-              console.log('ExpensesScreen: Rendering expense:', { 
-                id: expense.id, 
-                description: expense.description, 
-                category: expense.category,
-                personId: expense.personId,
-                frequency: expense.frequency,
-                endDate: expense.endDate
-              });
               const person = expense.personId ? data.people.find((p) => p.id === expense.personId) : null;
               const monthlyAmount = calculateMonthlyAmount(expense.amount, expense.frequency);
               const isDeleting = deletingExpenseId === expense.id;
@@ -650,7 +676,7 @@ export default function ExpensesScreen() {
                         {isHousehold && !person ? expense.frequency : ` • ${expense.frequency}`}
                       </Text>
 
-                      {/* Expiration date display - MOVED TIMER ICON TO THE LEFT */}
+                      {/* Expiration date display */}
                       {hasExpirationDate && expirationInfo && (
                         <View style={{ 
                           flexDirection: 'row', 

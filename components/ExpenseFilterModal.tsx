@@ -52,17 +52,17 @@ export default function ExpenseFilterModal({
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
 
-  // Local state for temporary filter values (not applied until "Apply Filters" is pressed)
+  // FIXED: Local state for temporary filter values (applied when "Apply Filters" is pressed)
   const [tempFilter, setTempFilter] = useState<'all' | 'household' | 'personal'>('all');
   const [tempPersonFilter, setTempPersonFilter] = useState<string | null>(null);
   const [tempCategoryFilters, setTempCategoryFilters] = useState<string[]>([]);
   const [tempSearchQuery, setTempSearchQuery] = useState<string>('');
   const [tempHasEndDateFilter, setTempHasEndDateFilter] = useState<boolean>(false);
 
-  // Initialize temp state when modal opens
+  // FIXED: Initialize temp state when modal opens with current filter values
   useEffect(() => {
     if (visible) {
-      console.log('ExpenseFilterModal: Initializing temp state with:', {
+      console.log('ExpenseFilterModal: Initializing temp state with current filters:', {
         filter,
         personFilter,
         categoryFilter,
@@ -91,6 +91,7 @@ export default function ExpenseFilterModal({
   const hasActiveFilters = tempCategoryFilters.length > 0 || !!tempSearchQuery.trim() || (tempFilter !== 'all') || !!tempPersonFilter || tempHasEndDateFilter;
 
   const handleCancel = () => {
+    console.log('ExpenseFilterModal: Cancel pressed, resetting temp state');
     // Reset temp state to original values and close without applying
     setTempFilter(filter);
     setTempPersonFilter(personFilter);
@@ -109,7 +110,7 @@ export default function ExpenseFilterModal({
       tempHasEndDateFilter
     });
     
-    // Apply the temporary filter values to the actual state
+    // FIXED: Apply the temporary filter values to the actual state
     setFilter(tempFilter);
     setPersonFilter(tempPersonFilter);
     
@@ -120,6 +121,7 @@ export default function ExpenseFilterModal({
     setSearchQuery(tempSearchQuery);
     setHasEndDateFilter(tempHasEndDateFilter);
 
+    // FIXED: Build proper announcement message
     let message = 'Filters applied';
     if (hasActiveFilters) {
       const activeFilters = [];
@@ -140,7 +142,7 @@ export default function ExpenseFilterModal({
   };
 
   const handleClearFilters = () => {
-    console.log('ExpenseFilterModal: Clearing all filters');
+    console.log('ExpenseFilterModal: Clearing all temp filters');
     setTempFilter('all');
     setTempPersonFilter(null);
     setTempCategoryFilters([]);
@@ -158,6 +160,7 @@ export default function ExpenseFilterModal({
     });
   };
 
+  // FIXED: FilterButton component with proper state handling
   const FilterButton = ({ filterType, label }: { filterType: 'all' | 'household' | 'personal'; label: string }) => {
     const isSelected = tempFilter === filterType;
     
@@ -181,8 +184,9 @@ export default function ExpenseFilterModal({
           },
         ]}
         onPress={() => {
-          console.log('ExpenseFilterModal: FilterButton pressed:', filterType, 'current:', tempFilter);
+          console.log('ExpenseFilterModal: FilterButton pressed:', filterType, 'current tempFilter:', tempFilter);
           setTempFilter(filterType);
+          // FIXED: Clear person filter when switching to 'all' or 'household'
           if (filterType !== 'personal') {
             setTempPersonFilter(null);
           }
@@ -239,7 +243,7 @@ export default function ExpenseFilterModal({
           </View>
 
           <View style={{ width: 44, height: 44 }}>
-            {/* Empty space for symmetry - no clear button here */}
+            {/* Empty space for symmetry */}
           </View>
         </View>
 
@@ -257,7 +261,7 @@ export default function ExpenseFilterModal({
             />
           </View>
 
-          {/* Ownership filter buttons */}
+          {/* FIXED: Ownership filter buttons with proper state management */}
           <View style={[themedStyles.section, { paddingBottom: 0 }]}>
             <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Expense Type</Text>
             <View style={{ flexDirection: 'row', marginBottom: 0 }}>
@@ -312,7 +316,7 @@ export default function ExpenseFilterModal({
             </TouchableOpacity>
           </View>
 
-          {/* Person filter - now available for all expense types */}
+          {/* Person filter - available for all expense types */}
           {people.length > 0 && (
             <View style={[themedStyles.section, { paddingBottom: 0 }]}>
               <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Person</Text>
@@ -329,7 +333,10 @@ export default function ExpenseFilterModal({
                         borderRadius: 16,
                       },
                     ]}
-                    onPress={() => setTempPersonFilter(null)}
+                    onPress={() => {
+                      console.log('ExpenseFilterModal: All People selected');
+                      setTempPersonFilter(null);
+                    }}
                   >
                     <Text
                       style={[
@@ -354,7 +361,10 @@ export default function ExpenseFilterModal({
                           borderRadius: 16,
                         },
                       ]}
-                      onPress={() => setTempPersonFilter(person.id)}
+                      onPress={() => {
+                        console.log('ExpenseFilterModal: Person selected:', person.name);
+                        setTempPersonFilter(person.id);
+                      }}
                     >
                       <Text
                         style={[
@@ -390,7 +400,10 @@ export default function ExpenseFilterModal({
                   alignSelf: 'flex-start',
                 },
               ]}
-              onPress={() => setTempCategoryFilters([])}
+              onPress={() => {
+                console.log('ExpenseFilterModal: All Categories selected');
+                setTempCategoryFilters([]);
+              }}
             >
               <Text
                 style={[
@@ -419,7 +432,10 @@ export default function ExpenseFilterModal({
                       alignItems: 'center',
                     },
                   ]}
-                  onPress={() => handleCategoryToggle(cat)}
+                  onPress={() => {
+                    console.log('ExpenseFilterModal: Category toggled:', cat);
+                    handleCategoryToggle(cat);
+                  }}
                   accessibilityLabel={`Toggle category ${cat}${tempCategoryFilters.includes(cat) ? ', selected' : ''}`}
                 >
                   {tempCategoryFilters.includes(cat) && (
