@@ -55,6 +55,9 @@ export default function ExpensesScreen() {
 
   // Use ref to track if we've already refreshed on this focus
   const hasRefreshedOnFocus = useRef(false);
+  
+  // Use ref to track if filters have been loaded to prevent overwriting modal changes
+  const filtersLoaded = useRef(false);
 
   // Wrap announceFilter in useCallback to fix exhaustive deps warning
   const announceFilter = useCallback((msg: string) => {
@@ -145,11 +148,15 @@ export default function ExpensesScreen() {
         }
       } else {
         // For all other navigation (including bottom nav bar), load persisted filters
-        console.log('ExpensesScreen: Loading persisted filters for navigation');
-        setCategoryFilter(filters.category || null);
-        setSearchQuery(filters.search || '');
-        setSearchTerm(filters.search || '');
-        setHasEndDateFilter(filters.hasEndDate || false);
+        // Only load if filters haven't been loaded yet to prevent overwriting modal changes
+        if (!filtersLoaded.current) {
+          console.log('ExpensesScreen: Loading persisted filters for navigation:', filters);
+          setCategoryFilter(filters.category || null);
+          setSearchQuery(filters.search || '');
+          setSearchTerm(filters.search || '');
+          setHasEndDateFilter(filters.hasEndDate || false);
+          filtersLoaded.current = true;
+        }
         
         // Don't announce filters when just navigating to the page normally
       }
@@ -175,8 +182,9 @@ export default function ExpensesScreen() {
     // Only persist filters if not coming from dashboard (params.fromDashboard !== 'true')
     if (params.fromDashboard !== 'true') {
       const t = setTimeout(() => {
+        console.log('ExpensesScreen: Persisting filters:', { category: categoryFilter, search: searchQuery, hasEndDate: hasEndDateFilter });
         saveExpensesFilters({ category: categoryFilter, search: searchQuery, hasEndDate: hasEndDateFilter });
-      }, 300);
+      }, 500); // Increased delay to prevent interference with modal state
       return () => clearTimeout(t);
     }
   }, [categoryFilter, searchQuery, hasEndDateFilter, params]);
@@ -198,6 +206,7 @@ export default function ExpensesScreen() {
       }
       return () => {
         hasRefreshedOnFocus.current = false;
+        filtersLoaded.current = false; // Reset filters loaded flag when screen loses focus
       };
     }, [refreshData])
   );
@@ -249,6 +258,7 @@ export default function ExpensesScreen() {
   }, []);
 
   const handleClearFilters = useCallback(() => {
+    console.log('ExpensesScreen: Clearing all filters');
     setCategoryFilter(null);
     setSearchQuery('');
     setFilter('all');
@@ -379,11 +389,17 @@ export default function ExpensesScreen() {
 
   // Apply end date filter
   if (hasEndDateFilter) {
+    console.log('ExpensesScreen: Applying end date filter. hasEndDateFilter:', hasEndDateFilter);
+    const beforeCount = filteredExpenses.length;
     filteredExpenses = filteredExpenses.filter((e) => {
       // Only include expenses that have an end date and are not one-time
-      return e.endDate && e.frequency !== 'one-time';
+      const hasEndDate = e.endDate && e.frequency !== 'one-time';
+      if (hasEndDate) {
+        console.log('ExpensesScreen: Expense with end date:', e.description, e.endDate, e.frequency);
+      }
+      return hasEndDate;
     });
-    console.log('ExpensesScreen: Expenses after end date filter:', filteredExpenses.length);
+    console.log('ExpensesScreen: End date filter applied. Before:', beforeCount, 'After:', filteredExpenses.length);
   }
 
   // Enhanced sorting logic

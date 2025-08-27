@@ -62,6 +62,13 @@ export default function ExpenseFilterModal({
   // Initialize temp state when modal opens
   useEffect(() => {
     if (visible) {
+      console.log('ExpenseFilterModal: Initializing temp state with:', {
+        filter,
+        personFilter,
+        categoryFilter,
+        searchQuery,
+        hasEndDateFilter
+      });
       setTempFilter(filter);
       setTempPersonFilter(personFilter);
       setTempCategoryFilters(categoryFilter ? [categoryFilter] : []);
@@ -94,6 +101,14 @@ export default function ExpenseFilterModal({
   };
 
   const handleApplyFilters = () => {
+    console.log('ExpenseFilterModal: Applying filters:', {
+      tempFilter,
+      tempPersonFilter,
+      tempCategoryFilters,
+      tempSearchQuery,
+      tempHasEndDateFilter
+    });
+    
     // Apply the temporary filter values to the actual state
     setFilter(tempFilter);
     setPersonFilter(tempPersonFilter);
@@ -124,6 +139,7 @@ export default function ExpenseFilterModal({
   };
 
   const handleClearFilters = () => {
+    console.log('ExpenseFilterModal: Clearing all filters');
     setTempFilter('all');
     setTempPersonFilter(null);
     setTempCategoryFilters([]);
@@ -141,7 +157,7 @@ export default function ExpenseFilterModal({
     });
   };
 
-  const FilterButton = ({ filterType, label }: { filterType: typeof tempFilter; label: string }) => (
+  const FilterButton = ({ filterType, label }: { filterType: 'all' | 'household' | 'personal'; label: string }) => (
     <TouchableOpacity
       style={[
         themedStyles.badge,
@@ -157,8 +173,11 @@ export default function ExpenseFilterModal({
         },
       ]}
       onPress={() => {
+        console.log('ExpenseFilterModal: FilterButton pressed:', filterType, 'current tempFilter:', tempFilter);
         setTempFilter(filterType);
-        if (filterType !== 'personal') setTempPersonFilter(null);
+        if (filterType !== 'personal') {
+          setTempPersonFilter(null);
+        }
       }}
     >
       <Text
@@ -255,7 +274,10 @@ export default function ExpenseFilterModal({
                   alignSelf: 'flex-start',
                 },
               ]}
-              onPress={() => setTempHasEndDateFilter(!tempHasEndDateFilter)}
+              onPress={() => {
+                console.log('ExpenseFilterModal: End date filter toggled from', tempHasEndDateFilter, 'to', !tempHasEndDateFilter);
+                setTempHasEndDateFilter(!tempHasEndDateFilter);
+              }}
             >
               <Icon 
                 name={tempHasEndDateFilter ? "checkmark-circle" : "timer-outline"} 
