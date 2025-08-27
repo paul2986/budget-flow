@@ -339,8 +339,8 @@ export default function ExpenseFilterModal({
     });
   };
 
-  // STANDARDIZED: Common styles for all tappable filter options (compact and blue)
-  const getFilterButtonStyle = (isSelected: boolean, isFullWidth: boolean = false) => ({
+  // FIXED: Common styles for all tappable filter options (compact and blue) - removed flex and width constraints
+  const getFilterButtonStyle = (isSelected: boolean) => ({
     backgroundColor: isSelected ? currentColors.secondary : currentColors.backgroundAlt,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -352,7 +352,8 @@ export default function ExpenseFilterModal({
     boxShadow: isSelected ? '0px 2px 4px rgba(0,0,0,0.1)' : 'none',
     minHeight: 40,
     flexDirection: 'row' as const,
-    ...(isFullWidth ? { flex: 1, marginHorizontal: 4 } : { marginRight: 8 }),
+    marginRight: 8,
+    marginBottom: 8,
   });
 
   const getFilterTextStyle = (isSelected: boolean) => ({
@@ -389,14 +390,14 @@ export default function ExpenseFilterModal({
     </View>
   );
 
-  // STANDARDIZED: FilterButton component with consistent styling
+  // FIXED: FilterButton component with content-based width
   const FilterButton = ({ filterType, label }: { filterType: 'all' | 'household' | 'personal'; label: string }) => {
     const isSelected = tempFilter === filterType;
     const count = expenseCounts.expenseTypes[filterType];
     
     return (
       <TouchableOpacity
-        style={getFilterButtonStyle(isSelected, true)}
+        style={getFilterButtonStyle(isSelected)}
         onPress={() => {
           console.log('ExpenseFilterModal: FilterButton pressed:', filterType, 'current tempFilter:', tempFilter);
           setTempFilter(filterType);
@@ -407,7 +408,7 @@ export default function ExpenseFilterModal({
         }}
         activeOpacity={0.7}
       >
-        <Text style={[getFilterTextStyle(isSelected), { flex: 1 }]}>
+        <Text style={getFilterTextStyle(isSelected)}>
           {label}
         </Text>
         <CountBubble count={count} isSelected={isSelected} />
@@ -415,7 +416,7 @@ export default function ExpenseFilterModal({
     );
   };
 
-  // STANDARDIZED: PersonButton component with consistent styling
+  // FIXED: PersonButton component with content-based width
   const PersonButton = ({ personId, label, count }: { personId: string | null; label: string; count: number }) => {
     const isSelected = tempPersonFilter === personId;
     
@@ -435,7 +436,7 @@ export default function ExpenseFilterModal({
     );
   };
 
-  // STANDARDIZED: CategoryButton component with consistent styling
+  // FIXED: CategoryButton component with content-based width
   const CategoryButton = ({ category, count }: { category: string; count: number }) => {
     const isSelected = tempCategoryFilters.includes(category);
     
@@ -510,17 +511,17 @@ export default function ExpenseFilterModal({
             />
           </View>
 
-          {/* STANDARDIZED: Ownership filter buttons with consistent styling */}
+          {/* FIXED: Expense type filter buttons with content-based width */}
           <View style={[themedStyles.section, { paddingBottom: 0 }]}>
             <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Expense Type</Text>
-            <View style={{ flexDirection: 'row', marginBottom: 0 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 }}>
               <FilterButton filterType="all" label="All" />
               <FilterButton filterType="household" label="Household" />
               <FilterButton filterType="personal" label="Personal" />
             </View>
           </View>
 
-          {/* STANDARDIZED: End Date Filter with consistent styling */}
+          {/* FIXED: End Date Filter with content-based width */}
           <View style={[themedStyles.section, { paddingBottom: 0 }]}>
             <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Expiration</Text>
             <TouchableOpacity
@@ -538,14 +539,14 @@ export default function ExpenseFilterModal({
                   marginRight: 6 
                 }} 
               />
-              <Text style={[getFilterTextStyle(tempHasEndDateFilter), { flex: 1 }]}>
+              <Text style={getFilterTextStyle(tempHasEndDateFilter)}>
                 Only expenses with end dates
               </Text>
               <CountBubble count={expenseCounts.endDate.with} isSelected={tempHasEndDateFilter} />
             </TouchableOpacity>
           </View>
 
-          {/* STANDARDIZED: Person filter with consistent styling */}
+          {/* FIXED: Person filter with content-based width */}
           {people.length > 0 && (
             <View style={[themedStyles.section, { paddingBottom: 0 }]}>
               <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>Person</Text>
@@ -570,7 +571,7 @@ export default function ExpenseFilterModal({
             </View>
           )}
 
-          {/* STANDARDIZED: Category selection with consistent styling */}
+          {/* FIXED: Category selection with content-based width */}
           <View style={[themedStyles.section, { paddingBottom: 0 }]}>
             <Text style={[themedStyles.text, { marginBottom: 12, fontWeight: '600', fontSize: 16 }]}>
               Categories {tempCategoryFilters.length > 0 && `(${tempCategoryFilters.length} selected)`}
@@ -585,7 +586,7 @@ export default function ExpenseFilterModal({
                   setTempCategoryFilters([]);
                 }}
               >
-                <Text style={[getFilterTextStyle(tempCategoryFilters.length === 0), { flex: 1 }]}>
+                <Text style={getFilterTextStyle(tempCategoryFilters.length === 0)}>
                   All Categories
                 </Text>
                 <CountBubble count={expenseCounts.allCategories} isSelected={tempCategoryFilters.length === 0} />
