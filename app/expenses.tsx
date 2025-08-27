@@ -7,7 +7,6 @@ import { useTheme } from '../hooks/useTheme';
 import { calculateMonthlyAmount } from '../utils/calculations';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useCurrency } from '../hooks/useCurrency';
-import { useToast } from '../hooks/useToast';
 import Icon from '../components/Icon';
 import StandardHeader from '../components/StandardHeader';
 import ExpenseFilterModal from '../components/ExpenseFilterModal';
@@ -22,7 +21,6 @@ export default function ExpensesScreen() {
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
   const { formatCurrency } = useCurrency();
-  const toast = useToast();
   const params = useLocalSearchParams<{ 
     showRecurring?: string;
     filter?: string;
@@ -181,9 +179,6 @@ export default function ExpensesScreen() {
           }
           if (filterMessages.length > 0) {
             announceFilter(`Filtered by ${filterMessages.join(' and ')}`);
-            
-            // Show toast notification about applied filters
-            toast.show(`Showing ${filterMessages.join(' and ')}`, 'success');
           }
           
           filtersLoaded.current = true;
@@ -201,7 +196,7 @@ export default function ExpensesScreen() {
       isInitialLoad.current = false;
       loadInitialData();
     }
-  }, [params.filter, params.category, params.fromDashboard, params.personId, announceFilter, data.people, loadPersistedFilters, toast]);
+  }, [params.filter, params.category, params.fromDashboard, params.personId, announceFilter, data.people, loadPersistedFilters]);
 
   // Reload custom categories when data changes (e.g., after clearing all data)
   useEffect(() => {
@@ -340,10 +335,7 @@ export default function ExpensesScreen() {
       filter: 'all',
       personFilter: null
     });
-    
-    // Show toast notification
-    toast.show('All filters cleared', 'success');
-  }, [announceFilter, toast]);
+  }, [announceFilter]);
 
   // Enhanced sort button handler
   const handleSortPress = useCallback((sortType: SortOption) => {
