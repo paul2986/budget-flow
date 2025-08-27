@@ -155,6 +155,8 @@ export default function ExpensesScreen() {
           setSearchQuery(filters.search || '');
           setSearchTerm(filters.search || '');
           setHasEndDateFilter(filters.hasEndDate || false);
+          setFilter(filters.filter || 'all');
+          setPersonFilter(filters.personFilter || null);
           filtersLoaded.current = true;
         }
         
@@ -177,23 +179,37 @@ export default function ExpensesScreen() {
     })();
   }, [data.people.length, data.expenses.length, categoryFilter]); // Reload when core data changes
 
-  // Persist category + search + hasEndDate with debounce (but not when coming from dashboard)
+  // Persist all filters with debounce (but not when coming from dashboard)
   useEffect(() => {
     // Only persist filters if not coming from dashboard (params.fromDashboard !== 'true')
     if (params.fromDashboard !== 'true') {
       const t = setTimeout(() => {
-        console.log('ExpensesScreen: Persisting filters:', { category: categoryFilter, search: searchQuery, hasEndDate: hasEndDateFilter });
-        saveExpensesFilters({ category: categoryFilter, search: searchQuery, hasEndDate: hasEndDateFilter });
+        console.log('ExpensesScreen: Persisting filters:', { 
+          category: categoryFilter, 
+          search: searchQuery, 
+          hasEndDate: hasEndDateFilter,
+          filter: filter,
+          personFilter: personFilter
+        });
+        saveExpensesFilters({ 
+          category: categoryFilter, 
+          search: searchQuery, 
+          hasEndDate: hasEndDateFilter,
+          filter: filter,
+          personFilter: personFilter
+        });
       }, 500); // Increased delay to prevent interference with modal state
       return () => clearTimeout(t);
     }
-  }, [categoryFilter, searchQuery, hasEndDateFilter, params]);
+  }, [categoryFilter, searchQuery, hasEndDateFilter, filter, personFilter, params]);
 
   // Debounce search for filtering perf
   useEffect(() => {
     const t = setTimeout(() => setSearchTerm(searchQuery.trim()), 300);
     return () => clearTimeout(t);
   }, [searchQuery]);
+
+
 
   // Refresh data when screen comes into focus, but only once per focus
   useFocusEffect(
@@ -203,12 +219,25 @@ export default function ExpensesScreen() {
         refreshData(true);
         // Also refresh custom categories (in case new one added)
         getCustomExpenseCategories().then(setCustomCategories).catch((e) => console.log('Failed to refresh custom categories', e));
+        
+        // Load persisted filters when coming back to the screen (unless coming from dashboard)
+        if (params.fromDashboard !== 'true') {
+          getExpensesFilters().then(filters => {
+            console.log('ExpensesScreen: Loading persisted filters on focus:', filters);
+            setCategoryFilter(filters.category || null);
+            setSearchQuery(filters.search || '');
+            setSearchTerm(filters.search || '');
+            setHasEndDateFilter(filters.hasEndDate || false);
+            setFilter(filters.filter || 'all');
+            setPersonFilter(filters.personFilter || null);
+          }).catch((e) => console.log('Failed to load persisted filters', e));
+        }
       }
       return () => {
         hasRefreshedOnFocus.current = false;
         filtersLoaded.current = false; // Reset filters loaded flag when screen loses focus
       };
-    }, [refreshData])
+    }, [refreshData, params.fromDashboard])
   );
 
   const handleRemoveExpense = useCallback(
@@ -261,10 +290,20 @@ export default function ExpensesScreen() {
     console.log('ExpensesScreen: Clearing all filters');
     setCategoryFilter(null);
     setSearchQuery('');
+    setSearchTerm('');
     setFilter('all');
     setPersonFilter(null);
     setHasEndDateFilter(false);
     announceFilter('All filters cleared');
+    
+    // Also clear persisted filters
+    saveExpensesFilters({ 
+      category: null, 
+      search: '', 
+      hasEndDate: false,
+      filter: 'all',
+      personFilter: null
+    });
   }, [announceFilter]);
 
   // Enhanced sort button handler
@@ -356,6 +395,14 @@ export default function ExpensesScreen() {
     endDate: e.endDate
   })));
 
+  console.log('ExpensesScreen: Current filter state:', {
+    filter,
+    personFilter,
+    categoryFilter,
+    searchTerm,
+    hasEndDateFilter
+  });
+
   if (filter === 'household') {
     filteredExpenses = filteredExpenses.filter((e) => e.category === 'household');
     console.log('ExpensesScreen: Household expenses after filtering:', filteredExpenses.length);
@@ -428,10 +475,11 @@ export default function ExpensesScreen() {
   // Header buttons - filter button on left, add button on right
   const leftButtons = [
     {
-      icon: 'options-outline',
+      icon: hasActiveFilters ? 'funnel' : 'options-outline',
       onPress: () => setShowFilterModal(true),
       backgroundColor: hasActiveFilters ? currentColors.primary : currentColors.backgroundAlt,
       iconColor: hasActiveFilters ? '#FFFFFF' : currentColors.text,
+      badge: hasActiveFilters ? '●' : undefined,
     },
   ];
 
@@ -494,6 +542,8 @@ export default function ExpensesScreen() {
               <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>Clear</Text>
             </TouchableOpacity>
           </View>
+          
+
         </View>
       )}
 

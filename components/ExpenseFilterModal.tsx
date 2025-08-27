@@ -115,7 +115,8 @@ export default function ExpenseFilterModal({
     
     // For categories, if multiple selected, we'll apply the first one for now
     // (since the current system only supports single category filter)
-    setCategoryFilter(tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null);
+    const newCategoryFilter = tempCategoryFilters.length > 0 ? tempCategoryFilters[0] : null;
+    setCategoryFilter(newCategoryFilter);
     setSearchQuery(tempSearchQuery);
     setHasEndDateFilter(tempHasEndDateFilter);
 
@@ -157,44 +158,52 @@ export default function ExpenseFilterModal({
     });
   };
 
-  const FilterButton = ({ filterType, label }: { filterType: 'all' | 'household' | 'personal'; label: string }) => (
-    <TouchableOpacity
-      style={[
-        themedStyles.badge,
-        {
-          backgroundColor: tempFilter === filterType ? currentColors.primary : currentColors.border,
-          flex: 1,
-          marginHorizontal: 4,
-          paddingHorizontal: 12,
-          paddingVertical: 8,
-          borderRadius: 20,
-          alignItems: 'center',
-          justifyContent: 'center',
-        },
-      ]}
-      onPress={() => {
-        console.log('ExpenseFilterModal: FilterButton pressed:', filterType, 'current tempFilter:', tempFilter);
-        setTempFilter(filterType);
-        if (filterType !== 'personal') {
-          setTempPersonFilter(null);
-        }
-      }}
-    >
-      <Text
+  const FilterButton = ({ filterType, label }: { filterType: 'all' | 'household' | 'personal'; label: string }) => {
+    const isSelected = tempFilter === filterType;
+    
+    return (
+      <TouchableOpacity
         style={[
-          themedStyles.badgeText,
+          themedStyles.badge,
           {
-            color: tempFilter === filterType ? '#FFFFFF' : currentColors.text,
-            fontWeight: '600',
-            textAlign: 'center',
-            fontSize: 13,
+            backgroundColor: isSelected ? currentColors.primary : currentColors.backgroundAlt,
+            flex: 1,
+            marginHorizontal: 4,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: 20,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: isSelected ? 2 : 1,
+            borderColor: isSelected ? currentColors.primary : currentColors.border,
+            boxShadow: isSelected ? '0px 2px 4px rgba(0,0,0,0.1)' : 'none',
           },
         ]}
+        onPress={() => {
+          console.log('ExpenseFilterModal: FilterButton pressed:', filterType);
+          setTempFilter(filterType);
+          if (filterType !== 'personal') {
+            setTempPersonFilter(null);
+          }
+        }}
+        activeOpacity={0.7}
       >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
+        <Text
+          style={[
+            themedStyles.badgeText,
+            {
+              color: isSelected ? '#FFFFFF' : currentColors.text,
+              fontWeight: '600',
+              textAlign: 'center',
+              fontSize: 13,
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <Modal
