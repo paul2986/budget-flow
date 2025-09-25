@@ -175,12 +175,46 @@ function RootLayoutContent() {
     return result;
   }, [pathname, appData, activeBudget, data, loading, refreshTrigger]);
 
-  // Force re-render when welcome page state changes
+  // Determine if we should show the "Budget Ready" screen
+  const isBudgetReadyPage = useMemo(() => {
+    // This is tricky because we can't directly access the showBudgetReady state from index.tsx
+    // However, we can infer it: if we're on index route, have a budget, but no people and no expenses
+    // AND we just created a budget (which we can detect by checking if we have exactly 1 budget)
+    if (pathname !== '/') return false;
+    
+    // Must have budgets and active budget
+    if (!appData || !appData.budgets || appData.budgets.length === 0 || !activeBudget) return false;
+    
+    // Must have data loaded
+    if (!data || loading) return false;
+    
+    const people = data && data.people && Array.isArray(data.people) ? data.people : [];
+    const expenses = data && data.expenses && Array.isArray(data.expenses) ? data.expenses : [];
+    
+    // Budget ready page shows when we have a budget but no people and no expenses
+    // This happens right after creating a new budget
+    const result = people.length === 0 && expenses.length === 0;
+    
+    console.log('RootLayoutContent: isBudgetReadyPage calculation', {
+      pathname,
+      hasBudgets: appData.budgets.length > 0,
+      hasActiveBudget: !!activeBudget,
+      peopleCount: people.length,
+      expensesCount: expenses.length,
+      result,
+      loading,
+      refreshTrigger
+    });
+    
+    return result;
+  }, [pathname, appData, activeBudget, data, loading, refreshTrigger]);
+
+  // Force re-render when welcome page or budget ready page state changes
   useEffect(() => {
-    console.log('RootLayoutContent: Welcome page state changed to:', isWelcomePage);
+    console.log('RootLayoutContent: Page state changed - Welcome:', isWelcomePage, 'BudgetReady:', isBudgetReadyPage);
     // Force re-render by updating the key
     setSafeAreaColorKey(prev => prev + 1);
-  }, [isWelcomePage]);
+  }, [isWelcomePage, isBudgetReadyPage]);
 
   // Also force re-render when budget data changes (for clearing data scenario)
   useEffect(() => {
@@ -282,13 +316,26 @@ function RootLayoutContent() {
     const noBudgetsExist = !appData || !appData.budgets || appData.budgets.length === 0;
     const shouldUseWelcomeColor = isOnIndexRoute && (noBudgetsExist || isWelcomePage);
     
-    const color = shouldUseWelcomeColor ? currentColors.background : currentColors.backgroundAlt;
+    // For the "Budget Ready" page, we should use the header background color (backgroundAlt)
+    // This matches the header color on that screen
+    const shouldUseHeaderColor = isOnIndexRoute && isBudgetReadyPage;
+    
+    let color;
+    if (shouldUseWelcomeColor) {
+      color = currentColors.background; // Dark background for welcome page
+    } else if (shouldUseHeaderColor) {
+      color = currentColors.backgroundAlt; // Header background for budget ready page
+    } else {
+      color = currentColors.backgroundAlt; // Default header background for other pages
+    }
     
     console.log('RootLayoutContent: Safe zone background color calculation', {
       isOnIndexRoute,
       noBudgetsExist,
       isWelcomePage,
+      isBudgetReadyPage,
       shouldUseWelcomeColor,
+      shouldUseHeaderColor,
       color,
       backgroundMain: currentColors.background,
       backgroundAlt: currentColors.backgroundAlt,
@@ -299,12 +346,12 @@ function RootLayoutContent() {
     });
     
     return color;
-  }, [isWelcomePage, currentColors.background, currentColors.backgroundAlt, pathname, appData?.budgets?.length, safeAreaColorKey, refreshTrigger]);
+  }, [isWelcomePage, isBudgetReadyPage, currentColors.background, currentColors.backgroundAlt, pathname, appData?.budgets?.length, safeAreaColorKey, refreshTrigger]);
 
   return (
     // Outer wrapper paints the top safe area with conditional background color
     // Key ensures re-render when welcome page state changes
-    <View key={`safe-area-${safeAreaColorKey}-${isWelcomePage ? 'welcome' : 'normal'}-${appData?.budgets?.length || 0}`} style={{ flex: 1, backgroundColor: safeZoneBackgroundColor }}>
+    <View key={`safe-area-${safeAreaColorKey}-${isWelcomePage ? 'welcome' : isBudgetReadyPage ? 'budget-ready' : 'normal'}-${appData?.budgets?.length || 0}`} style={{ flex: 1, backgroundColor: safeZoneBackgroundColor }}>
       {/* Status bar matches page background color only on welcome page, otherwise header background */}
       <StatusBar 
         style={isDarkMode ? 'light' : 'dark'} 
