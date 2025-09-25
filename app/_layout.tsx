@@ -1,5 +1,5 @@
 
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useTheme, ThemeProvider } from '../hooks/useTheme';
 import { useToast, ToastProvider } from '../hooks/useToast';
 import { useBudgetData } from '../hooks/useBudgetData';
@@ -124,8 +124,11 @@ function RootLayoutContent() {
   const { themedStyles } = useThemedStyles();
   const insets = useSafeAreaInsets();
   const { toasts, hideToast } = useToast();
-  const { appData, activeBudget } = useBudgetData();
+  const { appData, activeBudget, data, loading, refreshTrigger } = useBudgetData();
   const pathname = usePathname();
+  
+  // Force re-render state for safe area color updates
+  const [safeAreaColorKey, setSafeAreaColorKey] = useState(0);
 
   useEffect(() => {
     setupErrorLogging();
@@ -144,8 +147,43 @@ function RootLayoutContent() {
     const hasNoBudgets = !appData || !appData.budgets || appData.budgets.length === 0;
     const hasNoActiveBudget = !activeBudget;
     
-    return hasNoBudgets || hasNoActiveBudget;
-  }, [pathname, appData, activeBudget]);
+    // Also check if we have an active budget but no people/expenses (still welcome flow)
+    let isFirstTimeUserWithBudget = false;
+    if (activeBudget && data && !loading) {
+      const people = data && data.people && Array.isArray(data.people) ? data.people : [];
+      const expenses = data && data.expenses && Array.isArray(data.expenses) ? data.expenses : [];
+      isFirstTimeUserWithBudget = people.length === 0 && expenses.length === 0;
+    }
+    
+    const result = hasNoBudgets || hasNoActiveBudget || isFirstTimeUserWithBudget;
+    console.log('RootLayoutContent: isWelcomePage calculation', {
+      pathname,
+      hasNoBudgets,
+      hasNoActiveBudget,
+      isFirstTimeUserWithBudget,
+      result,
+      budgetsCount: appData?.budgets?.length || 0,
+      activeBudgetId: activeBudget?.id || 'none',
+      peopleCount: data?.people?.length || 0,
+      expensesCount: data?.expenses?.length || 0,
+      loading
+    });
+    
+    return result;
+  }, [pathname, appData, activeBudget, data, loading, refreshTrigger]);
+
+  // Force re-render when welcome page state changes
+  useEffect(() => {
+    console.log('RootLayoutContent: Welcome page state changed to:', isWelcomePage);
+    // Force re-render by updating the key
+    setSafeAreaColorKey(prev => prev + 1);
+  }, [isWelcomePage]);
+
+  // Also force re-render when budget data changes (for clearing data scenario)
+  useEffect(() => {
+    console.log('RootLayoutContent: Budget data changed, refreshTrigger:', refreshTrigger);
+    setSafeAreaColorKey(prev => prev + 1);
+  }, [refreshTrigger, appData?.budgets?.length, activeBudget?.id]);
 
 
 
@@ -199,15 +237,25 @@ function RootLayoutContent() {
   }, []);
 
   // Use page background color for safe zone only on welcome page, otherwise use header background color
-  const safeZoneBackgroundColor = isWelcomePage ? currentColors.background : currentColors.backgroundAlt;
+  const safeZoneBackgroundColor = useMemo(() => {
+    const color = isWelcomePage ? currentColors.background : currentColors.backgroundAlt;
+    console.log('RootLayoutContent: Safe zone background color', {
+      isWelcomePage,
+      color,
+      backgroundMain: currentColors.background,
+      backgroundAlt: currentColors.backgroundAlt
+    });
+    return color;
+  }, [isWelcomePage, currentColors.background, currentColors.backgroundAlt]);
 
   return (
     // Outer wrapper paints the top safe area with conditional background color
-    <View style={{ flex: 1, backgroundColor: safeZoneBackgroundColor }}>
+    // Key ensures re-render when welcome page state changes
+    <View key={`safe-area-${safeAreaColorKey}-${isWelcomePage ? 'welcome' : 'normal'}`} style={{ flex: 1, backgroundColor: safeZoneBackgroundColor }}>
       {/* Status bar matches page background color only on welcome page, otherwise header background */}
       <StatusBar 
         style={isDarkMode ? 'light' : 'dark'} 
-        backgroundColor={isWelcomePage ? currentColors.background : currentColors.backgroundAlt} 
+        backgroundColor={safeZoneBackgroundColor} 
       />
 
       {/* Explicit top safe area spacer with conditional background color */}

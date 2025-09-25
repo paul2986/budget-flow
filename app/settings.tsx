@@ -46,8 +46,11 @@ export default function SettingsScreen() {
             try {
               await clearAllData();
               showToast('All data cleared successfully', 'success');
-              // Navigate back to home screen to show first-time user experience
-              router.replace('/');
+              // Small delay to ensure data state has fully updated
+              setTimeout(() => {
+                console.log('Settings: Navigating to home after clearing data');
+                router.replace('/');
+              }, 100);
             } catch (error) {
               console.error('Settings: Clear data error:', error);
               showToast('Failed to clear data', 'error');
