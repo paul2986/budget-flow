@@ -155,7 +155,9 @@ function RootLayoutContent() {
       isFirstTimeUserWithBudget = people.length === 0 && expenses.length === 0;
     }
     
-    const result = hasNoBudgets || hasNoActiveBudget || isFirstTimeUserWithBudget;
+    // Only return true for the initial budget naming screen (no budgets exist)
+    // Once budgets exist, we should use header background color for safe zone
+    const result = hasNoBudgets;
     console.log('RootLayoutContent: isWelcomePage calculation', {
       pathname,
       hasNoBudgets,
