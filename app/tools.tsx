@@ -114,16 +114,26 @@ export default function ToolsScreen() {
     const a = aprInput.trim() === '' ? null : parseNumber(aprInput);
     const p = parseNumber(paymentInput);
 
+    console.log('Validation - Balance:', b, 'APR:', a, 'Payment:', p);
+    console.log('Raw inputs - Balance:', balanceInput, 'APR:', aprInput, 'Payment:', paymentInput);
+
     if (b === null || b <= 0) {
       newErrors.balance = 'Enter a positive balance.';
     }
     if (a === null || a < 0) {
       newErrors.apr = 'Enter APR as 0 or a positive percent.';
     }
-    if (p === null || p <= 0) {
-      newErrors.payment = 'Enter a positive monthly payment.';
+    // Remove the problematic payment validation - users can only enter positive values
+    // The CurrencyInput component already ensures only positive values can be entered
+    if (paymentInput.trim() === '' || p === null || p <= 0) {
+      // Only show error if the field is truly empty or invalid, not for valid positive numbers
+      const cleanedPayment = paymentInput.replace(/[^0-9.]/g, '');
+      if (cleanedPayment === '' || parseFloat(cleanedPayment) <= 0) {
+        newErrors.payment = 'Enter a positive monthly payment.';
+      }
     }
 
+    console.log('Validation errors:', newErrors);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [balanceInput, aprInput, paymentInput]);
@@ -132,10 +142,17 @@ export default function ToolsScreen() {
     const b = parseNumber(balanceInput);
     const a = aprInput.trim() === '' ? null : parseNumber(aprInput);
     const p = parseNumber(paymentInput);
-    return b !== null && b > 0 && a !== null && a >= 0 && p !== null && p > 0 && Object.keys(errors).length === 0;
+    
+    console.log('canCalculate check - Balance:', b, 'APR:', a, 'Payment:', p);
+    console.log('Errors:', errors);
+    
+    const hasValidInputs = b !== null && b > 0 && a !== null && a >= 0 && p !== null && p > 0;
+    const hasNoErrors = Object.keys(errors).length === 0;
+    
+    console.log('hasValidInputs:', hasValidInputs, 'hasNoErrors:', hasNoErrors);
+    
+    return hasValidInputs && hasNoErrors;
   }, [balanceInput, aprInput, paymentInput, errors]);
-
-
 
   const onBlurApr = () => {
     const num = parseNumber(aprInput);
@@ -146,11 +163,17 @@ export default function ToolsScreen() {
   };
 
   const handleCalculate = () => {
-    if (!validate()) return;
+    console.log('handleCalculate called');
+    if (!validate()) {
+      console.log('Validation failed');
+      return;
+    }
 
     const b = parseNumber(balanceInput) || 0;
     const a = parseNumber(aprInput) || 0;
     const p = parseNumber(paymentInput) || 0;
+
+    console.log('Calculating with values - Balance:', b, 'APR:', a, 'Payment:', p);
 
     let r = computeCreditCardPayoff(b, a, p);
 
@@ -331,9 +354,20 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
         label="Monthly Payment"
         value={paymentInput}
         onChangeText={(t) => {
+          console.log('Payment input changed to:', t);
           setPaymentInput(t);
           setHasPaymentOverride(true);
           setIsPaymentAuto(false);
+          // Clear payment error when user starts typing
+          if (errors.payment) {
+            const newErrors = { ...errors };
+            delete newErrors.payment;
+            setErrors(newErrors);
+          }
+        }}
+        onBlur={() => {
+          console.log('Payment input blurred, validating...');
+          validate();
         }}
         error={errors.payment}
         accessibilityLabel="Monthly payment amount"

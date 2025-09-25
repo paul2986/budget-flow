@@ -25,6 +25,7 @@ export default function CurrencyInput({
   inputStyle,
   placeholder = "0.00",
   editable = true,
+  onBlur,
   ...props
 }: CurrencyInputProps) {
   const { currency } = useCurrency();
@@ -70,7 +71,7 @@ export default function CurrencyInput({
     setDisplayValue(value);
   };
 
-  const handleBlur = () => {
+  const handleBlur = (e: any) => {
     setIsFocused(false);
     
     // Clean up the input value and update parent
@@ -96,9 +97,19 @@ export default function CurrencyInput({
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }));
-    } else {
+    } else if (cleaned === '' || numericValue === 0) {
+      // Only clear if truly empty or zero
       onChangeText('');
       setDisplayValue('');
+    } else {
+      // Keep the original value if it's not a valid positive number but not empty
+      // This prevents clearing valid input that might be in progress
+      console.log('CurrencyInput: Keeping original value:', value);
+    }
+    
+    // Call the original onBlur if provided
+    if (onBlur) {
+      onBlur(e);
     }
   };
 
@@ -117,6 +128,7 @@ export default function CurrencyInput({
         finalValue += '.' + decimalPart;
       }
       
+      console.log('CurrencyInput: handleChangeText - input:', text, 'cleaned:', finalValue);
       setDisplayValue(finalValue);
       onChangeText(finalValue);
     }
