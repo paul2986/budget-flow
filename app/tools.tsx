@@ -148,7 +148,9 @@ export default function ToolsScreen() {
   const onBlurApr = () => {
     const num = parseNumber(aprInput);
     if (num === null || num < 0) return;
-    setAprInput(num.toString());
+    // Round to 2 decimal places
+    const roundedValue = Math.round(num * 100) / 100;
+    setAprInput(roundedValue.toString());
   };
 
   const handleCalculate = () => {
@@ -286,11 +288,13 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
         onChangeText={(t) => {
           // Allow numbers and decimal point only
           const cleaned = t.replace(/[^0-9.]/g, '');
-          // Prevent multiple decimal points
+          // Prevent multiple decimal points and limit to 2 decimal places
           const parts = cleaned.split('.');
           let finalValue = parts[0];
           if (parts.length > 1) {
-            finalValue += '.' + parts[1]; // Only keep first decimal part
+            // Limit decimal places to 2
+            const decimalPart = parts[1].substring(0, 2);
+            finalValue += '.' + decimalPart;
           }
           setAprInput(finalValue);
         }}
