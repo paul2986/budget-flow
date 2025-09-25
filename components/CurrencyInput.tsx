@@ -48,12 +48,8 @@ export default function CurrencyInput({
     const numericValue = parseNumericValue(value);
     
     if (isFocused) {
-      // When focused, show plain number for easy editing
-      if (numericValue === null || numericValue === 0) {
-        setDisplayValue('');
-      } else {
-        setDisplayValue(numericValue.toString());
-      }
+      // When focused, show the raw value for easy editing
+      setDisplayValue(value);
     } else {
       // When not focused, show formatted number
       if (numericValue === null || numericValue === 0) {
@@ -70,21 +66,29 @@ export default function CurrencyInput({
 
   const handleFocus = () => {
     setIsFocused(true);
-    const numericValue = parseNumericValue(value);
-    if (numericValue !== null && numericValue !== 0) {
-      setDisplayValue(numericValue.toString());
-    } else {
-      setDisplayValue('');
-    }
+    // Show the raw value when focused for easy editing
+    setDisplayValue(value);
   };
 
   const handleBlur = () => {
     setIsFocused(false);
-    const numericValue = parseNumericValue(displayValue);
-    if (numericValue !== null && numericValue > 0) {
-      // Update the parent with the numeric string value
+    
+    // Clean up the input value and update parent
+    const cleaned = value.replace(/[^0-9.]/g, '');
+    
+    // Handle multiple decimal points - keep only the first one
+    const parts = cleaned.split('.');
+    let cleanedValue = parts[0];
+    if (parts.length > 1) {
+      cleanedValue += '.' + parts.slice(1).join('');
+    }
+    
+    const numericValue = parseFloat(cleanedValue);
+    
+    if (!isNaN(numericValue) && numericValue > 0) {
+      // Update the parent with the cleaned numeric string value
       onChangeText(numericValue.toString());
-      // Format number with commas and decimals
+      // Format number with commas and decimals for display
       setDisplayValue(numericValue.toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
@@ -96,10 +100,20 @@ export default function CurrencyInput({
   };
 
   const handleChangeText = (text: string) => {
-    setDisplayValue(text);
-    // When focused, immediately update parent with the raw input
+    // When focused, allow direct input including decimals
     if (isFocused) {
-      onChangeText(text);
+      // Allow numbers, decimal point, and basic cleanup
+      const cleaned = text.replace(/[^0-9.]/g, '');
+      
+      // Prevent multiple decimal points
+      const parts = cleaned.split('.');
+      let finalValue = parts[0];
+      if (parts.length > 1) {
+        finalValue += '.' + parts[1]; // Only keep first decimal part
+      }
+      
+      setDisplayValue(finalValue);
+      onChangeText(finalValue);
     }
   };
 
@@ -131,7 +145,7 @@ export default function CurrencyInput({
         onBlur={handleBlur}
         placeholder={placeholder}
         placeholderTextColor={currentColors.textSecondary}
-        keyboardType="numeric"
+        keyboardType="decimal-pad"
         editable={editable}
         {...props}
       />

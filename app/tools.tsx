@@ -283,12 +283,22 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
       <TextInput
         ref={aprRef}
         value={aprInput}
-        onChangeText={(t) => setAprInput(t.replace(/,/g, '.'))}
+        onChangeText={(t) => {
+          // Allow numbers and decimal point only
+          const cleaned = t.replace(/[^0-9.]/g, '');
+          // Prevent multiple decimal points
+          const parts = cleaned.split('.');
+          let finalValue = parts[0];
+          if (parts.length > 1) {
+            finalValue += '.' + parts[1]; // Only keep first decimal part
+          }
+          setAprInput(finalValue);
+        }}
         onBlur={() => {
           onBlurApr();
           validate();
         }}
-        keyboardType={Platform.select({ ios: 'decimal-pad', android: 'decimal-pad', default: 'numeric' })}
+        keyboardType="decimal-pad"
         placeholder="18.99"
         placeholderTextColor={currentColors.textSecondary}
         style={[
