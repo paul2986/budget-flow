@@ -1,7 +1,7 @@
 
 import { useTheme } from '../hooks/useTheme';
 import Button from '../components/Button';
-import { Text, View, ScrollView, TouchableOpacity, Alert, TextInput, Modal } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, Alert, TextInput, Modal, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import Icon from '../components/Icon';
 import { useCurrency, CURRENCIES, Currency } from '../hooks/useCurrency';
@@ -9,18 +9,32 @@ import { useBudgetData } from '../hooks/useBudgetData';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useToast } from '../hooks/useToast';
 import StandardHeader from '../components/StandardHeader';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { DEFAULT_CATEGORIES } from '../types/budget';
+import { getCustomExpenseCategories, saveCustomExpenseCategories, normalizeCategoryName, renameCustomExpenseCategory } from '../utils/storage';
 
 export default function SettingsScreen() {
   const { currentColors, themeMode, setThemeMode } = useTheme();
   const { currency, setCurrency } = useCurrency();
-  const { appData, data, clearAllData } = useBudgetData();
+  const { appData, data, clearAllData, refreshData } = useBudgetData();
   const { themedStyles } = useThemedStyles();
   const { showToast } = useToast();
   
   // Currency selection modal state
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [currencySearchQuery, setCurrencySearchQuery] = useState('');
+
+  // Manage categories modal state
+  const [showCategoriesModal, setShowCategoriesModal] = useState(false);
+  const [customs, setCustoms] = useState<string[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [renameModalVisible, setRenameModalVisible] = useState(false);
+  const [categoryToRename, setCategoryToRename] = useState<string>('');
+  const [newCategoryName, setNewCategoryName] = useState<string>('');
+  const [renaming, setRenaming] = useState(false);
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [newCategoryInput, setNewCategoryInput] = useState<string>('');
+  const [creating, setCreating] = useState(false);
 
   const handleDistributionMethodChange = (method: 'even' | 'income-based') => {
     // This would need to be implemented in useBudgetData if needed
@@ -66,6 +80,144 @@ export default function SettingsScreen() {
     setShowCurrencyModal(false);
     setCurrencySearchQuery('');
     showToast(`Currency changed to ${curr.name}`, 'success');
+  };
+
+  // Categories management functions
+  const refreshCategories = useCallback(async () => {
+    try {
+      setCategoriesLoading(true);
+      const list = await getCustomExpenseCategories();
+      setCustoms(list);
+    } catch (e) {
+      console.log('Failed to load custom categories', e);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, []);
+
+  const handleManageCategoriesPress = () => {
+    setShowCategoriesModal(true);
+    refreshCategories();
+  };
+
+  const isInUse = (category: string): boolean => {
+    if (!data?.expenses) return false;
+    const normalized = normalizeCategoryName(category);
+    return data.expenses.some((e) => normalizeCategoryName((e as any).categoryTag || 'Misc') === normalized);
+  };
+
+  const handleDeleteCategory = (category: string) => {
+    if (isInUse(category)) {
+      Alert.alert('Cannot delete', 'This category is currently in use by one or more expenses.');
+      return;
+    }
+    Alert.alert('Delete Category', `Are you sure you want to delete "${category}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const next = customs.filter((c) => c !== category);
+            await saveCustomExpenseCategories(next);
+            setCustoms(next);
+          } catch (e) {
+            console.log('Failed to delete custom category', e);
+            Alert.alert('Error', 'Failed to delete category. Please try again.');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleRenameCategory = (category: string) => {
+    setCategoryToRename(category);
+    setNewCategoryName(category);
+    setRenameModalVisible(true);
+  };
+
+  const handleRenameSubmit = async () => {
+    if (!newCategoryName.trim()) {
+      Alert.alert('Error', 'Category name cannot be empty.');
+      return;
+    }
+
+    if (newCategoryName.trim() === categoryToRename) {
+      setRenameModalVisible(false);
+      return;
+    }
+
+    setRenaming(true);
+    try {
+      const result = await renameCustomExpenseCategory(categoryToRename, newCategoryName.trim());
+      
+      if (result.success) {
+        await refreshCategories();
+        await refreshData(); // Refresh budget data to reflect changes in expenses
+        setRenameModalVisible(false);
+        setCategoryToRename('');
+        setNewCategoryName('');
+      } else {
+        Alert.alert('Error', result.error?.message || 'Failed to rename category. Please try again.');
+      }
+    } catch (e) {
+      console.log('Failed to rename custom category', e);
+      Alert.alert('Error', 'Failed to rename category. Please try again.');
+    } finally {
+      setRenaming(false);
+    }
+  };
+
+  const handleRenameCancel = () => {
+    setRenameModalVisible(false);
+    setCategoryToRename('');
+    setNewCategoryName('');
+  };
+
+  const handleCreateCategory = () => {
+    setNewCategoryInput('');
+    setCreateModalVisible(true);
+  };
+
+  const handleCreateSubmit = async () => {
+    const trimmedName = newCategoryInput.trim();
+    if (!trimmedName) {
+      Alert.alert('Error', 'Category name cannot be empty.');
+      return;
+    }
+
+    const normalized = normalizeCategoryName(trimmedName);
+    
+    // Check if it conflicts with default categories
+    if (DEFAULT_CATEGORIES.includes(normalized)) {
+      Alert.alert('Error', 'This category name conflicts with a default category.');
+      return;
+    }
+
+    // Check if it already exists in custom categories
+    if (customs.includes(normalized)) {
+      Alert.alert('Error', 'A category with this name already exists.');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const updatedCategories = [...customs, normalized];
+      await saveCustomExpenseCategories(updatedCategories);
+      setCustoms(updatedCategories);
+      setCreateModalVisible(false);
+      setNewCategoryInput('');
+    } catch (e) {
+      console.log('Failed to create custom category', e);
+      Alert.alert('Error', 'Failed to create category. Please try again.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleCreateCancel = () => {
+    setCreateModalVisible(false);
+    setNewCategoryInput('');
   };
 
   // Filter currencies based on search query - show ALL results, not just 10
@@ -135,7 +287,7 @@ export default function SettingsScreen() {
               justifyContent: 'space-between',
               minHeight: 44,
             }}
-            onPress={() => router.push('/manage-categories')}
+            onPress={handleManageCategoriesPress}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
               <Icon name="pricetags-outline" size={20} style={{ color: currentColors.text, marginRight: 12 }} />
@@ -393,6 +545,394 @@ export default function SettingsScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Manage Categories Modal */}
+      <Modal
+        visible={showCategoriesModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowCategoriesModal(false)}
+      >
+        <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
+          <StandardHeader 
+            title="Manage Categories" 
+            showLeftIcon={true}
+            leftIcon="close"
+            onLeftPress={() => setShowCategoriesModal(false)}
+            showRightIcon={false}
+          />
+
+          <ScrollView style={[themedStyles.content, { flex: 1, paddingHorizontal: 16, paddingTop: 16 }]} contentContainerStyle={{ paddingBottom: 24 }}>
+            {/* Default Categories Section */}
+            <View style={[themedStyles.card, { marginBottom: 16 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <Icon name="shield-checkmark-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                <Text style={[themedStyles.text, { fontWeight: '600' }]}>Default Categories</Text>
+              </View>
+              <Text style={[themedStyles.textSecondary, { marginBottom: 12, fontSize: 14 }]}>
+                These categories cannot be deleted.
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                {DEFAULT_CATEGORIES.map((c) => (
+                  <View
+                    key={c}
+                    style={[
+                      themedStyles.badge,
+                      {
+                        backgroundColor: currentColors.border,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 16,
+                        marginRight: 8,
+                        marginBottom: 8,
+                      },
+                    ]}
+                  >
+                    <Text style={[themedStyles.badgeText, { color: currentColors.text, fontSize: 12 }]}>{c}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Custom Categories Section */}
+            <View style={[themedStyles.card, { flex: 1 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Icon name="pricetags-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                  <Text style={[themedStyles.text, { fontWeight: '600' }]}>Custom Categories</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={handleCreateCategory}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: currentColors.primary,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 20,
+                  }}
+                  accessibilityLabel="Add new category"
+                  accessibilityRole="button"
+                >
+                  <Icon name="add" size={16} style={{ color: 'white', marginRight: 4 }} />
+                  <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>Add New</Text>
+                </TouchableOpacity>
+              </View>
+
+              {categoriesLoading ? (
+                <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+                  <ActivityIndicator size="small" color={currentColors.primary} />
+                  <Text style={[themedStyles.textSecondary, { marginTop: 8 }]}>Loading...</Text>
+                </View>
+              ) : customs.length === 0 ? (
+                <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+                  <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 16 }]}>
+                    No custom categories yet.
+                  </Text>
+                  <TouchableOpacity
+                    onPress={handleCreateCategory}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: currentColors.primary + '15',
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: currentColors.primary + '30',
+                    }}
+                  >
+                    <Icon name="add" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                    <Text style={{ color: currentColors.primary, fontSize: 14, fontWeight: '600' }}>Create Your First Category</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                customs.map((c) => {
+                  const used = isInUse(c);
+                  return (
+                    <View
+                      key={c}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingVertical: 12,
+                        borderBottomWidth: customs.indexOf(c) === customs.length - 1 ? 0 : 1,
+                        borderBottomColor: currentColors.border,
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <View
+                          style={[
+                            themedStyles.badge,
+                            {
+                              backgroundColor: currentColors.secondary + '20',
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
+                              borderRadius: 16,
+                              marginRight: 12,
+                              borderWidth: 1,
+                              borderColor: currentColors.secondary,
+                            },
+                          ]}
+                        >
+                          <Text style={[themedStyles.text, { color: currentColors.secondary, fontSize: 12, fontWeight: '700' }]}>{c}</Text>
+                        </View>
+                        {used && <Text style={[themedStyles.textSecondary, { color: currentColors.warning }]}>In use</Text>}
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <TouchableOpacity
+                          onPress={() => handleRenameCategory(c)}
+                          style={{
+                            padding: 10,
+                            borderRadius: 8,
+                            backgroundColor: currentColors.primary + '15',
+                            marginRight: 8,
+                          }}
+                          accessibilityLabel={`Rename ${c}`}
+                          accessibilityRole="button"
+                        >
+                          <Icon name="pencil-outline" size={20} style={{ color: currentColors.primary }} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => handleDeleteCategory(c)}
+                          disabled={used}
+                          style={{
+                            padding: 10,
+                            borderRadius: 8,
+                            backgroundColor: used ? currentColors.border : currentColors.error + '15',
+                          }}
+                          accessibilityLabel={`Delete ${c}`}
+                          accessibilityRole="button"
+                        >
+                          <Icon 
+                            name="trash-outline" 
+                            size={20} 
+                            style={{ color: used ? currentColors.textSecondary : currentColors.error }} 
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Rename Category Modal */}
+      <Modal
+        visible={renameModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleRenameCancel}
+      >
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }} 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 20,
+          }}>
+            <View style={[
+              themedStyles.card,
+              {
+                width: '100%',
+                maxWidth: 400,
+                padding: 24,
+                borderRadius: 16,
+                backgroundColor: currentColors.background,
+              }
+            ]}>
+              <Text style={[
+                themedStyles.title, 
+                { 
+                  marginBottom: 8, 
+                  textAlign: 'center',
+                  color: currentColors.text,
+                  fontSize: 20,
+                  fontWeight: '700'
+                }
+              ]}>
+                Rename Category
+              </Text>
+              <Text style={[
+                themedStyles.textSecondary, 
+                { 
+                  marginBottom: 20, 
+                  textAlign: 'center',
+                  color: currentColors.textSecondary,
+                  fontSize: 14
+                }
+              ]}>
+                Enter a new name for "{categoryToRename}"
+              </Text>
+
+              <View style={{ marginBottom: 24 }}>
+                <Text style={[
+                  themedStyles.label, 
+                  { 
+                    marginBottom: 8,
+                    color: currentColors.text,
+                    fontSize: 16,
+                    fontWeight: '600'
+                  }
+                ]}>
+                  Category Name
+                </Text>
+                <TextInput
+                  style={[
+                    themedStyles.input,
+                    {
+                      borderColor: currentColors.border,
+                      borderWidth: 1,
+                      borderRadius: 12,
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      fontSize: 16,
+                      color: currentColors.text,
+                      backgroundColor: currentColors.background,
+                    }
+                  ]}
+                  value={newCategoryName}
+                  onChangeText={setNewCategoryName}
+                  placeholder="Enter category name"
+                  placeholderTextColor={currentColors.textSecondary}
+                  maxLength={20}
+                  autoFocus={true}
+                  selectTextOnFocus={true}
+                />
+              </View>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+                <Button
+                  text="Cancel"
+                  onPress={handleRenameCancel}
+                  variant="outline"
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  text={renaming ? "Renaming..." : "Rename"}
+                  onPress={handleRenameSubmit}
+                  disabled={!newCategoryName.trim() || newCategoryName.trim() === categoryToRename || renaming}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Create Category Modal */}
+      <Modal
+        visible={createModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCreateCancel}
+      >
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }} 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 20,
+          }}>
+            <View style={[
+              themedStyles.card,
+              {
+                width: '100%',
+                maxWidth: 400,
+                padding: 24,
+                borderRadius: 16,
+                backgroundColor: currentColors.background,
+              }
+            ]}>
+              <Text style={[
+                themedStyles.title, 
+                { 
+                  marginBottom: 8, 
+                  textAlign: 'center',
+                  color: currentColors.text,
+                  fontSize: 20,
+                  fontWeight: '700'
+                }
+              ]}>
+                Create New Category
+              </Text>
+              <Text style={[
+                themedStyles.textSecondary, 
+                { 
+                  marginBottom: 20, 
+                  textAlign: 'center',
+                  color: currentColors.textSecondary,
+                  fontSize: 14
+                }
+              ]}>
+                Enter a name for your new custom category
+              </Text>
+
+              <View style={{ marginBottom: 24 }}>
+                <Text style={[
+                  themedStyles.label, 
+                  { 
+                    marginBottom: 8,
+                    color: currentColors.text,
+                    fontSize: 16,
+                    fontWeight: '600'
+                  }
+                ]}>
+                  Category Name
+                </Text>
+                <TextInput
+                  style={[
+                    themedStyles.input,
+                    {
+                      borderColor: currentColors.border,
+                      borderWidth: 1,
+                      borderRadius: 12,
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      fontSize: 16,
+                      color: currentColors.text,
+                      backgroundColor: currentColors.background,
+                    }
+                  ]}
+                  value={newCategoryInput}
+                  onChangeText={setNewCategoryInput}
+                  placeholder="Enter category name"
+                  placeholderTextColor={currentColors.textSecondary}
+                  maxLength={20}
+                  autoFocus={true}
+                />
+              </View>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+                <Button
+                  text="Cancel"
+                  onPress={handleCreateCancel}
+                  variant="outline"
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  text={creating ? "Creating..." : "Create"}
+                  onPress={handleCreateSubmit}
+                  disabled={!newCategoryInput.trim() || creating}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
