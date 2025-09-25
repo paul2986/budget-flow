@@ -58,7 +58,7 @@ export default function ToolsScreen() {
 
   const [balanceInput, setBalanceInput] = useState<string>('');
   const [aprInput, setAprInput] = useState<string>('');
-  const [paymentInput, setPaymentInput] = useState<string>('');
+  const [paymentInput, setPaymentInput] = useState<string>('0.00');
 
   const [errors, setErrors] = useState<{ balance?: string; apr?: string; payment?: string }>({});
   const [result, setResult] = useState<CreditCardPayoffResult | null>(null);
@@ -123,12 +123,18 @@ export default function ToolsScreen() {
     if (a === null || a < 0) {
       newErrors.apr = 'Enter APR as 0 or a positive percent.';
     }
-    // Remove the problematic payment validation - users can only enter positive values
-    // The CurrencyInput component already ensures only positive values can be entered
-    if (paymentInput.trim() === '' || p === null || p <= 0) {
-      // Only show error if the field is truly empty or invalid, not for valid positive numbers
+    
+    // Only show payment error if the field is truly empty or has been modified from default
+    // Don't show error for default value of 0.00
+    if (paymentInput.trim() === '') {
+      newErrors.payment = 'Enter a positive monthly payment.';
+    } else if (p !== null && p < 0) {
+      // Only show error for negative values (though CurrencyInput should prevent this)
+      newErrors.payment = 'Enter a positive monthly payment.';
+    } else if (p === null) {
+      // Only show error if parsing failed and it's not the default 0.00
       const cleanedPayment = paymentInput.replace(/[^0-9.]/g, '');
-      if (cleanedPayment === '' || parseFloat(cleanedPayment) <= 0) {
+      if (cleanedPayment !== '' && cleanedPayment !== '0' && cleanedPayment !== '0.00') {
         newErrors.payment = 'Enter a positive monthly payment.';
       }
     }
@@ -146,7 +152,8 @@ export default function ToolsScreen() {
     console.log('canCalculate check - Balance:', b, 'APR:', a, 'Payment:', p);
     console.log('Errors:', errors);
     
-    const hasValidInputs = b !== null && b > 0 && a !== null && a >= 0 && p !== null && p > 0;
+    // Allow calculation when payment is 0 (default state) or positive
+    const hasValidInputs = b !== null && b > 0 && a !== null && a >= 0 && p !== null && p >= 0;
     const hasNoErrors = Object.keys(errors).length === 0;
     
     console.log('hasValidInputs:', hasValidInputs, 'hasNoErrors:', hasNoErrors);
@@ -175,6 +182,21 @@ export default function ToolsScreen() {
 
     console.log('Calculating with values - Balance:', b, 'APR:', a, 'Payment:', p);
 
+    // If payment is 0, show a special "never repaid" result
+    if (p === 0) {
+      const r = {
+        inputs: { balance: b, apr: a, monthlyPayment: p },
+        neverRepaid: true,
+        months: 0,
+        totalInterest: 0,
+        schedule: [],
+      };
+      setResult(r);
+      setShowResults(true);
+      setCollapsed(false);
+      return;
+    }
+
     let r = computeCreditCardPayoff(b, a, p);
 
     // If user used the exact suggested minimum (rounded to currency precision),
@@ -201,7 +223,7 @@ export default function ToolsScreen() {
   const handleReset = () => {
     setBalanceInput('');
     setAprInput('');
-    setPaymentInput('');
+    setPaymentInput('0.00');
     setErrors({});
     setResult(null);
     setShowResults(false);
