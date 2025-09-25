@@ -22,6 +22,9 @@ export default function ManageCategoriesScreen() {
   const [categoryToRename, setCategoryToRename] = useState<string>('');
   const [newCategoryName, setNewCategoryName] = useState<string>('');
   const [renaming, setRenaming] = useState(false);
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [newCategoryInput, setNewCategoryInput] = useState<string>('');
+  const [creating, setCreating] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -118,6 +121,52 @@ export default function ManageCategoriesScreen() {
     setNewCategoryName('');
   };
 
+  const handleCreateCategory = () => {
+    setNewCategoryInput('');
+    setCreateModalVisible(true);
+  };
+
+  const handleCreateSubmit = async () => {
+    const trimmedName = newCategoryInput.trim();
+    if (!trimmedName) {
+      Alert.alert('Error', 'Category name cannot be empty.');
+      return;
+    }
+
+    const normalized = normalizeCategoryName(trimmedName);
+    
+    // Check if it conflicts with default categories
+    if (DEFAULT_CATEGORIES.includes(normalized)) {
+      Alert.alert('Error', 'This category name conflicts with a default category.');
+      return;
+    }
+
+    // Check if it already exists in custom categories
+    if (customs.includes(normalized)) {
+      Alert.alert('Error', 'A category with this name already exists.');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const updatedCategories = [...customs, normalized];
+      await saveCustomExpenseCategories(updatedCategories);
+      setCustoms(updatedCategories);
+      setCreateModalVisible(false);
+      setNewCategoryInput('');
+    } catch (e) {
+      console.log('Failed to create custom category', e);
+      Alert.alert('Error', 'Failed to create category. Please try again.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleCreateCancel = () => {
+    setCreateModalVisible(false);
+    setNewCategoryInput('');
+  };
+
   return (
     <View style={themedStyles.container}>
       <StandardHeader 
@@ -155,12 +204,50 @@ export default function ManageCategoriesScreen() {
         </View>
 
         <View style={themedStyles.section}>
-          <Text style={themedStyles.subtitle}>Custom Categories</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text style={themedStyles.subtitle}>Custom Categories</Text>
+            <TouchableOpacity
+              onPress={handleCreateCategory}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: currentColors.primary,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 20,
+              }}
+              accessibilityLabel="Add new category"
+              accessibilityRole="button"
+            >
+              <Icon name="add" size={16} style={{ color: 'white', marginRight: 4 }} />
+              <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>Add New</Text>
+            </TouchableOpacity>
+          </View>
           <View style={themedStyles.card}>
             {loading ? (
               <Text style={themedStyles.textSecondary}>Loading...</Text>
             ) : customs.length === 0 ? (
-              <Text style={themedStyles.textSecondary}>No custom categories yet. You can add them while creating or editing an expense.</Text>
+              <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+                <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 16 }]}>
+                  No custom categories yet.
+                </Text>
+                <TouchableOpacity
+                  onPress={handleCreateCategory}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: currentColors.primary + '15',
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: currentColors.primary + '30',
+                  }}
+                >
+                  <Icon name="add" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                  <Text style={{ color: currentColors.primary, fontSize: 14, fontWeight: '600' }}>Create Your First Category</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
               customs.map((c) => {
                 const used = isInUse(c);
@@ -172,7 +259,7 @@ export default function ManageCategoriesScreen() {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       paddingVertical: 12,
-                      borderBottomWidth: 1,
+                      borderBottomWidth: customs.indexOf(c) === customs.length - 1 ? 0 : 1,
                       borderBottomColor: currentColors.border,
                     }}
                   >
@@ -334,6 +421,112 @@ export default function ManageCategoriesScreen() {
                   text={renaming ? "Renaming..." : "Rename"}
                   onPress={handleRenameSubmit}
                   disabled={!newCategoryName.trim() || newCategoryName.trim() === categoryToRename || renaming}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Create Category Modal */}
+      <Modal
+        visible={createModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCreateCancel}
+      >
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }} 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 20,
+          }}>
+            <View style={[
+              themedStyles.card,
+              {
+                width: '100%',
+                maxWidth: 400,
+                padding: 24,
+                borderRadius: 16,
+                backgroundColor: currentColors.background,
+              }
+            ]}>
+              <Text style={[
+                themedStyles.title, 
+                { 
+                  marginBottom: 8, 
+                  textAlign: 'center',
+                  color: currentColors.text,
+                  fontSize: 20,
+                  fontWeight: '700'
+                }
+              ]}>
+                Create New Category
+              </Text>
+              <Text style={[
+                themedStyles.textSecondary, 
+                { 
+                  marginBottom: 20, 
+                  textAlign: 'center',
+                  color: currentColors.textSecondary,
+                  fontSize: 14
+                }
+              ]}>
+                Enter a name for your new custom category
+              </Text>
+
+              <View style={{ marginBottom: 24 }}>
+                <Text style={[
+                  themedStyles.label, 
+                  { 
+                    marginBottom: 8,
+                    color: currentColors.text,
+                    fontSize: 16,
+                    fontWeight: '600'
+                  }
+                ]}>
+                  Category Name
+                </Text>
+                <TextInput
+                  style={[
+                    themedStyles.input,
+                    {
+                      borderColor: currentColors.border,
+                      borderWidth: 1,
+                      borderRadius: 12,
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      fontSize: 16,
+                      color: currentColors.text,
+                      backgroundColor: currentColors.background,
+                    }
+                  ]}
+                  value={newCategoryInput}
+                  onChangeText={setNewCategoryInput}
+                  placeholder="Enter category name"
+                  placeholderTextColor={currentColors.textSecondary}
+                  maxLength={20}
+                  autoFocus={true}
+                />
+              </View>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+                <Button
+                  text="Cancel"
+                  onPress={handleCreateCancel}
+                  variant="outline"
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  text={creating ? "Creating..." : "Create"}
+                  onPress={handleCreateSubmit}
+                  disabled={!newCategoryInput.trim() || creating}
                   style={{ flex: 1 }}
                 />
               </View>

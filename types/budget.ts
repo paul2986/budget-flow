@@ -24,6 +24,10 @@ export const DEFAULT_CATEGORIES: string[] = [
   'Entertainment',
   'Healthcare',
   'Clothing',
+  'Takeaways',
+  'Eating Out',
+  'Savings',
+  'Investments',
   'Misc',
 ];
 
