@@ -355,16 +355,12 @@ export default function HomeScreen() {
   // Step 2: "Your Budget is Ready" page
   if (showBudgetReady) {
     return (
-      <>
-        {/* Custom safe zone with backgroundAlt color to match the header section */}
-        <View style={{ height: insets.top, backgroundColor: currentColors.backgroundAlt }} />
-        
-        <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
-          <StandardHeader 
-            title="Budget Flow" 
-            showLeftIcon={false}
-            showRightIcon={false}
-          />
+      <View style={[themedStyles.container, { backgroundColor: currentColors.backgroundAlt }]}>
+        <StandardHeader 
+          title="Budget Flow" 
+          showLeftIcon={false}
+          showRightIcon={false}
+        />
           
           <ScrollView 
             style={themedStyles.content} 
@@ -522,8 +518,7 @@ export default function HomeScreen() {
             </View>
           </ScrollView>
         </View>
-      </>
-    );
+      );
   }
 
   // Show lock screen if budget is locked

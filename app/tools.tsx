@@ -94,7 +94,7 @@ export default function ToolsScreen() {
     }
   }, [currency.code]);
 
-  // Recalculate minimum suggestion when balance or APR changes, unless user overrode payment.
+  // Recalculate minimum suggestion when balance or APR changes, but don't auto-fill payment field
   useEffect(() => {
     const b = parseNumber(balanceInput);
     const a = aprInput.trim() === '' ? null : parseNumber(aprInput);
@@ -102,19 +102,11 @@ export default function ToolsScreen() {
     if (b !== null && b > 0 && a !== null && a >= 0) {
       const min = computeInterestOnlyMinimum(b, a, currencyFractionDigits);
       setSuggestedMin(min);
-
-      if (!hasPaymentOverride) {
-        const valueForInput = isPaymentFocused ? String(min) : formatCurrency(min);
-        setPaymentInput(valueForInput);
-        setIsPaymentAuto(true);
-      }
+      // Don't auto-fill the payment field - let user set it manually
     } else {
       setSuggestedMin(null);
-      if (!hasPaymentOverride) {
-        setIsPaymentAuto(false);
-      }
     }
-  }, [balanceInput, aprInput, hasPaymentOverride, isPaymentFocused, formatCurrency, currencyFractionDigits]);
+  }, [balanceInput, aprInput, formatCurrency, currencyFractionDigits]);
 
   const validate = useCallback(() => {
     const newErrors: { balance?: string; apr?: string; payment?: string } = {};
@@ -229,19 +221,20 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
   };
 
   const HelperRow = () => {
-    if (suggestedMin === null) return null;
+    if (suggestedMin === null || !paymentInput.trim()) return null;
+    
     const paymentNum = parseNumber(paymentInput);
     const isUsingMin =
       paymentNum !== null &&
       suggestedMin !== null &&
       Number(paymentNum.toFixed(currencyFractionDigits)) === Number(suggestedMin.toFixed(currencyFractionDigits));
 
-    if (isPaymentAuto && isUsingMin) {
+    if (isUsingMin) {
       return (
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -8, marginBottom: 8 }}>
           <Icon name="alert-circle" size={16} style={{ color: currentColors.warning, marginRight: 6 }} />
           <Text style={[themedStyles.textSecondary, { color: currentColors.warning, flex: 1 }]}>
-            Minimum payment (interest only) calculated as {formatCurrency(suggestedMin)} — this will never reduce your balance.
+            This payment only covers interest — your balance will never be reduced.
           </Text>
           <TouchableOpacity onPress={() => setInfoOpen(true)} accessibilityLabel="What is interest-only minimum?">
             <Icon name="information-circle-outline" size={18} style={{ color: currentColors.warning }} />
@@ -250,17 +243,7 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
       );
     }
 
-    return (
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -8, marginBottom: 8 }}>
-        <Icon name="create" size={16} style={{ color: currentColors.textSecondary, marginRight: 6 }} />
-        <Text style={[themedStyles.textSecondary, { color: currentColors.textSecondary, flex: 1 }]}>
-          Custom payment entered.
-        </Text>
-        <TouchableOpacity onPress={() => setInfoOpen(true)} accessibilityLabel="What is interest-only minimum?">
-          <Icon name="information-circle-outline" size={18} style={{ color: currentColors.textSecondary }} />
-        </TouchableOpacity>
-      </View>
-    );
+    return null;
   };
 
   const renderCalculatorCard = () => (
@@ -354,6 +337,7 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
         }}
         error={errors.payment}
         accessibilityLabel="Monthly payment amount"
+        placeholder="0.00"
       />
 
       <HelperRow />

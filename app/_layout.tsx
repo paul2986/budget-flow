@@ -40,11 +40,11 @@ function CustomTabBar() {
   ], []);
 
   // Hide tab bar for first-time users (no budgets exist or no active budget)
-  // BUT always show on expenses, people, add-expense, and settings screens regardless of first-time user status
+  // BUT always show on expenses, people, add-expense, settings, and tools screens regardless of first-time user status
   const shouldHideTabBar = useMemo(() => {
-    // Always show tab bar on expenses, people, add-expense, and settings screens
-    if (pathname === '/expenses' || pathname === '/people' || pathname === '/add-expense' || pathname === '/settings') {
-      console.log('CustomTabBar: Always showing tab bar on expenses/people/add-expense/settings screen');
+    // Always show tab bar on expenses, people, add-expense, settings, and tools screens
+    if (pathname === '/expenses' || pathname === '/people' || pathname === '/add-expense' || pathname === '/settings' || pathname === '/tools') {
+      console.log('CustomTabBar: Always showing tab bar on expenses/people/add-expense/settings/tools screen');
       return false;
     }
     
@@ -232,9 +232,15 @@ function RootLayoutContent() {
           <Tabs.Screen name="budgets" options={{ href: null }} />
           <Tabs.Screen name="tools" />
           <Tabs.Screen name="import-link" options={{ href: null }} />
+          <Tabs.Screen name="import-budget" options={{ href: null }} />
           <Tabs.Screen name="budget-lock" options={{ href: null }} />
           <Tabs.Screen name="manage-categories" options={{ href: null }} />
-          <Tabs.Screen name="auth" options={{ href: null }} />
+          <Tabs.Screen name="auth/index" options={{ href: null }} />
+          <Tabs.Screen name="auth/callback" options={{ href: null }} />
+          <Tabs.Screen name="auth/debug" options={{ href: null }} />
+          <Tabs.Screen name="auth/email" options={{ href: null }} />
+          <Tabs.Screen name="auth/lock" options={{ href: null }} />
+          <Tabs.Screen name="auth/verify" options={{ href: null }} />
         </Tabs>
 
         <ToastContainer toasts={toasts} onHideToast={hideToast} />
