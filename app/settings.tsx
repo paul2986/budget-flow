@@ -275,7 +275,7 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
-      {/* Currency Selection Modal */}
+      {/* Currency Selection Modal - Fixed structure */}
       <Modal
         visible={showCurrencyModal}
         animationType="slide"
@@ -286,6 +286,7 @@ export default function SettingsScreen() {
         }}
       >
         <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
+          {/* Fixed Header */}
           <StandardHeader 
             title="Select Currency" 
             showLeftIcon={true}
@@ -297,8 +298,9 @@ export default function SettingsScreen() {
             showRightIcon={false}
           />
 
-          <View style={[themedStyles.content, { flex: 1 }]}>
-            {/* Search Input - Fixed at top */}
+          {/* Fixed Content Container */}
+          <View style={[themedStyles.content, { flex: 1, paddingHorizontal: 16, paddingTop: 16 }]}>
+            {/* Fixed Search Section */}
             <View style={[themedStyles.card, { marginBottom: 16 }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                 <Icon name="search" size={20} style={{ color: currentColors.textSecondary, marginRight: 8 }} />
@@ -321,7 +323,7 @@ export default function SettingsScreen() {
               />
             </View>
 
-            {/* Currency List Header - Fixed */}
+            {/* Fixed Results Header */}
             <View style={[themedStyles.card, { marginBottom: 16, paddingBottom: 12 }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Icon name="globe-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
@@ -334,51 +336,56 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            {/* Scrollable Currency List - This scrolls within its container */}
-            <View style={{ flex: 1 }}>
+            {/* Scrollable Currency List Container - This stays in place */}
+            <View style={[
+              themedStyles.card, 
+              { 
+                flex: 1, 
+                padding: 0, 
+                overflow: 'hidden' // Ensure rounded corners are maintained
+              }
+            ]}>
               <ScrollView 
                 style={{ flex: 1 }}
-                contentContainerStyle={{ paddingBottom: 20 }}
+                contentContainerStyle={{ padding: 16 }}
                 showsVerticalScrollIndicator={true}
                 nestedScrollEnabled={true}
               >
-                <View style={themedStyles.card}>
-                  {filteredCurrencies.length === 0 ? (
-                    <View style={{ alignItems: 'center', padding: 20 }}>
-                      <Icon name="search" size={32} style={{ color: currentColors.textSecondary, marginBottom: 8 }} />
-                      <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
-                        No currencies found matching "{currencySearchQuery}"
-                      </Text>
-                    </View>
-                  ) : (
-                    filteredCurrencies.map((curr, index) => (
-                      <TouchableOpacity
-                        key={curr.code}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          paddingVertical: 12,
-                          borderBottomWidth: index === filteredCurrencies.length - 1 ? 0 : 1,
-                          borderBottomColor: currentColors.border,
-                        }}
-                        onPress={() => handleCurrencyChange(curr)}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 2 }]}>
-                            {curr.name}
-                          </Text>
-                          <Text style={themedStyles.textSecondary}>
-                            {curr.symbol} • {curr.code}
-                          </Text>
-                        </View>
-                        {currency.code === curr.code && (
-                          <Icon name="checkmark-circle" size={24} style={{ color: currentColors.primary }} />
-                        )}
-                      </TouchableOpacity>
-                    ))
-                  )}
-                </View>
+                {filteredCurrencies.length === 0 ? (
+                  <View style={{ alignItems: 'center', padding: 20 }}>
+                    <Icon name="search" size={32} style={{ color: currentColors.textSecondary, marginBottom: 8 }} />
+                    <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
+                      No currencies found matching "{currencySearchQuery}"
+                    </Text>
+                  </View>
+                ) : (
+                  filteredCurrencies.map((curr, index) => (
+                    <TouchableOpacity
+                      key={curr.code}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingVertical: 12,
+                        borderBottomWidth: index === filteredCurrencies.length - 1 ? 0 : 1,
+                        borderBottomColor: currentColors.border,
+                      }}
+                      onPress={() => handleCurrencyChange(curr)}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 2 }]}>
+                          {curr.name}
+                        </Text>
+                        <Text style={themedStyles.textSecondary}>
+                          {curr.symbol} • {curr.code}
+                        </Text>
+                      </View>
+                      {currency.code === curr.code && (
+                        <Icon name="checkmark-circle" size={24} style={{ color: currentColors.primary }} />
+                      )}
+                    </TouchableOpacity>
+                  ))
+                )}
               </ScrollView>
             </View>
           </View>
