@@ -356,8 +356,8 @@ export default function HomeScreen() {
   if (showBudgetReady) {
     return (
       <>
-        {/* Custom safe zone with primary color to match the heading box */}
-        <View style={{ height: insets.top, backgroundColor: currentColors.primary + '20' }} />
+        {/* Custom safe zone with backgroundAlt color to match the header section */}
+        <View style={{ height: insets.top, backgroundColor: currentColors.backgroundAlt }} />
         
         <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
           <StandardHeader 

@@ -317,6 +317,33 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
         </Text>
       )}
 
+      {/* Static Minimum Payment Box */}
+      {suggestedMin !== null && (
+        <View style={[
+          themedStyles.card,
+          {
+            backgroundColor: currentColors.info + '10',
+            borderColor: currentColors.info + '30',
+            borderWidth: 1,
+            padding: 16,
+            marginBottom: 16,
+          }
+        ]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+            <Icon name="calculator" size={20} style={{ color: currentColors.info, marginRight: 8 }} />
+            <Text style={[themedStyles.text, { fontWeight: '700', color: currentColors.info }]}>
+              Minimum Payment Required
+            </Text>
+          </View>
+          <Text style={[themedStyles.text, { fontSize: 24, fontWeight: '800', color: currentColors.info, marginBottom: 4 }]}>
+            {formatCurrency(suggestedMin)}
+          </Text>
+          <Text style={[themedStyles.textSecondary, { fontSize: 12, lineHeight: 16 }]}>
+            This is the minimum payment to cover interest only. Paying this amount will not reduce your balance.
+          </Text>
+        </View>
+      )}
+
       <CurrencyInput
         label="Monthly Payment"
         value={paymentInput}

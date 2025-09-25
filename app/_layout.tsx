@@ -40,11 +40,11 @@ function CustomTabBar() {
   ], []);
 
   // Hide tab bar for first-time users (no budgets exist or no active budget)
-  // BUT always show on expenses, people, and add-expense screens regardless of first-time user status
+  // BUT always show on expenses, people, add-expense, and settings screens regardless of first-time user status
   const shouldHideTabBar = useMemo(() => {
-    // Always show tab bar on expenses, people, and add-expense screens
-    if (pathname === '/expenses' || pathname === '/people' || pathname === '/add-expense') {
-      console.log('CustomTabBar: Always showing tab bar on expenses/people/add-expense screen');
+    // Always show tab bar on expenses, people, add-expense, and settings screens
+    if (pathname === '/expenses' || pathname === '/people' || pathname === '/add-expense' || pathname === '/settings') {
+      console.log('CustomTabBar: Always showing tab bar on expenses/people/add-expense/settings screen');
       return false;
     }
     
