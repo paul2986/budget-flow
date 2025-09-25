@@ -65,7 +65,7 @@ export default function SettingsScreen() {
     showToast(`Currency changed to ${curr.name}`, 'success');
   };
 
-  // Filter currencies based on search query
+  // Filter currencies based on search query - show ALL results, not just 10
   const filteredCurrencies = useMemo(() => {
     if (!currencySearchQuery.trim()) {
       return CURRENCIES;
@@ -78,11 +78,6 @@ export default function SettingsScreen() {
       curr.symbol.toLowerCase().includes(query)
     );
   }, [currencySearchQuery]);
-
-  // Get currencies to display (max 10 at a time)
-  const displayedCurrencies = useMemo(() => {
-    return filteredCurrencies.slice(0, 10);
-  }, [filteredCurrencies]);
 
   return (
     <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
@@ -302,8 +297,8 @@ export default function SettingsScreen() {
             showRightIcon={false}
           />
 
-          <View style={themedStyles.content}>
-            {/* Search Input */}
+          <View style={[themedStyles.content, { flex: 1 }]}>
+            {/* Search Input - Fixed at top */}
             <View style={[themedStyles.card, { marginBottom: 16 }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                 <Icon name="search" size={20} style={{ color: currentColors.textSecondary, marginRight: 8 }} />
@@ -326,72 +321,66 @@ export default function SettingsScreen() {
               />
             </View>
 
-            {/* Currency List */}
-            <ScrollView 
-              style={{ flex: 1 }}
-              contentContainerStyle={{ paddingBottom: 20 }}
-              showsVerticalScrollIndicator={true}
-            >
-              <View style={[themedStyles.card, { marginBottom: 16 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                  <Icon name="globe-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-                  <Text style={[themedStyles.text, { fontWeight: '600' }]}>
-                    {currencySearchQuery.trim() ? `Search Results (${displayedCurrencies.length})` : `All Currencies (showing ${displayedCurrencies.length} of ${CURRENCIES.length})`}
-                  </Text>
-                </View>
-                
-                {displayedCurrencies.length === 0 ? (
-                  <View style={{ alignItems: 'center', padding: 20 }}>
-                    <Icon name="search" size={32} style={{ color: currentColors.textSecondary, marginBottom: 8 }} />
-                    <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
-                      No currencies found matching "{currencySearchQuery}"
-                    </Text>
-                  </View>
-                ) : (
-                  displayedCurrencies.map((curr, index) => (
-                    <TouchableOpacity
-                      key={curr.code}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        paddingVertical: 12,
-                        borderBottomWidth: index === displayedCurrencies.length - 1 ? 0 : 1,
-                        borderBottomColor: currentColors.border,
-                      }}
-                      onPress={() => handleCurrencyChange(curr)}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 2 }]}>
-                          {curr.name}
-                        </Text>
-                        <Text style={themedStyles.textSecondary}>
-                          {curr.symbol} • {curr.code}
-                        </Text>
-                      </View>
-                      {currency.code === curr.code && (
-                        <Icon name="checkmark-circle" size={24} style={{ color: currentColors.primary }} />
-                      )}
-                    </TouchableOpacity>
-                  ))
-                )}
-
-                {filteredCurrencies.length > 10 && (
-                  <View style={{ 
-                    alignItems: 'center', 
-                    padding: 16, 
-                    borderTopWidth: 1, 
-                    borderTopColor: currentColors.border,
-                    marginTop: 8
-                  }}>
-                    <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
-                      Showing first 10 of {filteredCurrencies.length} results.{'\n'}
-                      Use search to find specific currencies.
-                    </Text>
-                  </View>
-                )}
+            {/* Currency List Header - Fixed */}
+            <View style={[themedStyles.card, { marginBottom: 16, paddingBottom: 12 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Icon name="globe-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                <Text style={[themedStyles.text, { fontWeight: '600' }]}>
+                  {currencySearchQuery.trim() 
+                    ? `Search Results (${filteredCurrencies.length})` 
+                    : `All Currencies (${CURRENCIES.length})`
+                  }
+                </Text>
               </View>
-            </ScrollView>
+            </View>
+
+            {/* Scrollable Currency List - This scrolls within its container */}
+            <View style={{ flex: 1 }}>
+              <ScrollView 
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingBottom: 20 }}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+              >
+                <View style={themedStyles.card}>
+                  {filteredCurrencies.length === 0 ? (
+                    <View style={{ alignItems: 'center', padding: 20 }}>
+                      <Icon name="search" size={32} style={{ color: currentColors.textSecondary, marginBottom: 8 }} />
+                      <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
+                        No currencies found matching "{currencySearchQuery}"
+                      </Text>
+                    </View>
+                  ) : (
+                    filteredCurrencies.map((curr, index) => (
+                      <TouchableOpacity
+                        key={curr.code}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          paddingVertical: 12,
+                          borderBottomWidth: index === filteredCurrencies.length - 1 ? 0 : 1,
+                          borderBottomColor: currentColors.border,
+                        }}
+                        onPress={() => handleCurrencyChange(curr)}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 2 }]}>
+                            {curr.name}
+                          </Text>
+                          <Text style={themedStyles.textSecondary}>
+                            {curr.symbol} • {curr.code}
+                          </Text>
+                        </View>
+                        {currency.code === curr.code && (
+                          <Icon name="checkmark-circle" size={24} style={{ color: currentColors.primary }} />
+                        )}
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </View>
+              </ScrollView>
+            </View>
           </View>
         </View>
       </Modal>
