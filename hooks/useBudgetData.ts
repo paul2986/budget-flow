@@ -826,8 +826,12 @@ export const useBudgetData = () => {
         console.log('useBudgetData: All app data cleared successfully, refreshing from storage');
         try {
           await refreshFromStorage();
-          // Trigger a refresh to ensure components re-render with new data
+          // Multiple refresh triggers to ensure all components update
           setRefreshTrigger(prev => prev + 1);
+          // Add a small delay and trigger again to ensure layout updates
+          setTimeout(() => {
+            setRefreshTrigger(prev => prev + 1);
+          }, 50);
         } catch (error) {
           console.error('useBudgetData: Error refreshing after clearAllData:', error);
         }
