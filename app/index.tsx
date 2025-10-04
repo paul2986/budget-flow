@@ -47,8 +47,24 @@ export default function HomeScreen() {
   // State for global view mode
   const [globalViewMode, setGlobalViewMode] = useState<'daily' | 'monthly' | 'yearly'>('monthly');
   
+  // Loading state management to prevent flickering
+  const [isDataReady, setIsDataReady] = useState(false);
+  
   const appState = useRef(AppState.currentState);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Track when data is ready to prevent flickering
+  useEffect(() => {
+    if (!loading && appData) {
+      // Add a small delay to ensure smooth transition
+      const timer = setTimeout(() => {
+        setIsDataReady(true);
+      }, 50);
+      return () => clearTimeout(timer);
+    } else {
+      setIsDataReady(false);
+    }
+  }, [loading, appData]);
 
   // All memoized values and effects must be here, before any conditional returns
   const budgetLocked = useMemo(() => {
@@ -59,6 +75,9 @@ export default function HomeScreen() {
 
   // Check if this is a first-time user (no budgets exist) or if they need guidance
   const isFirstTimeUser = useMemo(() => {
+    // Don't show first-time user state until data is ready
+    if (!isDataReady) return false;
+    
     // First check if no budgets exist at all (true first-time user)
     if (!appData || !appData.budgets || appData.budgets.length === 0) {
       return true;
@@ -72,9 +91,12 @@ export default function HomeScreen() {
     
     // First time if no people and no expenses
     return people.length === 0 && expenses.length === 0;
-  }, [appData, activeBudget, data]);
+  }, [appData, activeBudget, data, isDataReady]);
 
   const shouldShowFullDashboard = useMemo(() => {
+    // Don't show dashboard until data is ready
+    if (!isDataReady) return false;
+    
     // Can't show dashboard if no budgets exist or no active budget
     if (!appData || !appData.budgets || appData.budgets.length === 0 || !activeBudget || !data) return false;
     
@@ -83,9 +105,12 @@ export default function HomeScreen() {
     
     // Show full dashboard only if both people and expenses exist
     return people.length > 0 && expenses.length > 0;
-  }, [appData, activeBudget, data]);
+  }, [appData, activeBudget, data, isDataReady]);
 
   const calculations = useMemo(() => {
+    // Don't calculate until data is ready
+    if (!isDataReady) return null;
+    
     // Can't calculate if no budgets exist or no active budget
     if (!appData || !appData.budgets || appData.budgets.length === 0 || !activeBudget || !data) {
       console.log('HomeScreen: Missing appData, budgets, activeBudget or data for calculations:', { 
@@ -123,7 +148,7 @@ export default function HomeScreen() {
       personalExpenses,
       remaining,
     };
-  }, [appData, activeBudget, data, refreshTrigger]);
+  }, [appData, activeBudget, data, refreshTrigger, isDataReady]);
 
   // Handler for view mode changes from OverviewSection
   const handleViewModeChange = useCallback((mode: 'daily' | 'monthly' | 'yearly') => {
@@ -211,9 +236,8 @@ export default function HomeScreen() {
     }, [handleAppStateChange, refreshData])
   );
 
-
-
-  if (loading) {
+  // Show loading state until data is ready
+  if (loading || !isDataReady) {
     return (
       <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
         <StandardHeader 
@@ -240,6 +264,7 @@ export default function HomeScreen() {
             title="Budget Flow" 
             showLeftIcon={false}
             showRightIcon={false}
+            backgroundColor={currentColors.backgroundAlt}
           />
         )}
         
@@ -658,8 +683,6 @@ export default function HomeScreen() {
   // Derived values (not hooks, so can be after all hooks)
   const people = data && data.people && Array.isArray(data.people) ? data.people : [];
   const expenses = data && data.expenses && Array.isArray(data.expenses) ? data.expenses : [];
-
-
 
   // First-time user guidance: Budget exists but no people/expenses
   if (isFirstTimeUser) {

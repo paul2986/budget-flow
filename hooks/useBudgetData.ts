@@ -193,8 +193,11 @@ export const useBudgetData = () => {
     } catch (error) {
       console.error('useBudgetData: Error loading budget data:', error);
     } finally {
-      setLoading(false);
-      isLoadingRef.current = false;
+      // Add a small delay to prevent flickering
+      setTimeout(() => {
+        setLoading(false);
+        isLoadingRef.current = false;
+      }, 100);
     }
   }, [refreshFromStorage]);
 
