@@ -28,7 +28,8 @@ module.exports = function (api) {
           },
         },
       ],
-      'react-native-reanimated/plugin', // This must be last
+      // FIXED: Ensure react-native-reanimated/plugin is the last plugin to fix Worklets version mismatch
+      'react-native-reanimated/plugin',
     ],
   };
 };

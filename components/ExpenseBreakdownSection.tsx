@@ -59,7 +59,7 @@ export default function ExpenseBreakdownSection({
     viewMode
   });
 
-  // FIXED: Move convertAmount inside useMemo callback to fix exhaustive-deps warning
+  // FIXED: Add householdExpanded and personalExpanded to dependency array to fix exhaustive-deps warning
   // Calculate breakdown data
   const breakdownData = useMemo(() => {
     console.log('ExpenseBreakdownSection: Processing expenses for breakdown:', {
