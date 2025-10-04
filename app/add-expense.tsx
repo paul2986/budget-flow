@@ -292,7 +292,6 @@ export default function AddExpenseScreen() {
     }, 100);
   }, [origin]);
 
-  // FIXED: Add missing dependencies to useCallback
   const handleSaveExpense = useCallback(async () => {
     if (!description.trim()) {
       Alert.alert('Error', 'Please enter a description');
@@ -467,9 +466,8 @@ export default function AddExpenseScreen() {
       // Reset local saving state
       setIsSaving(false);
     }
-  }, [description, amount, categoryTag, endDate, frequency, personId, startDateYMD, category, getAllPeople, tempPeople, tempCategories, customCategories, addPerson, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin]);
+  }, [description, amount, category, frequency, personId, categoryTag, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin, startDateYMD, endDate, getAllPeople, tempPeople, tempCategories, customCategories, addPerson]);
 
-  // FIXED: Add missing dependencies to useCallback
   const handleDeleteExpense = useCallback(async () => {
     if (!isEditMode || !expenseToEdit) {
       console.log('AddExpenseScreen: Cannot delete - not in edit mode or no expense to edit');
@@ -514,9 +512,8 @@ export default function AddExpenseScreen() {
         },
       ]
     );
-  }, [isEditMode, expenseToEdit, removeExpense, navigateToOrigin]);
+  }, [amount, category, description, endDate, frequency, personId, startDateYMD, isEditMode, expenseToEdit, removeExpense, navigateToOrigin]);
 
-  // FIXED: Add missing dependencies to useCallback
   const handleGoBack = useCallback(() => {
     try {
       router.replace('/expenses');
@@ -600,7 +597,6 @@ export default function AddExpenseScreen() {
     </View>
   ), [category, currentColors, saving, deleting, isSaving, themedStyles, isEditMode, expenseToEdit]);
 
-  // FIXED: Add missing dependencies to useCallback
   const handleAddPersonFromExpense = useCallback(async () => {
     if (!newPersonName.trim()) {
       Alert.alert('Error', 'Please enter a name');
@@ -773,7 +769,7 @@ export default function AddExpenseScreen() {
 
     // Return null for all other cases
     return null;
-  }, [getAllPeople, personId, currentColors, saving, deleting, isSaving, themedStyles, category, tempPeople, description, amount, categoryTag, frequency, startDateYMD, endDate]);
+  }, [getAllPeople, personId, currentColors, saving, deleting, isSaving, themedStyles, category, tempPeople]);
 
   const CategoryTagPicker = useCallback(() => {
     const allCategories = getAllCategories();
@@ -869,7 +865,7 @@ export default function AddExpenseScreen() {
         )}
       </View>
     );
-  }, [categoryTag, currentColors, saving, deleting, isSaving, themedStyles, getAllCategories, tempCategories, description, amount, category, frequency, personId, startDateYMD, endDate]);
+  }, [categoryTag, currentColors, saving, deleting, isSaving, themedStyles, getAllCategories, tempCategories]);
 
   const FrequencyPicker = useCallback(() => (
     <View style={themedStyles.section}>
@@ -908,7 +904,6 @@ export default function AddExpenseScreen() {
     </View>
   ), [frequency, currentColors, saving, deleting, isSaving, themedStyles]);
 
-  // FIXED: Add missing dependencies to useCallback
   const handleCreateCustomCategory = useCallback(async () => {
     const normalized = normalizeCategoryName(newCustomName);
     if (!normalized) {

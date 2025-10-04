@@ -1,4 +1,3 @@
-
 module.exports = function (api) {
   api.cache(true);
   return {
@@ -28,8 +27,6 @@ module.exports = function (api) {
           },
         },
       ],
-      // FIXED: Ensure react-native-reanimated/plugin is the last plugin to fix Worklets version mismatch
-      'react-native-reanimated/plugin',
     ],
   };
 };

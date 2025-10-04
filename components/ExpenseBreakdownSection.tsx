@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { useCurrency } from '../hooks/useCurrency';
@@ -59,7 +59,16 @@ export default function ExpenseBreakdownSection({
     viewMode
   });
 
-  // FIXED: Add householdExpanded and personalExpanded to dependency array to fix exhaustive-deps warning
+  // Helper function to convert amounts based on view mode
+  const convertAmount = (amount: number): number => {
+    if (viewMode === 'daily') {
+      return calculateMonthlyAmount(amount, 'yearly') / 30.44; // Average days per month
+    } else if (viewMode === 'monthly') {
+      return calculateMonthlyAmount(amount, 'yearly');
+    }
+    return amount; // yearly
+  };
+
   // Calculate breakdown data
   const breakdownData = useMemo(() => {
     console.log('ExpenseBreakdownSection: Processing expenses for breakdown:', {
@@ -72,16 +81,6 @@ export default function ExpenseBreakdownSection({
       console.log('ExpenseBreakdownSection: No expenses found');
       return { household: null, personal: null, totalAmount: 0 };
     }
-
-    // FIXED: Move convertAmount inside useMemo to fix exhaustive-deps warning
-    const convertAmount = (amount: number): number => {
-      if (viewMode === 'daily') {
-        return calculateMonthlyAmount(amount, 'yearly') / 30.44; // Average days per month
-      } else if (viewMode === 'monthly') {
-        return calculateMonthlyAmount(amount, 'yearly');
-      }
-      return amount; // yearly
-    };
 
     const activeExpenses = expenses.filter(expense => {
       if (!expense) return false;
@@ -181,9 +180,7 @@ export default function ExpenseBreakdownSection({
       hasHousehold: !!household,
       hasPersonal: !!personal,
       selectedPersonId,
-      viewMode,
-      householdExpanded,
-      personalExpanded
+      viewMode
     });
 
     return {
@@ -191,7 +188,7 @@ export default function ExpenseBreakdownSection({
       personal,
       totalAmount,
     };
-  }, [expenses, selectedPersonId, viewMode, householdExpanded, personalExpanded]);
+  }, [expenses, selectedPersonId, viewMode, convertAmount]);
 
   // FIXED: Navigation handler for category taps with proper URL parameter handling
   const handleCategoryPress = (expenseType: 'household' | 'personal', categoryName: string) => {

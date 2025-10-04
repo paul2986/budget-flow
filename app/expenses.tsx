@@ -409,7 +409,6 @@ export default function ExpensesScreen() {
     }
   }, []);
 
-  // FIXED: Remove unnecessary dependency 'sortOrder' from useCallback
   const SortButton = useCallback(
     ({ sortType }: { sortType: SortOption }) => (
       <TouchableOpacity
@@ -451,7 +450,7 @@ export default function ExpensesScreen() {
         />
       </TouchableOpacity>
     ),
-    [sortBy, currentColors, saving, deletingExpenseId, handleSortPress, getSortIcon, getSortLabel]
+    [sortBy, sortOrder, currentColors, saving, deletingExpenseId, handleSortPress, getSortIcon, getSortLabel]
   );
 
   // Apply filters with proper logic and error handling

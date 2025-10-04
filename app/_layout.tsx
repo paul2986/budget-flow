@@ -12,16 +12,6 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import Icon from '../components/Icon';
 import ToastContainer from '../components/ToastContainer';
 import * as Linking from 'expo-linking';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSpring, 
-  withSequence,
-  withTiming,
-  interpolate,
-  Extrapolate,
-  runOnJS
-} from 'react-native-reanimated';
 
 const STORAGE_KEY = 'app_theme_mode';
 
@@ -36,58 +26,10 @@ function CustomTabBar() {
   const { appData, activeBudget } = useBudgetData();
   const pathname = usePathname();
 
-  // FIXED: Move useSharedValue calls outside of useMemo to fix React Hook rules
-  const tabAnimation0 = useSharedValue(0);
-  const tabAnimation1 = useSharedValue(0);
-  const tabAnimation2 = useSharedValue(0);
-  const tabAnimation3 = useSharedValue(0);
-  const tabAnimation4 = useSharedValue(0);
-  const selectorPosition = useSharedValue(0);
-  const selectorScale = useSharedValue(1);
-
-  // Animation values for each tab - now using the individual shared values
-  const tabAnimations = useMemo(() => [
-    tabAnimation0,
-    tabAnimation1,
-    tabAnimation2,
-    tabAnimation3,
-    tabAnimation4,
-  ], [tabAnimation0, tabAnimation1, tabAnimation2, tabAnimation3, tabAnimation4]);
-
-  const navigateToTab = useCallback((route: string, tabIndex: number) => {
+  const navigateToTab = useCallback((route: string) => {
     console.log('CustomTabBar: Navigating to:', route);
-    
-    // Animate the selector to the new position
-    selectorPosition.value = withSpring(tabIndex, {
-      damping: 15,
-      stiffness: 150,
-      mass: 1,
-    });
-
-    // Add a playful bounce effect to the selector
-    selectorScale.value = withSequence(
-      withTiming(1.2, { duration: 150 }),
-      withSpring(1, { damping: 8, stiffness: 300 })
-    );
-
-    // Animate the tapped tab with a bounce
-    tabAnimations[tabIndex].value = withSequence(
-      withSpring(-8, { damping: 8, stiffness: 400 }),
-      withSpring(0, { damping: 8, stiffness: 300 })
-    );
-
-    // Add a subtle animation to other tabs
-    tabAnimations.forEach((anim, index) => {
-      if (index !== tabIndex) {
-        anim.value = withSequence(
-          withTiming(2, { duration: 100 }),
-          withSpring(0, { damping: 10, stiffness: 300 })
-        );
-      }
-    });
-
     router.replace(route);
-  }, [tabAnimations, selectorPosition, selectorScale]);
+  }, []);
 
   const tabs = useMemo(() => [
     { route: '/', icon: 'home-outline', activeIcon: 'home' },
@@ -96,18 +38,6 @@ function CustomTabBar() {
     { route: '/tools', icon: 'calculator-outline', activeIcon: 'calculator' },
     { route: '/settings', icon: 'settings-outline', activeIcon: 'settings' },
   ], []);
-
-  // Find current tab index
-  const currentTabIndex = useMemo(() => {
-    return tabs.findIndex(tab => tab.route === pathname);
-  }, [pathname, tabs]);
-
-  // Update selector position when pathname changes (without animation for initial load)
-  useEffect(() => {
-    if (currentTabIndex >= 0) {
-      selectorPosition.value = currentTabIndex;
-    }
-  }, [currentTabIndex, selectorPosition]);
 
   // Hide tab bar for first-time users (no budgets exist or no active budget)
   // BUT always show on expenses, people, add-expense, settings, and tools screens regardless of first-time user status
@@ -138,23 +68,6 @@ function CustomTabBar() {
     console.log('CustomTabBar: Theme updated', { isDarkMode, themeMode, currentColors });
   }, [isDarkMode, themeMode, currentColors]);
 
-  // FIXED: Move useAnimatedStyle outside of callback to fix React Hook rules
-  const selectorAnimatedStyle = useAnimatedStyle(() => {
-    const translateX = interpolate(
-      selectorPosition.value,
-      [0, 1, 2, 3, 4],
-      [0, 60, 120, 180, 240], // Adjust based on tab width
-      Extrapolate.CLAMP
-    );
-
-    return {
-      transform: [
-        { translateX },
-        { scale: selectorScale.value }
-      ],
-    };
-  });
-
   // Don't render tab bar for first-time users
   if (shouldHideTabBar) {
     console.log('CustomTabBar: Hiding tab bar for first-time user');
@@ -178,60 +91,27 @@ function CustomTabBar() {
             backgroundColor: currentColors.backgroundAlt,
             borderColor: currentColors.border,
             shadowColor: '#000',
-            position: 'relative',
           },
         ]}
       >
-        {/* Animated selector background */}
-        <Animated.View
-          style={[
-            {
-              position: 'absolute',
-              top: 8,
-              left: 8,
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: `${currentColors.primary}15`,
-              borderWidth: 2,
-              borderColor: `${currentColors.primary}30`,
-            },
-            selectorAnimatedStyle,
-          ]}
-        />
-
-        {tabs.map((tab, index) => {
+        {tabs.map((tab) => {
           const isActive = pathname === tab.route;
-          const iconColor = isActive ? currentColors.primary : currentColors.text;
-
-          // Animated style for each tab
-          const tabAnimatedStyle = useAnimatedStyle(() => {
-            return {
-              transform: [
-                { translateY: tabAnimations[index].value }
-              ],
-            };
-          });
+          const iconColor = isActive ? currentColors.primary : currentColors.text; // Changed from textSecondary to text for better contrast
 
           return (
-            <Animated.View key={tab.route} style={tabAnimatedStyle}>
-              <TouchableOpacity
-                style={[
-                  themedStyles.floatingTabItem,
-                  {
-                    zIndex: 1, // Ensure tabs are above the selector
-                  }
-                ]}
-                onPress={() => navigateToTab(tab.route, index)}
-                activeOpacity={0.7}
-              >
-                <Icon 
-                  name={isActive ? (tab.activeIcon as any) : (tab.icon as any)} 
-                  size={26} 
-                  style={{ color: iconColor }} 
-                />
-              </TouchableOpacity>
-            </Animated.View>
+            <TouchableOpacity
+              key={tab.route}
+              style={[
+                themedStyles.floatingTabItem,
+                isActive && {
+                  backgroundColor: `${currentColors.primary}15`,
+                },
+              ]}
+              onPress={() => navigateToTab(tab.route)}
+              activeOpacity={0.7}
+            >
+              <Icon name={isActive ? (tab.activeIcon as any) : (tab.icon as any)} size={26} style={{ color: iconColor }} />
+            </TouchableOpacity>
           );
         })}
       </View>
@@ -335,11 +215,11 @@ function RootLayoutContent() {
     setSafeAreaColorKey(prev => prev + 1);
   }, [isWelcomePage, isGuidanceScreen]);
 
-  // FIXED: Add appData to dependency array to fix exhaustive-deps warning
+  // Also force re-render when budget data changes (for clearing data scenario)
   useEffect(() => {
     console.log('RootLayoutContent: Budget data changed, refreshTrigger:', refreshTrigger);
     setSafeAreaColorKey(prev => prev + 1);
-  }, [refreshTrigger, appData?.budgets?.length, activeBudget?.id, appData]);
+  }, [refreshTrigger, appData?.budgets?.length, activeBudget?.id]);
 
   // Additional effect to handle the specific case of clearing all data
   useEffect(() => {
@@ -465,7 +345,7 @@ function RootLayoutContent() {
     });
     
     return color;
-  }, [isWelcomePage, isGuidanceScreen, currentColors.background, currentColors.backgroundAlt, pathname, safeAreaColorKey, refreshTrigger, appData]);
+  }, [isWelcomePage, isGuidanceScreen, currentColors.background, currentColors.backgroundAlt, pathname, appData?.budgets?.length, safeAreaColorKey, refreshTrigger]);
 
   return (
     // Outer wrapper paints the top safe area with conditional background color
