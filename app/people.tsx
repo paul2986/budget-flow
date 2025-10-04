@@ -20,7 +20,7 @@ import StandardHeader from '../components/StandardHeader';
 import IncomeModal from '../components/IncomeModal';
 
 export default function PeopleScreen() {
-  const { data, addPerson, removePerson, addIncome, removeIncome, saving, refreshData } = useBudgetData();
+  const { data, addPerson, removePerson, addIncome, removeIncome, saving, refreshData, loading } = useBudgetData();
   const { currentColors } = useTheme();
   const { themedStyles, themedButtonStyles } = useThemedStyles();
   const { formatCurrency } = useCurrency();
@@ -30,13 +30,28 @@ export default function PeopleScreen() {
   const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [deletingPersonId, setDeletingPersonId] = useState<string | null>(null);
   const [deletingIncomeId, setDeletingIncomeId] = useState<string | null>(null);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  // Refresh data when screen becomes focused (e.g., after editing a person)
+  // Track when data has been loaded to prevent flicker
   useFocusEffect(
     useCallback(() => {
       console.log('PeopleScreen: Screen focused, refreshing data...');
       refreshData();
-    }, [refreshData])
+      // Mark data as loaded after initial load completes
+      if (!loading) {
+        setIsDataLoaded(true);
+      }
+    }, [refreshData, loading])
+  );
+
+  // Update isDataLoaded when loading state changes
+  useFocusEffect(
+    useCallback(() => {
+      if (!loading && !isDataLoaded) {
+        console.log('PeopleScreen: Data loading completed, marking as loaded');
+        setIsDataLoaded(true);
+      }
+    }, [loading, isDataLoaded])
   );
 
   const handleAddPerson = useCallback(async () => {
@@ -226,8 +241,6 @@ export default function PeopleScreen() {
     setShowAddPerson(true);
   }, []);
 
-
-
   return (
     <View style={themedStyles.container}>
       <StandardHeader
@@ -245,8 +258,20 @@ export default function PeopleScreen() {
       />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0, paddingTop: 16 }]}>
-        {/* Prominent Add Person Button - Only show when no people exist */}
-        {data.people.length === 0 && !showAddPerson && (
+        {/* Loading indicator while data is being loaded */}
+        {loading && !isDataLoaded && (
+          <View style={themedStyles.card}>
+            <View style={themedStyles.centerContent}>
+              <ActivityIndicator size="large" color={currentColors.primary} />
+              <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginTop: 12 }]}>
+                Loading people...
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Prominent Add Person Button - Only show when no people exist and data is loaded */}
+        {isDataLoaded && data.people.length === 0 && !showAddPerson && (
           <View style={themedStyles.card}>
             <View style={themedStyles.centerContent}>
               <Icon name="people-outline" size={48} style={{ color: currentColors.primary, marginBottom: 12 }} />
@@ -310,10 +335,8 @@ export default function PeopleScreen() {
           </View>
         )}
 
-
-
-        {/* People List */}
-        {data.people.length > 0 && (
+        {/* People List - Only show when data is loaded */}
+        {isDataLoaded && data.people.length > 0 && (
           data.people.map((person) => {
             const totalIncome = calculatePersonIncome(person);
             const monthlyIncome = calculateMonthlyAmount(totalIncome, 'yearly');
@@ -465,8 +488,6 @@ export default function PeopleScreen() {
           })
         )}
       </ScrollView>
-
-
 
       {/* Income Modal */}
       <IncomeModal
