@@ -204,7 +204,7 @@ export default function ExpiringSection({ expenses }: ExpiringSectionProps) {
   );
 }
 
-// Add PropTypes for the expense.id validation
+// FIXED: Add PropTypes for the expense.id validation
 ExpiringSection.propTypes = {
   expenses: PropTypes.arrayOf(
     PropTypes.shape({

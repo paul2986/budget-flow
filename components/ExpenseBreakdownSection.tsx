@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { useCurrency } from '../hooks/useCurrency';
@@ -59,15 +59,15 @@ export default function ExpenseBreakdownSection({
     viewMode
   });
 
-  // Helper function to convert amounts based on view mode
-  const convertAmount = (amount: number): number => {
+  // FIXED: Move convertAmount inside useMemo or wrap with useCallback
+  const convertAmount = useCallback((amount: number): number => {
     if (viewMode === 'daily') {
       return calculateMonthlyAmount(amount, 'yearly') / 30.44; // Average days per month
     } else if (viewMode === 'monthly') {
       return calculateMonthlyAmount(amount, 'yearly');
     }
     return amount; // yearly
-  };
+  }, [viewMode]);
 
   // Calculate breakdown data
   const breakdownData = useMemo(() => {
@@ -180,7 +180,9 @@ export default function ExpenseBreakdownSection({
       hasHousehold: !!household,
       hasPersonal: !!personal,
       selectedPersonId,
-      viewMode
+      viewMode,
+      householdExpanded,
+      personalExpanded
     });
 
     return {
