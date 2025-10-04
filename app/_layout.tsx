@@ -12,6 +12,16 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import Icon from '../components/Icon';
 import ToastContainer from '../components/ToastContainer';
 import * as Linking from 'expo-linking';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring, 
+  withSequence,
+  withTiming,
+  interpolate,
+  Extrapolate,
+  runOnJS
+} from 'react-native-reanimated';
 
 const STORAGE_KEY = 'app_theme_mode';
 
@@ -26,10 +36,53 @@ function CustomTabBar() {
   const { appData, activeBudget } = useBudgetData();
   const pathname = usePathname();
 
-  const navigateToTab = useCallback((route: string) => {
+  // Animation values for each tab
+  const tabAnimations = useMemo(() => [
+    useSharedValue(0), // home
+    useSharedValue(0), // people
+    useSharedValue(0), // expenses
+    useSharedValue(0), // tools
+    useSharedValue(0), // settings
+  ], []);
+
+  // Selector animation
+  const selectorPosition = useSharedValue(0);
+  const selectorScale = useSharedValue(1);
+
+  const navigateToTab = useCallback((route: string, tabIndex: number) => {
     console.log('CustomTabBar: Navigating to:', route);
+    
+    // Animate the selector to the new position
+    selectorPosition.value = withSpring(tabIndex, {
+      damping: 15,
+      stiffness: 150,
+      mass: 1,
+    });
+
+    // Add a playful bounce effect to the selector
+    selectorScale.value = withSequence(
+      withTiming(1.2, { duration: 150 }),
+      withSpring(1, { damping: 8, stiffness: 300 })
+    );
+
+    // Animate the tapped tab with a bounce
+    tabAnimations[tabIndex].value = withSequence(
+      withSpring(-8, { damping: 8, stiffness: 400 }),
+      withSpring(0, { damping: 8, stiffness: 300 })
+    );
+
+    // Add a subtle animation to other tabs
+    tabAnimations.forEach((anim, index) => {
+      if (index !== tabIndex) {
+        anim.value = withSequence(
+          withTiming(2, { duration: 100 }),
+          withSpring(0, { damping: 10, stiffness: 300 })
+        );
+      }
+    });
+
     router.replace(route);
-  }, []);
+  }, [tabAnimations, selectorPosition, selectorScale]);
 
   const tabs = useMemo(() => [
     { route: '/', icon: 'home-outline', activeIcon: 'home' },
@@ -38,6 +91,18 @@ function CustomTabBar() {
     { route: '/tools', icon: 'calculator-outline', activeIcon: 'calculator' },
     { route: '/settings', icon: 'settings-outline', activeIcon: 'settings' },
   ], []);
+
+  // Find current tab index
+  const currentTabIndex = useMemo(() => {
+    return tabs.findIndex(tab => tab.route === pathname);
+  }, [pathname, tabs]);
+
+  // Update selector position when pathname changes (without animation for initial load)
+  useEffect(() => {
+    if (currentTabIndex >= 0) {
+      selectorPosition.value = currentTabIndex;
+    }
+  }, [currentTabIndex, selectorPosition]);
 
   // Hide tab bar for first-time users (no budgets exist or no active budget)
   // BUT always show on expenses, people, add-expense, settings, and tools screens regardless of first-time user status
@@ -68,6 +133,23 @@ function CustomTabBar() {
     console.log('CustomTabBar: Theme updated', { isDarkMode, themeMode, currentColors });
   }, [isDarkMode, themeMode, currentColors]);
 
+  // Animated style for the selector
+  const selectorAnimatedStyle = useAnimatedStyle(() => {
+    const translateX = interpolate(
+      selectorPosition.value,
+      [0, 1, 2, 3, 4],
+      [0, 60, 120, 180, 240], // Adjust based on tab width
+      Extrapolate.CLAMP
+    );
+
+    return {
+      transform: [
+        { translateX },
+        { scale: selectorScale.value }
+      ],
+    };
+  });
+
   // Don't render tab bar for first-time users
   if (shouldHideTabBar) {
     console.log('CustomTabBar: Hiding tab bar for first-time user');
@@ -91,27 +173,60 @@ function CustomTabBar() {
             backgroundColor: currentColors.backgroundAlt,
             borderColor: currentColors.border,
             shadowColor: '#000',
+            position: 'relative',
           },
         ]}
       >
-        {tabs.map((tab) => {
+        {/* Animated selector background */}
+        <Animated.View
+          style={[
+            {
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: `${currentColors.primary}15`,
+              borderWidth: 2,
+              borderColor: `${currentColors.primary}30`,
+            },
+            selectorAnimatedStyle,
+          ]}
+        />
+
+        {tabs.map((tab, index) => {
           const isActive = pathname === tab.route;
-          const iconColor = isActive ? currentColors.primary : currentColors.text; // Changed from textSecondary to text for better contrast
+          const iconColor = isActive ? currentColors.primary : currentColors.text;
+
+          // Animated style for each tab
+          const tabAnimatedStyle = useAnimatedStyle(() => {
+            return {
+              transform: [
+                { translateY: tabAnimations[index].value }
+              ],
+            };
+          });
 
           return (
-            <TouchableOpacity
-              key={tab.route}
-              style={[
-                themedStyles.floatingTabItem,
-                isActive && {
-                  backgroundColor: `${currentColors.primary}15`,
-                },
-              ]}
-              onPress={() => navigateToTab(tab.route)}
-              activeOpacity={0.7}
-            >
-              <Icon name={isActive ? (tab.activeIcon as any) : (tab.icon as any)} size={26} style={{ color: iconColor }} />
-            </TouchableOpacity>
+            <Animated.View key={tab.route} style={tabAnimatedStyle}>
+              <TouchableOpacity
+                style={[
+                  themedStyles.floatingTabItem,
+                  {
+                    zIndex: 1, // Ensure tabs are above the selector
+                  }
+                ]}
+                onPress={() => navigateToTab(tab.route, index)}
+                activeOpacity={0.7}
+              >
+                <Icon 
+                  name={isActive ? (tab.activeIcon as any) : (tab.icon as any)} 
+                  size={26} 
+                  style={{ color: iconColor }} 
+                />
+              </TouchableOpacity>
+            </Animated.View>
           );
         })}
       </View>

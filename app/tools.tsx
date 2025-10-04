@@ -34,7 +34,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   th: {
-    flex: 1,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -44,9 +43,24 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   td: {
-    flex: 1,
     fontSize: 13,
     fontWeight: '500',
+  },
+  // Updated column widths - month column smaller, remaining column wider
+  monthColumn: {
+    flex: 0.6, // Reduced from 1 to 0.6
+  },
+  paymentColumn: {
+    flex: 1,
+  },
+  interestColumn: {
+    flex: 1,
+  },
+  principalColumn: {
+    flex: 1,
+  },
+  remainingColumn: {
+    flex: 1.4, // Increased from 1 to 1.4 to accommodate larger numbers
   },
 });
 
@@ -471,19 +485,19 @@ Total Interest Paid: ${formatCurrency(result.totalInterest)}`;
                 <View style={{ borderTopColor: currentColors.border, borderTopWidth: 1, paddingTop: 12 }}>
                   <Text style={[themedStyles.text, { fontWeight: '700', marginBottom: 8 }]}>First 3 Months</Text>
                   <View style={[styles.tableHeader, { borderBottomColor: currentColors.border }]}>
-                    <Text style={[styles.th, themedStyles.textSecondary]}>Month</Text>
-                    <Text style={[styles.th, themedStyles.textSecondary]}>Payment</Text>
-                    <Text style={[styles.th, themedStyles.textSecondary]}>Interest</Text>
-                    <Text style={[styles.th, themedStyles.textSecondary]}>Principal</Text>
-                    <Text style={[styles.th, themedStyles.textSecondary]}>Remaining</Text>
+                    <Text style={[styles.th, themedStyles.textSecondary, styles.monthColumn]}>Month</Text>
+                    <Text style={[styles.th, themedStyles.textSecondary, styles.paymentColumn]}>Payment</Text>
+                    <Text style={[styles.th, themedStyles.textSecondary, styles.interestColumn]}>Interest</Text>
+                    <Text style={[styles.th, themedStyles.textSecondary, styles.principalColumn]}>Principal</Text>
+                    <Text style={[styles.th, themedStyles.textSecondary, styles.remainingColumn]}>Remaining</Text>
                   </View>
                   {result.schedule.map((row) => (
                     <View key={row.month} style={[styles.tableRow, { borderBottomColor: currentColors.border }]}>
-                      <Text style={[styles.td, themedStyles.text]}>{row.month}</Text>
-                      <Text style={[styles.td, themedStyles.text]}>{formatCurrency(row.payment)}</Text>
-                      <Text style={[styles.td, themedStyles.text]}>{formatCurrency(row.interest)}</Text>
-                      <Text style={[styles.td, themedStyles.text]}>{formatCurrency(row.principal)}</Text>
-                      <Text style={[styles.td, themedStyles.text]}>{formatCurrency(row.remaining)}</Text>
+                      <Text style={[styles.td, themedStyles.text, styles.monthColumn]}>{row.month}</Text>
+                      <Text style={[styles.td, themedStyles.text, styles.paymentColumn]}>{formatCurrency(row.payment)}</Text>
+                      <Text style={[styles.td, themedStyles.text, styles.interestColumn]}>{formatCurrency(row.interest)}</Text>
+                      <Text style={[styles.td, themedStyles.text, styles.principalColumn]}>{formatCurrency(row.principal)}</Text>
+                      <Text style={[styles.td, themedStyles.text, styles.remainingColumn]}>{formatCurrency(row.remaining)}</Text>
                     </View>
                   ))}
                 </View>
