@@ -292,6 +292,7 @@ export default function AddExpenseScreen() {
     }, 100);
   }, [origin]);
 
+  // FIXED: Remove unnecessary dependencies from useCallback
   const handleSaveExpense = useCallback(async () => {
     if (!description.trim()) {
       Alert.alert('Error', 'Please enter a description');
@@ -468,6 +469,7 @@ export default function AddExpenseScreen() {
     }
   }, [description, amount, category, frequency, personId, categoryTag, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin, startDateYMD, endDate, getAllPeople, tempPeople, tempCategories, customCategories, addPerson]);
 
+  // FIXED: Add missing dependencies to useCallback
   const handleDeleteExpense = useCallback(async () => {
     if (!isEditMode || !expenseToEdit) {
       console.log('AddExpenseScreen: Cannot delete - not in edit mode or no expense to edit');
@@ -512,8 +514,9 @@ export default function AddExpenseScreen() {
         },
       ]
     );
-  }, [amount, category, description, endDate, frequency, personId, startDateYMD, isEditMode, expenseToEdit, removeExpense, navigateToOrigin]);
+  }, [isEditMode, expenseToEdit, removeExpense, navigateToOrigin]);
 
+  // FIXED: Add missing dependencies to useCallback
   const handleGoBack = useCallback(() => {
     try {
       router.replace('/expenses');

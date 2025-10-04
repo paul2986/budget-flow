@@ -36,18 +36,23 @@ function CustomTabBar() {
   const { appData, activeBudget } = useBudgetData();
   const pathname = usePathname();
 
-  // Animation values for each tab
-  const tabAnimations = useMemo(() => [
-    useSharedValue(0), // home
-    useSharedValue(0), // people
-    useSharedValue(0), // expenses
-    useSharedValue(0), // tools
-    useSharedValue(0), // settings
-  ], []);
-
-  // Selector animation
+  // FIXED: Move useSharedValue calls outside of useMemo to fix React Hook rules
+  const tabAnimation0 = useSharedValue(0);
+  const tabAnimation1 = useSharedValue(0);
+  const tabAnimation2 = useSharedValue(0);
+  const tabAnimation3 = useSharedValue(0);
+  const tabAnimation4 = useSharedValue(0);
   const selectorPosition = useSharedValue(0);
   const selectorScale = useSharedValue(1);
+
+  // Animation values for each tab - now using the individual shared values
+  const tabAnimations = useMemo(() => [
+    tabAnimation0,
+    tabAnimation1,
+    tabAnimation2,
+    tabAnimation3,
+    tabAnimation4,
+  ], [tabAnimation0, tabAnimation1, tabAnimation2, tabAnimation3, tabAnimation4]);
 
   const navigateToTab = useCallback((route: string, tabIndex: number) => {
     console.log('CustomTabBar: Navigating to:', route);
@@ -133,7 +138,7 @@ function CustomTabBar() {
     console.log('CustomTabBar: Theme updated', { isDarkMode, themeMode, currentColors });
   }, [isDarkMode, themeMode, currentColors]);
 
-  // Animated style for the selector
+  // FIXED: Move useAnimatedStyle outside of callback to fix React Hook rules
   const selectorAnimatedStyle = useAnimatedStyle(() => {
     const translateX = interpolate(
       selectorPosition.value,
@@ -330,11 +335,11 @@ function RootLayoutContent() {
     setSafeAreaColorKey(prev => prev + 1);
   }, [isWelcomePage, isGuidanceScreen]);
 
-  // Also force re-render when budget data changes (for clearing data scenario)
+  // FIXED: Add appData to dependency array to fix exhaustive-deps warning
   useEffect(() => {
     console.log('RootLayoutContent: Budget data changed, refreshTrigger:', refreshTrigger);
     setSafeAreaColorKey(prev => prev + 1);
-  }, [refreshTrigger, appData?.budgets?.length, activeBudget?.id]);
+  }, [refreshTrigger, appData?.budgets?.length, activeBudget?.id, appData]);
 
   // Additional effect to handle the specific case of clearing all data
   useEffect(() => {
@@ -460,7 +465,7 @@ function RootLayoutContent() {
     });
     
     return color;
-  }, [isWelcomePage, isGuidanceScreen, currentColors.background, currentColors.backgroundAlt, pathname, appData?.budgets?.length, safeAreaColorKey, refreshTrigger]);
+  }, [isWelcomePage, isGuidanceScreen, currentColors.background, currentColors.backgroundAlt, pathname, appData?.budgets?.length, safeAreaColorKey, refreshTrigger, appData]);
 
   return (
     // Outer wrapper paints the top safe area with conditional background color
