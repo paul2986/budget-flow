@@ -465,6 +465,7 @@ function RootLayoutContent() {
     });
     
     return color;
+  // FIXED: Remove appData.budgets.length from dependency array to fix unnecessary dependency warning
   }, [isWelcomePage, isGuidanceScreen, currentColors.background, currentColors.backgroundAlt, pathname, safeAreaColorKey, refreshTrigger, appData]);
 
   return (

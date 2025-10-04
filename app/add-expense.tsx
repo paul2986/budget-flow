@@ -600,6 +600,7 @@ export default function AddExpenseScreen() {
     </View>
   ), [category, currentColors, saving, deleting, isSaving, themedStyles, isEditMode, expenseToEdit]);
 
+  // FIXED: Add missing dependencies to useCallback
   const handleAddPersonFromExpense = useCallback(async () => {
     if (!newPersonName.trim()) {
       Alert.alert('Error', 'Please enter a name');
@@ -772,7 +773,7 @@ export default function AddExpenseScreen() {
 
     // Return null for all other cases
     return null;
-  }, [getAllPeople, personId, currentColors, saving, deleting, isSaving, themedStyles, category, tempPeople]);
+  }, [getAllPeople, personId, currentColors, saving, deleting, isSaving, themedStyles, category, tempPeople, description, amount, categoryTag, frequency, startDateYMD, endDate]);
 
   const CategoryTagPicker = useCallback(() => {
     const allCategories = getAllCategories();
@@ -868,7 +869,7 @@ export default function AddExpenseScreen() {
         )}
       </View>
     );
-  }, [categoryTag, currentColors, saving, deleting, isSaving, themedStyles, getAllCategories, tempCategories]);
+  }, [categoryTag, currentColors, saving, deleting, isSaving, themedStyles, getAllCategories, tempCategories, description, amount, category, frequency, personId, startDateYMD, endDate]);
 
   const FrequencyPicker = useCallback(() => (
     <View style={themedStyles.section}>
@@ -907,6 +908,7 @@ export default function AddExpenseScreen() {
     </View>
   ), [frequency, currentColors, saving, deleting, isSaving, themedStyles]);
 
+  // FIXED: Add missing dependencies to useCallback
   const handleCreateCustomCategory = useCallback(async () => {
     const normalized = normalizeCategoryName(newCustomName);
     if (!normalized) {
