@@ -59,16 +59,7 @@ export default function ExpenseBreakdownSection({
     viewMode
   });
 
-  // FIXED: Move convertAmount inside useMemo or wrap with useCallback
-  const convertAmount = useCallback((amount: number): number => {
-    if (viewMode === 'daily') {
-      return calculateMonthlyAmount(amount, 'yearly') / 30.44; // Average days per month
-    } else if (viewMode === 'monthly') {
-      return calculateMonthlyAmount(amount, 'yearly');
-    }
-    return amount; // yearly
-  }, [viewMode]);
-
+  // FIXED: Move convertAmount inside useMemo callback to fix exhaustive-deps warning
   // Calculate breakdown data
   const breakdownData = useMemo(() => {
     console.log('ExpenseBreakdownSection: Processing expenses for breakdown:', {
@@ -81,6 +72,16 @@ export default function ExpenseBreakdownSection({
       console.log('ExpenseBreakdownSection: No expenses found');
       return { household: null, personal: null, totalAmount: 0 };
     }
+
+    // FIXED: Move convertAmount inside useMemo to fix exhaustive-deps warning
+    const convertAmount = (amount: number): number => {
+      if (viewMode === 'daily') {
+        return calculateMonthlyAmount(amount, 'yearly') / 30.44; // Average days per month
+      } else if (viewMode === 'monthly') {
+        return calculateMonthlyAmount(amount, 'yearly');
+      }
+      return amount; // yearly
+    };
 
     const activeExpenses = expenses.filter(expense => {
       if (!expense) return false;
@@ -190,7 +191,7 @@ export default function ExpenseBreakdownSection({
       personal,
       totalAmount,
     };
-  }, [expenses, selectedPersonId, viewMode, convertAmount]);
+  }, [expenses, selectedPersonId, viewMode, householdExpanded, personalExpanded]);
 
   // FIXED: Navigation handler for category taps with proper URL parameter handling
   const handleCategoryPress = (expenseType: 'household' | 'personal', categoryName: string) => {
