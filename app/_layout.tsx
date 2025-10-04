@@ -465,7 +465,7 @@ function RootLayoutContent() {
     });
     
     return color;
-  }, [isWelcomePage, isGuidanceScreen, currentColors.background, currentColors.backgroundAlt, pathname, appData?.budgets?.length, safeAreaColorKey, refreshTrigger, appData]);
+  }, [isWelcomePage, isGuidanceScreen, currentColors.background, currentColors.backgroundAlt, pathname, safeAreaColorKey, refreshTrigger, appData]);
 
   return (
     // Outer wrapper paints the top safe area with conditional background color

@@ -292,7 +292,7 @@ export default function AddExpenseScreen() {
     }, 100);
   }, [origin]);
 
-  // FIXED: Remove unnecessary dependencies from useCallback
+  // FIXED: Add missing dependencies to useCallback
   const handleSaveExpense = useCallback(async () => {
     if (!description.trim()) {
       Alert.alert('Error', 'Please enter a description');
@@ -467,7 +467,7 @@ export default function AddExpenseScreen() {
       // Reset local saving state
       setIsSaving(false);
     }
-  }, [description, category, getAllPeople, tempPeople, tempCategories, customCategories, addPerson, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin]);
+  }, [description, amount, categoryTag, endDate, frequency, personId, startDateYMD, category, getAllPeople, tempPeople, tempCategories, customCategories, addPerson, isEditMode, expenseToEdit, addExpense, updateExpense, navigateToOrigin]);
 
   // FIXED: Add missing dependencies to useCallback
   const handleDeleteExpense = useCallback(async () => {
