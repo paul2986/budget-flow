@@ -175,11 +175,10 @@ function RootLayoutContent() {
     return result;
   }, [pathname, appData, activeBudget, data, loading, refreshTrigger]);
 
-  // Determine if we should show the "Budget Ready" screen
-  const isBudgetReadyPage = useMemo(() => {
-    // This is tricky because we can't directly access the showBudgetReady state from index.tsx
-    // However, we can infer it: if we're on index route, have a budget, but no people and no expenses
-    // AND we just created a budget (which we can detect by checking if we have exactly 1 budget)
+  // Determine if we should show the "Budget Ready" or "You're almost ready" screen
+  const isGuidanceScreen = useMemo(() => {
+    // This covers both "Budget Ready" and "You're almost ready" screens
+    // Both should use the header background color for the safe area
     if (pathname !== '/') return false;
     
     // Must have budgets and active budget
@@ -191,11 +190,11 @@ function RootLayoutContent() {
     const people = data && data.people && Array.isArray(data.people) ? data.people : [];
     const expenses = data && data.expenses && Array.isArray(data.expenses) ? data.expenses : [];
     
-    // Budget ready page shows when we have a budget but no people and no expenses
-    // This happens right after creating a new budget
-    const result = people.length === 0 && expenses.length === 0;
+    // Guidance screens show when we have a budget but incomplete setup
+    // This includes both "Budget Ready" (no people, no expenses) and "You're almost ready" (missing people OR expenses)
+    const result = people.length === 0 || expenses.length === 0;
     
-    console.log('RootLayoutContent: isBudgetReadyPage calculation', {
+    console.log('RootLayoutContent: isGuidanceScreen calculation', {
       pathname,
       hasBudgets: appData.budgets.length > 0,
       hasActiveBudget: !!activeBudget,
@@ -209,12 +208,12 @@ function RootLayoutContent() {
     return result;
   }, [pathname, appData, activeBudget, data, loading, refreshTrigger]);
 
-  // Force re-render when welcome page or budget ready page state changes
+  // Force re-render when welcome page or guidance screen state changes
   useEffect(() => {
-    console.log('RootLayoutContent: Page state changed - Welcome:', isWelcomePage, 'BudgetReady:', isBudgetReadyPage);
+    console.log('RootLayoutContent: Page state changed - Welcome:', isWelcomePage, 'GuidanceScreen:', isGuidanceScreen);
     // Force re-render by updating the key
     setSafeAreaColorKey(prev => prev + 1);
-  }, [isWelcomePage, isBudgetReadyPage]);
+  }, [isWelcomePage, isGuidanceScreen]);
 
   // Also force re-render when budget data changes (for clearing data scenario)
   useEffect(() => {
@@ -316,15 +315,15 @@ function RootLayoutContent() {
     const noBudgetsExist = !appData || !appData.budgets || appData.budgets.length === 0;
     const shouldUseWelcomeColor = isOnIndexRoute && (noBudgetsExist || isWelcomePage);
     
-    // For the "Budget Ready" page, we should use the header background color (backgroundAlt)
-    // This matches the header color on that screen
-    const shouldUseHeaderColor = isOnIndexRoute && isBudgetReadyPage;
+    // For the "Budget Ready" page and "You're almost ready" page, we should use the header background color (backgroundAlt)
+    // This matches the header color on those screens
+    const shouldUseHeaderColor = isOnIndexRoute && (isGuidanceScreen || (!noBudgetsExist && !isWelcomePage));
     
     let color;
     if (shouldUseWelcomeColor) {
       color = currentColors.background; // Dark background for welcome page
     } else if (shouldUseHeaderColor) {
-      color = currentColors.backgroundAlt; // Header background for budget ready page
+      color = currentColors.backgroundAlt; // Header background for budget ready page and other index screens
     } else {
       color = currentColors.backgroundAlt; // Default header background for other pages
     }
@@ -333,7 +332,7 @@ function RootLayoutContent() {
       isOnIndexRoute,
       noBudgetsExist,
       isWelcomePage,
-      isBudgetReadyPage,
+      isGuidanceScreen,
       shouldUseWelcomeColor,
       shouldUseHeaderColor,
       color,
@@ -346,12 +345,12 @@ function RootLayoutContent() {
     });
     
     return color;
-  }, [isWelcomePage, isBudgetReadyPage, currentColors.background, currentColors.backgroundAlt, pathname, appData?.budgets?.length, safeAreaColorKey, refreshTrigger]);
+  }, [isWelcomePage, isGuidanceScreen, currentColors.background, currentColors.backgroundAlt, pathname, appData?.budgets?.length, safeAreaColorKey, refreshTrigger]);
 
   return (
     // Outer wrapper paints the top safe area with conditional background color
     // Key ensures re-render when welcome page state changes
-    <View key={`safe-area-${safeAreaColorKey}-${isWelcomePage ? 'welcome' : isBudgetReadyPage ? 'budget-ready' : 'normal'}-${appData?.budgets?.length || 0}`} style={{ flex: 1, backgroundColor: safeZoneBackgroundColor }}>
+    <View key={`safe-area-${safeAreaColorKey}-${isWelcomePage ? 'welcome' : isGuidanceScreen ? 'guidance' : 'normal'}-${appData?.budgets?.length || 0}`} style={{ flex: 1, backgroundColor: safeZoneBackgroundColor }}>
       {/* Status bar matches page background color only on welcome page, otherwise header background */}
       <StatusBar 
         style={isDarkMode ? 'light' : 'dark'} 

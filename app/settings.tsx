@@ -240,6 +240,7 @@ export default function SettingsScreen() {
         title="Settings" 
         showLeftIcon={false}
         showRightIcon={false}
+        backgroundColor={currentColors.backgroundAlt}
       />
 
       <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0, paddingTop: 16 }]}>
@@ -451,6 +452,7 @@ export default function SettingsScreen() {
               setCurrencySearchQuery('');
             }}
             showRightIcon={false}
+            backgroundColor={currentColors.backgroundAlt}
           />
 
           {/* Fixed Content Container */}
@@ -561,6 +563,7 @@ export default function SettingsScreen() {
             leftIcon="close"
             onLeftPress={() => setShowCategoriesModal(false)}
             showRightIcon={false}
+            backgroundColor={currentColors.backgroundAlt}
           />
 
           <ScrollView style={[themedStyles.content, { flex: 1, paddingHorizontal: 16, paddingTop: 16 }]} contentContainerStyle={{ paddingBottom: 24 }}>

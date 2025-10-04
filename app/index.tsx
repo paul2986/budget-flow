@@ -216,7 +216,10 @@ export default function HomeScreen() {
   if (loading) {
     return (
       <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
-        <StandardHeader title="Loading..." />
+        <StandardHeader 
+          title="Loading..." 
+          backgroundColor={currentColors.backgroundAlt}
+        />
         <View style={[themedStyles.content, { justifyContent: 'center', alignItems: 'center' }]}>
           <Text style={themedStyles.textSecondary}>Loading...</Text>
         </View>
@@ -355,11 +358,12 @@ export default function HomeScreen() {
   // Step 2: "Your Budget is Ready" page
   if (showBudgetReady) {
     return (
-      <View style={[themedStyles.container, { backgroundColor: currentColors.backgroundAlt }]}>
+      <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
         <StandardHeader 
           title="Budget Flow" 
           showLeftIcon={false}
           showRightIcon={false}
+          backgroundColor={currentColors.backgroundAlt}
         />
           
           <ScrollView 
@@ -525,7 +529,10 @@ export default function HomeScreen() {
   if (budgetLocked) {
     return (
       <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
-        <StandardHeader title={activeBudget?.name || 'Budget'} />
+        <StandardHeader 
+          title={activeBudget?.name || 'Budget'} 
+          backgroundColor={currentColors.backgroundAlt}
+        />
         
         <View style={{ flex: 1, position: 'relative' }}>
           <View style={{ flex: 1, opacity: 0.3 }}>
@@ -662,6 +669,7 @@ export default function HomeScreen() {
           title={activeBudget?.name || 'Budget'}
           rightIcon="wallet-outline"
           onRightPress={() => router.push('/budgets')}
+          backgroundColor={currentColors.backgroundAlt}
         />
 
         <ScrollView 
@@ -771,6 +779,7 @@ export default function HomeScreen() {
           title={activeBudget?.name || 'Budget'}
           rightIcon="wallet-outline"
           onRightPress={() => router.push('/budgets')}
+          backgroundColor={currentColors.backgroundAlt}
         />
 
         <ScrollView 
@@ -928,6 +937,7 @@ export default function HomeScreen() {
         title={activeBudget.name}
         rightIcon="wallet-outline"
         onRightPress={() => router.push('/budgets')}
+        backgroundColor={currentColors.backgroundAlt}
       />
 
       <ScrollView 

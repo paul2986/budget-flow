@@ -26,6 +26,7 @@ interface StandardHeaderProps {
   showLeftIcon?: boolean;
   rightButtons?: HeaderButton[]; // Optional multiple right buttons
   leftButtons?: HeaderButton[]; // Optional multiple left buttons
+  backgroundColor?: string; // Optional custom background color
 }
 
 export default function StandardHeader({
@@ -42,6 +43,7 @@ export default function StandardHeader({
   showLeftIcon = true,
   rightButtons,
   leftButtons,
+  backgroundColor,
 }: StandardHeaderProps) {
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
@@ -88,7 +90,14 @@ export default function StandardHeader({
   const sideWidth = Math.max(leftButtonsWidth, rightButtonsWidth);
 
   return (
-    <View style={[themedStyles.header, { height: subtitle ? 76 : 64, boxShadow: '0px 1px 2px rgba(0,0,0,0.10)' }]}>
+    <View style={[
+      themedStyles.header, 
+      { 
+        height: subtitle ? 76 : 64, 
+        boxShadow: '0px 1px 2px rgba(0,0,0,0.10)',
+        backgroundColor: backgroundColor || currentColors.backgroundAlt
+      }
+    ]}>
       {/* Left side - supports multiple left buttons */}
       <View style={{ width: sideWidth, height: 44, justifyContent: 'center', alignItems: 'flex-start', flexDirection: 'row' }}>
         {leftButtons && leftButtons.length > 0 ? (
