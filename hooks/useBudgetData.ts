@@ -346,76 +346,128 @@ export const useBudgetData = () => {
   const addBudget = useCallback(
     async (name: string) => {
       console.log('useBudgetData: addBudget called with name:', name);
-      const res = await safeAsyncResult(
-        () => storageAddBudget(name),
-        'storageAddBudget'
-      );
-      console.log('useBudgetData: addBudget storage result:', res);
-      if (res.success) {
-        console.log('useBudgetData: addBudget success, refreshing from storage');
-        try {
-          await refreshFromStorage();
-          // Trigger a refresh to ensure components re-render with new data
-          setRefreshTrigger(prev => prev + 1);
-        } catch (error) {
-          console.error('useBudgetData: Error refreshing after addBudget:', error);
-        }
-      }
-      return res;
+      
+      // Use setTimeout to defer the async operation and prevent UI blocking
+      return new Promise<{ success: boolean; error?: Error; budget?: Budget }>((resolve) => {
+        setTimeout(async () => {
+          try {
+            const res = await safeAsyncResult(
+              () => storageAddBudget(name),
+              'storageAddBudget'
+            );
+            console.log('useBudgetData: addBudget storage result:', res);
+            if (res.success) {
+              console.log('useBudgetData: addBudget success, refreshing from storage');
+              try {
+                await refreshFromStorage();
+                // Trigger a refresh to ensure components re-render with new data
+                setRefreshTrigger(prev => prev + 1);
+              } catch (error) {
+                console.error('useBudgetData: Error refreshing after addBudget:', error);
+              }
+            }
+            resolve(res);
+          } catch (error) {
+            console.error('useBudgetData: Error in addBudget:', error);
+            resolve({ success: false, error: error as Error });
+          }
+        }, 0);
+      });
     },
     [refreshFromStorage]
   );
 
   const renameBudget = useCallback(
     async (budgetId: string, newName: string) => {
-      const res = await safeAsyncResult(
-        () => storageRenameBudget(budgetId, newName),
-        'storageRenameBudget'
-      );
-      if (res.success) {
-        try {
-          await refreshFromStorage();
-        } catch (error) {
-          console.error('useBudgetData: Error refreshing after renameBudget:', error);
-        }
-      }
-      return res;
+      // Use setTimeout to defer the async operation and prevent UI blocking
+      return new Promise<{ success: boolean; error?: Error }>((resolve) => {
+        setTimeout(async () => {
+          try {
+            const res = await safeAsyncResult(
+              () => storageRenameBudget(budgetId, newName),
+              'storageRenameBudget'
+            );
+            if (res.success) {
+              try {
+                await refreshFromStorage();
+                setRefreshTrigger(prev => prev + 1);
+              } catch (error) {
+                console.error('useBudgetData: Error refreshing after renameBudget:', error);
+              }
+            }
+            resolve(res);
+          } catch (error) {
+            console.error('useBudgetData: Error in renameBudget:', error);
+            resolve({ success: false, error: error as Error });
+          }
+        }, 0);
+      });
     },
     [refreshFromStorage]
   );
 
   const deleteBudget = useCallback(
     async (budgetId: string) => {
-      const res = await safeAsyncResult(
-        () => storageDeleteBudget(budgetId),
-        'storageDeleteBudget'
-      );
-      if (res.success) {
-        try {
-          await refreshFromStorage();
-        } catch (error) {
-          console.error('useBudgetData: Error refreshing after deleteBudget:', error);
-        }
-      }
-      return res;
+      console.log('useBudgetData: deleteBudget called with budgetId:', budgetId);
+      
+      // Use setTimeout to defer the async operation and prevent UI blocking
+      return new Promise<{ success: boolean; error?: Error }>((resolve) => {
+        setTimeout(async () => {
+          try {
+            const res = await safeAsyncResult(
+              () => storageDeleteBudget(budgetId),
+              'storageDeleteBudget'
+            );
+            console.log('useBudgetData: deleteBudget storage result:', res);
+            if (res.success) {
+              console.log('useBudgetData: deleteBudget success, refreshing from storage');
+              try {
+                await refreshFromStorage();
+                setRefreshTrigger(prev => prev + 1);
+              } catch (error) {
+                console.error('useBudgetData: Error refreshing after deleteBudget:', error);
+              }
+            }
+            resolve(res);
+          } catch (error) {
+            console.error('useBudgetData: Error in deleteBudget:', error);
+            resolve({ success: false, error: error as Error });
+          }
+        }, 0);
+      });
     },
     [refreshFromStorage]
   );
 
   const duplicateBudget = useCallback(
     async (budgetId: string, customName?: string) => {
-      const res = await safeAsyncResult(
-        () => storageDuplicateBudget(budgetId, customName),
-        'storageDuplicateBudget'
-      );
-      if (res.success) {
-        try {
-          await refreshFromStorage();
-        } catch (error) {
-          console.error('useBudgetData: Error refreshing after duplicateBudget:', error);
-        }
-      }
-      return res;
+      console.log('useBudgetData: duplicateBudget called with:', { budgetId, customName });
+      
+      // Use setTimeout to defer the async operation and prevent UI blocking
+      return new Promise<{ success: boolean; error?: Error; budget?: Budget }>((resolve) => {
+        setTimeout(async () => {
+          try {
+            const res = await safeAsyncResult(
+              () => storageDuplicateBudget(budgetId, customName),
+              'storageDuplicateBudget'
+            );
+            console.log('useBudgetData: duplicateBudget storage result:', res);
+            if (res.success) {
+              console.log('useBudgetData: duplicateBudget success, refreshing from storage');
+              try {
+                await refreshFromStorage();
+                setRefreshTrigger(prev => prev + 1);
+              } catch (error) {
+                console.error('useBudgetData: Error refreshing after duplicateBudget:', error);
+              }
+            }
+            resolve(res);
+          } catch (error) {
+            console.error('useBudgetData: Error in duplicateBudget:', error);
+            resolve({ success: false, error: error as Error });
+          }
+        }, 0);
+      });
     },
     [refreshFromStorage]
   );

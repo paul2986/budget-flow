@@ -32,7 +32,8 @@ function CustomTabBar() {
   ], []);
 
   const shouldHideTabBar = useMemo(() => {
-    const alwaysShowPaths = ['/expenses', '/people', '/add-expense', '/settings', '/tools'];
+    // Always show tab bar on these paths, regardless of budget state
+    const alwaysShowPaths = ['/expenses', '/people', '/add-expense', '/settings', '/tools', '/budgets'];
     if (alwaysShowPaths.includes(pathname)) {
       return false;
     }

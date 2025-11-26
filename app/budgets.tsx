@@ -34,6 +34,7 @@ export default function BudgetsScreen() {
   const [dropdownBudgetId, setDropdownBudgetId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
+  const [operationInProgress, setOperationInProgress] = useState(false);
   const buttonRefs = useRef<{ [key: string]: TouchableOpacity | null }>({});
 
   // Refresh data when screen comes into focus
@@ -78,19 +79,22 @@ export default function BudgetsScreen() {
       return;
     }
 
+    setOperationInProgress(true);
     try {
       const result = await renameBudget(budgetId, editingName.trim());
       if (result.success) {
         showToast('Budget renamed successfully', 'success');
         setEditingBudgetId(null);
         setEditingName('');
-        setDropdownBudgetId(null); // Close dropdown after successful rename
+        setDropdownBudgetId(null);
       } else {
         showToast(result.error?.message || 'Failed to rename budget', 'error');
       }
     } catch (error) {
       console.error('Error renaming budget:', error);
       showToast('Failed to rename budget', 'error');
+    } finally {
+      setOperationInProgress(false);
     }
   }, [editingName, renameBudget, showToast]);
 
@@ -110,17 +114,20 @@ export default function BudgetsScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
+            setOperationInProgress(true);
+            setDropdownBudgetId(null); // Close dropdown immediately
             try {
               const result = await deleteBudget(budgetId);
               if (result.success) {
                 showToast('Budget deleted successfully', 'success');
-                setDropdownBudgetId(null); // Close dropdown after successful delete
               } else {
                 showToast(result.error?.message || 'Failed to delete budget', 'error');
               }
             } catch (error) {
               console.error('Error deleting budget:', error);
               showToast('Failed to delete budget', 'error');
+            } finally {
+              setOperationInProgress(false);
             }
           },
         },
@@ -129,33 +136,38 @@ export default function BudgetsScreen() {
   }, [deleteBudget, showToast, activeBudget]);
 
   const handleDuplicateBudget = useCallback(async (budgetId: string, budgetName: string) => {
+    setOperationInProgress(true);
+    setDropdownBudgetId(null); // Close dropdown immediately
     try {
       const result = await duplicateBudget(budgetId, `${budgetName} (Copy)`);
       if (result.success) {
         showToast('Budget duplicated successfully', 'success');
-        setDropdownBudgetId(null); // Close dropdown after successful duplicate
       } else {
         showToast(result.error?.message || 'Failed to duplicate budget', 'error');
       }
     } catch (error) {
       console.error('Error duplicating budget:', error);
       showToast('Failed to duplicate budget', 'error');
+    } finally {
+      setOperationInProgress(false);
     }
   }, [duplicateBudget, showToast]);
 
   const handleSetActiveBudget = useCallback(async (budgetId: string) => {
+    setOperationInProgress(true);
+    setDropdownBudgetId(null); // Close dropdown immediately
     try {
       const result = await setActiveBudget(budgetId);
       if (result.success) {
-        // Remove toast notification when switching active budgets
         console.log('Active budget changed successfully');
-        setDropdownBudgetId(null); // Close dropdown after successful activation
       } else {
         showToast(result.error?.message || 'Failed to set active budget', 'error');
       }
     } catch (error) {
       console.error('Error setting active budget:', error);
       showToast('Failed to set active budget', 'error');
+    } finally {
+      setOperationInProgress(false);
     }
   }, [setActiveBudget, showToast]);
 
@@ -280,7 +292,7 @@ export default function BudgetsScreen() {
                   alignItems: 'center',
                   paddingHorizontal: 16,
                   paddingVertical: 12,
-                  opacity: isActive ? 0.5 : 1, // Visual indication that active budget cannot be deleted
+                  opacity: isActive ? 0.5 : 1,
                 }}
                 onPress={() => {
                   console.log('Delete pressed for budget:', budget.id);
@@ -288,7 +300,7 @@ export default function BudgetsScreen() {
                     handleDeleteBudget(budget.id, budget.name);
                   }
                 }}
-                disabled={isActive} // Disable delete button for active budget
+                disabled={isActive}
                 activeOpacity={0.7}
               >
                 <Icon name="trash" size={18} color={isActive ? currentColors.textSecondary : currentColors.error} />
@@ -317,6 +329,33 @@ export default function BudgetsScreen() {
         onRightPress={() => setShowCreateModal(true)}
       />
 
+      {operationInProgress && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+        }}>
+          <View style={{
+            backgroundColor: currentColors.backgroundAlt,
+            padding: 24,
+            borderRadius: 16,
+            alignItems: 'center',
+            minWidth: 150,
+          }}>
+            <ActivityIndicator size="large" color={currentColors.primary} />
+            <Text style={[themedStyles.text, { marginTop: 16, fontSize: 16 }]}>
+              Processing...
+            </Text>
+          </View>
+        </View>
+      )}
+
       <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
         {/* Individual Budget Cards */}
         {budgets.length > 0 && budgets.map((budget) => {
@@ -330,7 +369,6 @@ export default function BudgetsScreen() {
                 themedStyles.card, 
                 { 
                   position: 'relative',
-                  // Make active budget more prominent with green highlighting
                   borderWidth: isActive ? 2 : 1,
                   borderColor: isActive ? currentColors.success : currentColors.border,
                   backgroundColor: isActive ? currentColors.success + '08' : currentColors.backgroundAlt,
@@ -373,6 +411,7 @@ export default function BudgetsScreen() {
                     <TouchableOpacity
                       onPress={() => !isActive && handleSetActiveBudget(budget.id)}
                       style={{ flex: 1 }}
+                      disabled={operationInProgress}
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                         <Text style={[
@@ -446,6 +485,7 @@ export default function BudgetsScreen() {
                       backgroundColor: currentColors.background + '80'
                     }}
                     activeOpacity={0.7}
+                    disabled={operationInProgress}
                   >
                     <Icon name="ellipsis-vertical" size={20} color={currentColors.text} />
                   </TouchableOpacity>
