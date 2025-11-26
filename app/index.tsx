@@ -26,6 +26,7 @@ import IndividualBreakdownsSection from '../components/IndividualBreakdownsSecti
 import ExpiringSection from '../components/ExpiringSection';
 import ExpenseBreakdownSection from '../components/ExpenseBreakdownSection';
 import Button from '../components/Button';
+import InfoModal from '../components/InfoModal';
 
 export default function HomeScreen() {
   // All hooks must be called at the top, before any conditional logic
@@ -48,6 +49,10 @@ export default function HomeScreen() {
   
   // Loading state management to prevent flickering
   const [isDataReady, setIsDataReady] = useState(false);
+  
+  // State for info modals
+  const [infoModalVisible, setInfoModalVisible] = useState(false);
+  const [infoModalContent, setInfoModalContent] = useState({ title: '', description: '' });
   
   const appState = useRef(AppState.currentState);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -222,6 +227,12 @@ export default function HomeScreen() {
 
   const handleContinueFromBudgetReady = useCallback(() => {
     setShowBudgetReady(false);
+  }, []);
+
+  // Handler for showing info modals
+  const showInfoModal = useCallback((title: string, description: string) => {
+    setInfoModalContent({ title, description });
+    setInfoModalVisible(true);
   }, []);
 
   // All useEffect hooks must be here
@@ -1022,9 +1033,25 @@ export default function HomeScreen() {
                     marginTop: -2,
                   }} 
                 />
-                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0 }]}>
+                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0, flex: 1 }]}>
                   Individual Breakdowns
                 </Text>
+                <TouchableOpacity
+                  onPress={() => showInfoModal(
+                    'Individual Breakdowns',
+                    'This section shows a detailed breakdown for each person in your budget. It displays their total income, personal expenses, household share, and remaining balance. The progress bar visualizes how their income is allocated across different expense categories.'
+                  )}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: currentColors.info + '20',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Icon name="information-circle-outline" size={20} style={{ color: currentColors.info }} />
+                </TouchableOpacity>
               </View>
               <IndividualBreakdownsSection 
                 people={people}
@@ -1052,9 +1079,25 @@ export default function HomeScreen() {
                     marginTop: -2,
                   }} 
                 />
-                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0 }]}>
+                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0, flex: 1 }]}>
                   Expense Breakdown
                 </Text>
+                <TouchableOpacity
+                  onPress={() => showInfoModal(
+                    'Expense Breakdown',
+                    'This section categorizes all your expenses into household and personal types. Each category shows the total amount, number of expenses, and percentage of your overall spending. Tap on any category to view the detailed list of expenses within that category.'
+                  )}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: currentColors.info + '20',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Icon name="information-circle-outline" size={20} style={{ color: currentColors.info }} />
+                </TouchableOpacity>
               </View>
               <ExpenseBreakdownSection 
                 key={`expense-breakdown-${activeBudget?.id || 'no-budget'}`}
@@ -1081,9 +1124,25 @@ export default function HomeScreen() {
                     marginTop: -2,
                   }} 
                 />
-                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0 }]}>
+                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0, flex: 1 }]}>
                   Ending & Expired
                 </Text>
+                <TouchableOpacity
+                  onPress={() => showInfoModal(
+                    'Ending & Expired',
+                    'This section helps you track expenses that have end dates. The "Expiring Soon" tab shows expenses ending within the next 30 days, while the "Ended" tab displays expenses that have already expired. You can extend the end date of expiring expenses by tapping the "Extend" button.'
+                  )}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: currentColors.info + '20',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Icon name="information-circle-outline" size={20} style={{ color: currentColors.info }} />
+                </TouchableOpacity>
               </View>
               <View style={[
                 themedStyles.card,
@@ -1097,6 +1156,14 @@ export default function HomeScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Info Modal */}
+      <InfoModal
+        visible={infoModalVisible}
+        onClose={() => setInfoModalVisible(false)}
+        title={infoModalContent.title}
+        description={infoModalContent.description}
+      />
     </View>
   );
 }
