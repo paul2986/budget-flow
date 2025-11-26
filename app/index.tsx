@@ -996,9 +996,25 @@ export default function HomeScreen() {
                     marginTop: -2,
                   }} 
                 />
-                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0 }]}>
+                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0, flex: 1 }]}>
                   Overview
                 </Text>
+                <TouchableOpacity
+                  onPress={() => showInfoModal(
+                    'Overview',
+                    'This section provides a high-level summary of your budget. You can switch between daily, monthly, and yearly views to see your total income, total expenses, and remaining balance. The breakdown shows how your expenses are split between household and personal categories.'
+                  )}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: currentColors.info + '20',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Icon name="information-circle-outline" size={20} style={{ color: currentColors.info }} />
+                </TouchableOpacity>
               </View>
               <View style={[
                 themedStyles.card,
