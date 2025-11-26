@@ -389,7 +389,7 @@ export default function ExpenseBreakdownSection({
             <Icon name={typeIcon} size={24} style={{ color: typeColor }} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[themedStyles.subtitle, { fontSize: 20, fontWeight: '700', marginBottom: 4 }]}>
+            <Text style={[themedStyles.subtitle, { fontSize: 17, fontWeight: '700', marginBottom: 4 }]}>
               {isHousehold 
                 ? 'Household Expenses' 
                 : selectedPersonName 
