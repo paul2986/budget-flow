@@ -5,7 +5,7 @@ import { useTheme } from '../hooks/useTheme';
 
 interface ButtonProps {
   text?: string;
-  title?: string; // For backward compatibility
+  title?: string;
   onPress: () => void;
   style?: ViewStyle | ViewStyle[];
   textStyle?: TextStyle;
@@ -26,24 +26,10 @@ export default function Button({
   icon, 
   variant = 'primary' 
 }: ButtonProps) {
-  const { currentColors, isDarkMode } = useTheme();
+  const { currentColors } = useTheme();
 
-  // Use text prop first, then title for backward compatibility
   const buttonText = text || title || '';
 
-  console.log('Button: Rendering button with text:', buttonText, 'disabled:', disabled, 'loading:', loading, 'variant:', variant);
-
-  const handlePress = () => {
-    console.log('Button: Button pressed:', buttonText, 'disabled:', disabled, 'loading:', loading);
-    if (!disabled && !loading && onPress) {
-      console.log('Button: Calling onPress for:', buttonText);
-      onPress();
-    } else {
-      console.log('Button: onPress not called - disabled:', disabled, 'loading:', loading, 'onPress exists:', !!onPress);
-    }
-  };
-
-  // Get button colors based on variant and theme
   const getButtonColors = () => {
     if (disabled || loading) {
       return {
@@ -100,7 +86,7 @@ export default function Button({
         },
         style
       ]}
-      onPress={handlePress}
+      onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.8}
       accessible={true}
@@ -125,9 +111,7 @@ export default function Button({
           <Text 
             style={[
               styles.text, 
-              { 
-                color: buttonColors.textColor,
-              },
+              { color: buttonColors.textColor },
               textStyle
             ]}
           >
