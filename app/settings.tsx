@@ -13,6 +13,15 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { DEFAULT_CATEGORIES } from '../types/budget';
 import { getCustomExpenseCategories, saveCustomExpenseCategories, normalizeCategoryName, renameCustomExpenseCategory } from '../utils/storage';
 
+type SettingsSection = 
+  | 'budgets'
+  | 'categories'
+  | 'currency'
+  | 'theme'
+  | 'tools'
+  | 'about'
+  | 'danger';
+
 export default function SettingsScreen() {
   const { currentColors, themeMode, setThemeMode } = useTheme();
   const { currency, setCurrency } = useCurrency();
@@ -20,6 +29,9 @@ export default function SettingsScreen() {
   const { themedStyles, isPad } = useThemedStyles();
   const { showToast } = useToast();
   
+  // iPad split view state
+  const [selectedSection, setSelectedSection] = useState<SettingsSection>('budgets');
+
   // Currency selection modal state
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [currencySearchQuery, setCurrencySearchQuery] = useState('');
@@ -37,7 +49,6 @@ export default function SettingsScreen() {
   const [creating, setCreating] = useState(false);
 
   const handleDistributionMethodChange = (method: 'even' | 'income-based') => {
-    // This would need to be implemented in useBudgetData if needed
     console.log('Distribution method change:', method);
     showToast(`Distribution method changed to ${method}`, 'success');
   };
@@ -60,7 +71,6 @@ export default function SettingsScreen() {
             try {
               await clearAllData();
               showToast('All data cleared successfully', 'success');
-              // Longer delay to ensure data state has fully updated and propagated
               setTimeout(() => {
                 console.log('Settings: Navigating to home after clearing data');
                 router.replace('/');
@@ -153,7 +163,7 @@ export default function SettingsScreen() {
       
       if (result.success) {
         await refreshCategories();
-        await refreshData(); // Refresh budget data to reflect changes in expenses
+        await refreshData();
         setRenameModalVisible(false);
         setCategoryToRename('');
         setNewCategoryName('');
@@ -188,13 +198,11 @@ export default function SettingsScreen() {
 
     const normalized = normalizeCategoryName(trimmedName);
     
-    // Check if it conflicts with default categories
     if (DEFAULT_CATEGORIES.includes(normalized)) {
       Alert.alert('Error', 'This category name conflicts with a default category.');
       return;
     }
 
-    // Check if it already exists in custom categories
     if (customs.includes(normalized)) {
       Alert.alert('Error', 'A category with this name already exists.');
       return;
@@ -220,7 +228,7 @@ export default function SettingsScreen() {
     setNewCategoryInput('');
   };
 
-  // Filter currencies based on search query - show ALL results, not just 10
+  // Filter currencies based on search query
   const filteredCurrencies = useMemo(() => {
     if (!currencySearchQuery.trim()) {
       return CURRENCIES;
@@ -234,6 +242,844 @@ export default function SettingsScreen() {
     );
   }, [currencySearchQuery]);
 
+  // Navigation items for iPad sidebar
+  const navigationItems = [
+    { id: 'budgets' as SettingsSection, icon: 'folder-outline', label: 'Budgets', subtitle: `${appData?.budgets?.length || 0} budget${(appData?.budgets?.length || 0) !== 1 ? 's' : ''}` },
+    { id: 'categories' as SettingsSection, icon: 'pricetags-outline', label: 'Categories', subtitle: 'Manage expense categories' },
+    { id: 'currency' as SettingsSection, icon: 'card-outline', label: 'Currency', subtitle: `${currency.symbol} ${currency.code}` },
+    { id: 'theme' as SettingsSection, icon: 'color-palette-outline', label: 'Theme', subtitle: themeMode.charAt(0).toUpperCase() + themeMode.slice(1) },
+    { id: 'tools' as SettingsSection, icon: 'calculator-outline', label: 'Financial Tools', subtitle: 'Credit card calculator' },
+    { id: 'about' as SettingsSection, icon: 'information-circle-outline', label: 'About', subtitle: 'App information' },
+    { id: 'danger' as SettingsSection, icon: 'warning', label: 'Danger Zone', subtitle: 'Clear all data' },
+  ];
+
+  // Render detail view based on selected section
+  const renderDetailView = () => {
+    switch (selectedSection) {
+      case 'budgets':
+        return (
+          <View style={{ flex: 1 }}>
+            <Text style={[themedStyles.title, { textAlign: 'left', marginBottom: 16 }]}>Budgets</Text>
+            <Text style={[themedStyles.textSecondary, { marginBottom: 24 }]}>
+              Manage your budgets, create new ones, or switch between existing budgets.
+            </Text>
+            <TouchableOpacity
+              style={[themedStyles.card, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+              onPress={() => router.push('/budgets')}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <Icon name="folder-outline" size={24} style={{ color: currentColors.primary, marginRight: 16 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 4 }]}>Manage Budgets</Text>
+                  <Text style={themedStyles.textSecondary}>
+                    {appData?.budgets?.length || 0} budget{(appData?.budgets?.length || 0) !== 1 ? 's' : ''}
+                  </Text>
+                </View>
+              </View>
+              <Icon name="chevron-forward" size={24} style={{ color: currentColors.textSecondary }} />
+            </TouchableOpacity>
+          </View>
+        );
+
+      case 'categories':
+        return (
+          <View style={{ flex: 1 }}>
+            <Text style={[themedStyles.title, { textAlign: 'left', marginBottom: 16 }]}>Categories</Text>
+            <Text style={[themedStyles.textSecondary, { marginBottom: 24 }]}>
+              Customize your expense categories to better organize your spending.
+            </Text>
+            <TouchableOpacity
+              style={[themedStyles.card, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+              onPress={handleManageCategoriesPress}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <Icon name="pricetags-outline" size={24} style={{ color: currentColors.primary, marginRight: 16 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 4 }]}>Manage Categories</Text>
+                  <Text style={themedStyles.textSecondary}>
+                    Customize expense categories
+                  </Text>
+                </View>
+              </View>
+              <Icon name="chevron-forward" size={24} style={{ color: currentColors.textSecondary }} />
+            </TouchableOpacity>
+          </View>
+        );
+
+      case 'currency':
+        return (
+          <View style={{ flex: 1 }}>
+            <Text style={[themedStyles.title, { textAlign: 'left', marginBottom: 16 }]}>Currency</Text>
+            <Text style={[themedStyles.textSecondary, { marginBottom: 24 }]}>
+              Select your preferred currency for displaying amounts throughout the app.
+            </Text>
+            <TouchableOpacity
+              style={[themedStyles.card, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+              onPress={() => setShowCurrencyModal(true)}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <Icon name="card-outline" size={24} style={{ color: currentColors.primary, marginRight: 16 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 4 }]}>Current Currency</Text>
+                  <Text style={themedStyles.textSecondary}>
+                    {currency.symbol} {currency.name} ({currency.code})
+                  </Text>
+                </View>
+              </View>
+              <Icon name="chevron-forward" size={24} style={{ color: currentColors.textSecondary }} />
+            </TouchableOpacity>
+          </View>
+        );
+
+      case 'theme':
+        return (
+          <View style={{ flex: 1 }}>
+            <Text style={[themedStyles.title, { textAlign: 'left', marginBottom: 16 }]}>Theme</Text>
+            <Text style={[themedStyles.textSecondary, { marginBottom: 24 }]}>
+              Choose your preferred color scheme for the app.
+            </Text>
+            <View style={themedStyles.card}>
+              {[
+                { key: 'system', label: 'System', description: 'Follow device settings' },
+                { key: 'light', label: 'Light', description: 'Light color scheme' },
+                { key: 'dark', label: 'Dark', description: 'Dark color scheme' },
+              ].map((theme, index) => (
+                <TouchableOpacity
+                  key={theme.key}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingVertical: 16,
+                    borderBottomWidth: index === 2 ? 0 : 1,
+                    borderBottomColor: currentColors.border,
+                  }}
+                  onPress={() => handleThemeChange(theme.key as any)}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 4 }]}>{theme.label}</Text>
+                    <Text style={themedStyles.textSecondary}>{theme.description}</Text>
+                  </View>
+                  {themeMode === theme.key && (
+                    <Icon name="checkmark-circle" size={24} style={{ color: currentColors.primary }} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        );
+
+      case 'tools':
+        return (
+          <View style={{ flex: 1 }}>
+            <Text style={[themedStyles.title, { textAlign: 'left', marginBottom: 16 }]}>Financial Tools</Text>
+            <Text style={[themedStyles.textSecondary, { marginBottom: 24 }]}>
+              Access helpful financial calculators and tools.
+            </Text>
+            <TouchableOpacity
+              style={[themedStyles.card, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+              onPress={() => router.push('/tools')}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <Icon name="calculator-outline" size={24} style={{ color: currentColors.primary, marginRight: 16 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 4 }]}>Credit Card Payoff Calculator</Text>
+                  <Text style={themedStyles.textSecondary}>
+                    Calculate how long it will take to pay off your credit card
+                  </Text>
+                </View>
+              </View>
+              <Icon name="chevron-forward" size={24} style={{ color: currentColors.textSecondary }} />
+            </TouchableOpacity>
+          </View>
+        );
+
+      case 'about':
+        return (
+          <View style={{ flex: 1 }}>
+            <Text style={[themedStyles.title, { textAlign: 'left', marginBottom: 16 }]}>About</Text>
+            <Text style={[themedStyles.textSecondary, { marginBottom: 24 }]}>
+              Information about Budget Flow and your data.
+            </Text>
+            <View style={themedStyles.card}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                <Icon name="wallet-outline" size={32} style={{ color: currentColors.primary, marginRight: 16 }} />
+                <View>
+                  <Text style={[themedStyles.subtitle, { marginBottom: 4 }]}>Budget Flow</Text>
+                  <Text style={themedStyles.textSecondary}>Version 1.0.0</Text>
+                </View>
+              </View>
+              <View style={{ paddingTop: 20, borderTopWidth: 1, borderTopColor: currentColors.border }}>
+                <Text style={[themedStyles.text, { marginBottom: 12, lineHeight: 24 }]}>
+                  Offline-first budget tracking app
+                </Text>
+                <Text style={[themedStyles.textSecondary, { lineHeight: 22 }]}>
+                  • No accounts required{'\n'}
+                  • All data stored locally{'\n'}
+                  • Complete privacy{'\n'}
+                  • Track household and personal expenses{'\n'}
+                  • Manage multiple budgets
+                </Text>
+              </View>
+            </View>
+          </View>
+        );
+
+      case 'danger':
+        return (
+          <View style={{ flex: 1 }}>
+            <Text style={[themedStyles.title, { textAlign: 'left', marginBottom: 16, color: currentColors.error }]}>Danger Zone</Text>
+            <Text style={[themedStyles.textSecondary, { marginBottom: 24 }]}>
+              Irreversible actions that will permanently delete your data.
+            </Text>
+            <View style={[
+              themedStyles.card, 
+              { 
+                borderColor: currentColors.error + '40',
+                borderWidth: 2,
+                backgroundColor: currentColors.error + '08',
+              }
+            ]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                <Icon name="warning" size={32} style={{ color: currentColors.error, marginRight: 16 }} />
+                <Text style={[themedStyles.subtitle, { color: currentColors.error, marginBottom: 0 }]}>
+                  Clear All Data
+                </Text>
+              </View>
+              
+              <Text style={[themedStyles.text, { marginBottom: 24, lineHeight: 24 }]}>
+                This action will permanently delete all your budgets, people, expenses, and settings. This cannot be undone.
+              </Text>
+              
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingVertical: 16,
+                  paddingHorizontal: 24,
+                  backgroundColor: currentColors.error,
+                  borderRadius: 12,
+                  borderWidth: 2,
+                  borderColor: currentColors.error,
+                }}
+                onPress={handleClearAllData}
+              >
+                <Icon name="trash" size={24} style={{ color: currentColors.background, marginRight: 12 }} />
+                <Text style={[themedStyles.text, { color: currentColors.background, fontWeight: '700', fontSize: 18 }]}>
+                  Clear All Data
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  // iPad split view layout
+  if (isPad) {
+    return (
+      <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
+        <StandardHeader 
+          title="Settings" 
+          showLeftIcon={false}
+          showRightIcon={false}
+          backgroundColor={currentColors.backgroundAlt}
+        />
+
+        <View style={{ flex: 1, flexDirection: 'row' }}>
+          {/* Left Navigation Sidebar */}
+          <View style={{
+            width: 320,
+            backgroundColor: currentColors.backgroundAlt,
+            borderRightWidth: 1,
+            borderRightColor: currentColors.border,
+          }}>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+              {navigationItems.map((item, index) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: 16,
+                    borderRadius: 12,
+                    marginBottom: 8,
+                    backgroundColor: selectedSection === item.id ? currentColors.primary + '15' : 'transparent',
+                    borderWidth: selectedSection === item.id ? 2 : 0,
+                    borderColor: selectedSection === item.id ? currentColors.primary : 'transparent',
+                  }}
+                  onPress={() => setSelectedSection(item.id)}
+                >
+                  <Icon 
+                    name={item.icon} 
+                    size={24} 
+                    style={{ 
+                      color: selectedSection === item.id ? currentColors.primary : currentColors.text,
+                      marginRight: 16 
+                    }} 
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[
+                      themedStyles.text, 
+                      { 
+                        fontWeight: selectedSection === item.id ? '700' : '600',
+                        marginBottom: 4,
+                        color: selectedSection === item.id ? currentColors.primary : currentColors.text
+                      }
+                    ]}>
+                      {item.label}
+                    </Text>
+                    <Text style={[
+                      themedStyles.textSecondary, 
+                      { 
+                        fontSize: 13,
+                        color: selectedSection === item.id ? currentColors.primary + 'CC' : currentColors.textSecondary
+                      }
+                    ]}>
+                      {item.subtitle}
+                    </Text>
+                  </View>
+                  {selectedSection === item.id && (
+                    <Icon name="chevron-forward" size={20} style={{ color: currentColors.primary }} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* App Version Footer */}
+            <View style={{
+              padding: 16,
+              borderTopWidth: 1,
+              borderTopColor: currentColors.border,
+              backgroundColor: currentColors.background,
+            }}>
+              <Text style={[themedStyles.textSecondary, { fontSize: 12, textAlign: 'center', lineHeight: 18 }]}>
+                Budget Flow v1.0.0{'\n'}
+                Offline-first budget tracking
+              </Text>
+            </View>
+          </View>
+
+          {/* Right Detail View */}
+          <ScrollView 
+            style={{ flex: 1 }} 
+            contentContainerStyle={{ 
+              padding: 48,
+              paddingBottom: 140,
+            }}
+          >
+            {renderDetailView()}
+          </ScrollView>
+        </View>
+
+        {/* Currency Selection Modal */}
+        <Modal
+          visible={showCurrencyModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => {
+            setShowCurrencyModal(false);
+            setCurrencySearchQuery('');
+          }}
+        >
+          <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
+            <StandardHeader 
+              title="Select Currency" 
+              showLeftIcon={true}
+              leftIcon="close"
+              onLeftPress={() => {
+                setShowCurrencyModal(false);
+                setCurrencySearchQuery('');
+              }}
+              showRightIcon={false}
+              backgroundColor={currentColors.backgroundAlt}
+            />
+
+            <View style={[themedStyles.content, { flex: 1, paddingHorizontal: 16, paddingTop: 16 }]}>
+              <View style={[themedStyles.card, { marginBottom: 16 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                  <Icon name="search" size={20} style={{ color: currentColors.textSecondary, marginRight: 8 }} />
+                  <Text style={[themedStyles.text, { fontWeight: '600' }]}>Search Currencies</Text>
+                </View>
+                <TextInput
+                  style={[
+                    themedStyles.input,
+                    {
+                      marginBottom: 0,
+                      borderColor: currentColors.border,
+                    }
+                  ]}
+                  value={currencySearchQuery}
+                  onChangeText={setCurrencySearchQuery}
+                  placeholder="Search by name, code, or symbol..."
+                  placeholderTextColor={currentColors.textSecondary}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              <View style={[themedStyles.card, { marginBottom: 16, paddingBottom: 12 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Icon name="globe-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                  <Text style={[themedStyles.text, { fontWeight: '600' }]}>
+                    {currencySearchQuery.trim() 
+                      ? `Search Results (${filteredCurrencies.length})` 
+                      : `All Currencies (${CURRENCIES.length})`
+                    }
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[
+                themedStyles.card, 
+                { 
+                  flex: 1, 
+                  padding: 0, 
+                  overflow: 'hidden'
+                }
+              ]}>
+                <ScrollView 
+                  style={{ flex: 1 }}
+                  contentContainerStyle={{ padding: 16 }}
+                  showsVerticalScrollIndicator={true}
+                  nestedScrollEnabled={true}
+                >
+                  {filteredCurrencies.length === 0 ? (
+                    <View style={{ alignItems: 'center', padding: 20 }}>
+                      <Icon name="search" size={32} style={{ color: currentColors.textSecondary, marginBottom: 8 }} />
+                      <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
+                        No currencies found matching "{currencySearchQuery}"
+                      </Text>
+                    </View>
+                  ) : (
+                    filteredCurrencies.map((curr, index) => (
+                      <TouchableOpacity
+                        key={curr.code}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          paddingVertical: 12,
+                          borderBottomWidth: index === filteredCurrencies.length - 1 ? 0 : 1,
+                          borderBottomColor: currentColors.border,
+                        }}
+                        onPress={() => handleCurrencyChange(curr)}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 2 }]}>
+                            {curr.name}
+                          </Text>
+                          <Text style={themedStyles.textSecondary}>
+                            {curr.symbol} • {curr.code}
+                          </Text>
+                        </View>
+                        {currency.code === curr.code && (
+                          <Icon name="checkmark-circle" size={24} style={{ color: currentColors.primary }} />
+                        )}
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </ScrollView>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Manage Categories Modal */}
+        <Modal
+          visible={showCategoriesModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowCategoriesModal(false)}
+        >
+          <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
+            <StandardHeader 
+              title="Manage Categories" 
+              showLeftIcon={true}
+              leftIcon="close"
+              onLeftPress={() => setShowCategoriesModal(false)}
+              showRightIcon={false}
+              backgroundColor={currentColors.backgroundAlt}
+            />
+
+            <ScrollView style={[themedStyles.content, { flex: 1, paddingHorizontal: 16, paddingTop: 16 }]} contentContainerStyle={{ paddingBottom: 24 }}>
+              <View style={[themedStyles.card, { marginBottom: 16 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                  <Icon name="shield-checkmark-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                  <Text style={[themedStyles.text, { fontWeight: '600' }]}>Default Categories</Text>
+                </View>
+                <Text style={[themedStyles.textSecondary, { marginBottom: 12, fontSize: 14 }]}>
+                  These categories cannot be deleted.
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                  {DEFAULT_CATEGORIES.map((c) => (
+                    <View
+                      key={c}
+                      style={[
+                        themedStyles.badge,
+                        {
+                          backgroundColor: currentColors.border,
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 16,
+                          marginRight: 8,
+                          marginBottom: 8,
+                        },
+                      ]}
+                    >
+                      <Text style={[themedStyles.badgeText, { color: currentColors.text, fontSize: 12 }]}>{c}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              <View style={[themedStyles.card, { flex: 1 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Icon name="pricetags-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                    <Text style={[themedStyles.text, { fontWeight: '600' }]}>Custom Categories</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={handleCreateCategory}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: currentColors.primary,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      borderRadius: 20,
+                    }}
+                    accessibilityLabel="Add new category"
+                    accessibilityRole="button"
+                  >
+                    <Icon name="add" size={16} style={{ color: 'white', marginRight: 4 }} />
+                    <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>Add New</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {categoriesLoading ? (
+                  <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+                    <ActivityIndicator size="small" color={currentColors.primary} />
+                    <Text style={[themedStyles.textSecondary, { marginTop: 8 }]}>Loading...</Text>
+                  </View>
+                ) : customs.length === 0 ? (
+                  <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+                    <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 16 }]}>
+                      No custom categories yet.
+                    </Text>
+                    <TouchableOpacity
+                      onPress={handleCreateCategory}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: currentColors.primary + '15',
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: currentColors.primary + '30',
+                      }}
+                    >
+                      <Icon name="add" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                      <Text style={{ color: currentColors.primary, fontSize: 14, fontWeight: '600' }}>Create Your First Category</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  customs.map((c) => {
+                    const used = isInUse(c);
+                    return (
+                      <View
+                        key={c}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          paddingVertical: 12,
+                          borderBottomWidth: customs.indexOf(c) === customs.length - 1 ? 0 : 1,
+                          borderBottomColor: currentColors.border,
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <View
+                            style={[
+                              themedStyles.badge,
+                              {
+                                backgroundColor: currentColors.secondary + '20',
+                                paddingHorizontal: 10,
+                                paddingVertical: 6,
+                                borderRadius: 16,
+                                marginRight: 12,
+                                borderWidth: 1,
+                                borderColor: currentColors.secondary,
+                              },
+                            ]}
+                          >
+                            <Text style={[themedStyles.text, { color: currentColors.secondary, fontSize: 12, fontWeight: '700' }]}>{c}</Text>
+                          </View>
+                          {used && <Text style={[themedStyles.textSecondary, { color: currentColors.warning }]}>In use</Text>}
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <TouchableOpacity
+                            onPress={() => handleRenameCategory(c)}
+                            style={{
+                              padding: 10,
+                              borderRadius: 8,
+                              backgroundColor: currentColors.primary + '15',
+                              marginRight: 8,
+                            }}
+                            accessibilityLabel={`Rename ${c}`}
+                            accessibilityRole="button"
+                          >
+                            <Icon name="pencil-outline" size={20} style={{ color: currentColors.primary }} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => handleDeleteCategory(c)}
+                            disabled={used}
+                            style={{
+                              padding: 10,
+                              borderRadius: 8,
+                              backgroundColor: used ? currentColors.border : currentColors.error + '15',
+                            }}
+                            accessibilityLabel={`Delete ${c}`}
+                            accessibilityRole="button"
+                          >
+                            <Icon 
+                              name="trash-outline" 
+                              size={20} 
+                              style={{ color: used ? currentColors.textSecondary : currentColors.error }} 
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            </ScrollView>
+          </View>
+        </Modal>
+
+        {/* Rename Category Modal */}
+        <Modal
+          visible={renameModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={handleRenameCancel}
+        >
+          <KeyboardAvoidingView 
+            style={{ flex: 1 }} 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <View style={{
+              flex: 1,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingHorizontal: 20,
+            }}>
+              <View style={[
+                themedStyles.card,
+                {
+                  width: '100%',
+                  maxWidth: 400,
+                  padding: 24,
+                  borderRadius: 16,
+                  backgroundColor: currentColors.background,
+                }
+              ]}>
+                <Text style={[
+                  themedStyles.title, 
+                  { 
+                    marginBottom: 8, 
+                    textAlign: 'center',
+                    color: currentColors.text,
+                    fontSize: 20,
+                    fontWeight: '700'
+                  }
+                ]}>
+                  Rename Category
+                </Text>
+                <Text style={[
+                  themedStyles.textSecondary, 
+                  { 
+                    marginBottom: 20, 
+                    textAlign: 'center',
+                    color: currentColors.textSecondary,
+                    fontSize: 14
+                  }
+                ]}>
+                  Enter a new name for "{categoryToRename}"
+                </Text>
+
+                <View style={{ marginBottom: 24 }}>
+                  <Text style={[
+                    themedStyles.text, 
+                    { 
+                      marginBottom: 8,
+                      color: currentColors.text,
+                      fontSize: 16,
+                      fontWeight: '600'
+                    }
+                  ]}>
+                    Category Name
+                  </Text>
+                  <TextInput
+                    style={[
+                      themedStyles.input,
+                      {
+                        borderColor: currentColors.border,
+                        borderWidth: 1,
+                        borderRadius: 12,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        fontSize: 16,
+                        color: currentColors.text,
+                        backgroundColor: currentColors.background,
+                      }
+                    ]}
+                    value={newCategoryName}
+                    onChangeText={setNewCategoryName}
+                    placeholder="Enter category name"
+                    placeholderTextColor={currentColors.textSecondary}
+                    maxLength={20}
+                    autoFocus={true}
+                    selectTextOnFocus={true}
+                  />
+                </View>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+                  <Button
+                    text="Cancel"
+                    onPress={handleRenameCancel}
+                    variant="outline"
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    text={renaming ? "Renaming..." : "Rename"}
+                    onPress={handleRenameSubmit}
+                    disabled={!newCategoryName.trim() || newCategoryName.trim() === categoryToRename || renaming}
+                    style={{ flex: 1 }}
+                  />
+                </View>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Create Category Modal */}
+        <Modal
+          visible={createModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={handleCreateCancel}
+        >
+          <KeyboardAvoidingView 
+            style={{ flex: 1 }} 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <View style={{
+              flex: 1,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingHorizontal: 20,
+            }}>
+              <View style={[
+                themedStyles.card,
+                {
+                  width: '100%',
+                  maxWidth: 400,
+                  padding: 24,
+                  borderRadius: 16,
+                  backgroundColor: currentColors.background,
+                }
+              ]}>
+                <Text style={[
+                  themedStyles.title, 
+                  { 
+                    marginBottom: 8, 
+                    textAlign: 'center',
+                    color: currentColors.text,
+                    fontSize: 20,
+                    fontWeight: '700'
+                  }
+                ]}>
+                  Create New Category
+                </Text>
+                <Text style={[
+                  themedStyles.textSecondary, 
+                  { 
+                    marginBottom: 20, 
+                    textAlign: 'center',
+                    color: currentColors.textSecondary,
+                    fontSize: 14
+                  }
+                ]}>
+                  Enter a name for your new custom category
+                </Text>
+
+                <View style={{ marginBottom: 24 }}>
+                  <Text style={[
+                    themedStyles.text, 
+                    { 
+                      marginBottom: 8,
+                      color: currentColors.text,
+                      fontSize: 16,
+                      fontWeight: '600'
+                    }
+                  ]}>
+                    Category Name
+                  </Text>
+                  <TextInput
+                    style={[
+                      themedStyles.input,
+                      {
+                        borderColor: currentColors.border,
+                        borderWidth: 1,
+                        borderRadius: 12,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        fontSize: 16,
+                        color: currentColors.text,
+                        backgroundColor: currentColors.background,
+                      }
+                    ]}
+                    value={newCategoryInput}
+                    onChangeText={setNewCategoryInput}
+                    placeholder="Enter category name"
+                    placeholderTextColor={currentColors.textSecondary}
+                    maxLength={20}
+                    autoFocus={true}
+                  />
+                </View>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+                  <Button
+                    text="Cancel"
+                    onPress={handleCreateCancel}
+                    variant="outline"
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    text={creating ? "Creating..." : "Create"}
+                    onPress={handleCreateSubmit}
+                    disabled={!newCategoryInput.trim() || creating}
+                    style={{ flex: 1 }}
+                  />
+                </View>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+      </View>
+    );
+  }
+
+  // iPhone layout (original single-column layout)
   return (
     <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
       <StandardHeader 
@@ -245,7 +1091,7 @@ export default function SettingsScreen() {
 
       <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0, paddingTop: 16 }]}>
         {/* App Info */}
-        <View style={[themedStyles.card, { marginBottom: 24, maxWidth: isPad ? 600 : undefined, alignSelf: isPad ? 'center' : undefined, width: '100%' }]}>
+        <View style={[themedStyles.card, { marginBottom: 24 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
             <Icon name="wallet-outline" size={24} style={{ color: currentColors.primary, marginRight: 12 }} />
             <Text style={[themedStyles.subtitle, { flex: 1 }]}>Budget Flow</Text>
@@ -256,7 +1102,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Budgets */}
-        <View style={[themedStyles.card, { marginBottom: 16, maxWidth: isPad ? 600 : undefined, alignSelf: isPad ? 'center' : undefined, width: '100%' }]}>
+        <View style={[themedStyles.card, { marginBottom: 16 }]}>
           <TouchableOpacity
             style={{
               flexDirection: 'row',
@@ -280,7 +1126,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Categories */}
-        <View style={[themedStyles.card, { marginBottom: 16, maxWidth: isPad ? 600 : undefined, alignSelf: isPad ? 'center' : undefined, width: '100%' }]}>
+        <View style={[themedStyles.card, { marginBottom: 16 }]}>
           <TouchableOpacity
             style={{
               flexDirection: 'row',
@@ -304,7 +1150,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Currency */}
-        <View style={[themedStyles.card, { marginBottom: 16, maxWidth: isPad ? 600 : undefined, alignSelf: isPad ? 'center' : undefined, width: '100%' }]}>
+        <View style={[themedStyles.card, { marginBottom: 16 }]}>
           <TouchableOpacity
             style={{
               flexDirection: 'row',
@@ -328,7 +1174,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Theme */}
-        <View style={[themedStyles.card, { marginBottom: 16, maxWidth: isPad ? 600 : undefined, alignSelf: isPad ? 'center' : undefined, width: '100%' }]}>
+        <View style={[themedStyles.card, { marginBottom: 16 }]}>
           <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 12 }]}>Theme</Text>
           {[
             { key: 'system', label: 'System' },
@@ -356,7 +1202,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Tools */}
-        <View style={[themedStyles.card, { marginBottom: 16, maxWidth: isPad ? 600 : undefined, alignSelf: isPad ? 'center' : undefined, width: '100%' }]}>
+        <View style={[themedStyles.card, { marginBottom: 16 }]}>
           <TouchableOpacity
             style={{
               flexDirection: 'row',
@@ -387,9 +1233,6 @@ export default function SettingsScreen() {
             borderColor: currentColors.error + '40',
             borderWidth: 2,
             backgroundColor: currentColors.error + '08',
-            maxWidth: isPad ? 600 : undefined,
-            alignSelf: isPad ? 'center' : undefined,
-            width: '100%'
           }
         ]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
@@ -425,7 +1268,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* App Info */}
-        <View style={[themedStyles.card, { backgroundColor: currentColors.backgroundAlt, maxWidth: isPad ? 600 : undefined, alignSelf: isPad ? 'center' : undefined, width: '100%' }]}>
+        <View style={[themedStyles.card, { backgroundColor: currentColors.backgroundAlt }]}>
           <Text style={[themedStyles.textSecondary, { fontSize: 12, textAlign: 'center', lineHeight: 18 }]}>
             Budget Flow v1.0.0{'\n'}
             Offline-first budget tracking{'\n'}
@@ -434,7 +1277,7 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
-      {/* Currency Selection Modal - Fixed structure */}
+      {/* Currency Selection Modal */}
       <Modal
         visible={showCurrencyModal}
         animationType="slide"
@@ -445,7 +1288,6 @@ export default function SettingsScreen() {
         }}
       >
         <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
-          {/* Fixed Header */}
           <StandardHeader 
             title="Select Currency" 
             showLeftIcon={true}
@@ -458,9 +1300,7 @@ export default function SettingsScreen() {
             backgroundColor={currentColors.backgroundAlt}
           />
 
-          {/* Fixed Content Container */}
           <View style={[themedStyles.content, { flex: 1, paddingHorizontal: 16, paddingTop: 16 }]}>
-            {/* Fixed Search Section */}
             <View style={[themedStyles.card, { marginBottom: 16 }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
                 <Icon name="search" size={20} style={{ color: currentColors.textSecondary, marginRight: 8 }} />
@@ -483,7 +1323,6 @@ export default function SettingsScreen() {
               />
             </View>
 
-            {/* Fixed Results Header */}
             <View style={[themedStyles.card, { marginBottom: 16, paddingBottom: 12 }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Icon name="globe-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
@@ -496,13 +1335,12 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            {/* Scrollable Currency List Container - This stays in place */}
             <View style={[
               themedStyles.card, 
               { 
                 flex: 1, 
                 padding: 0, 
-                overflow: 'hidden' // Ensure rounded corners are maintained
+                overflow: 'hidden'
               }
             ]}>
               <ScrollView 
@@ -570,7 +1408,6 @@ export default function SettingsScreen() {
           />
 
           <ScrollView style={[themedStyles.content, { flex: 1, paddingHorizontal: 16, paddingTop: 16 }]} contentContainerStyle={{ paddingBottom: 24 }}>
-            {/* Default Categories Section */}
             <View style={[themedStyles.card, { marginBottom: 16 }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                 <Icon name="shield-checkmark-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
@@ -601,7 +1438,6 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            {/* Custom Categories Section */}
             <View style={[themedStyles.card, { flex: 1 }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -782,7 +1618,7 @@ export default function SettingsScreen() {
 
               <View style={{ marginBottom: 24 }}>
                 <Text style={[
-                  themedStyles.label, 
+                  themedStyles.text, 
                   { 
                     marginBottom: 8,
                     color: currentColors.text,
@@ -889,7 +1725,7 @@ export default function SettingsScreen() {
 
               <View style={{ marginBottom: 24 }}>
                 <Text style={[
-                  themedStyles.label, 
+                  themedStyles.text, 
                   { 
                     marginBottom: 8,
                     color: currentColors.text,
