@@ -9,8 +9,8 @@ import { useBudgetData } from '../hooks/useBudgetData';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { useToast } from '../hooks/useToast';
 import StandardHeader from '../components/StandardHeader';
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import { DEFAULT_CATEGORIES } from '../types/budget';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { DEFAULT_CATEGORIES, Budget } from '../types/budget';
 import { getCustomExpenseCategories, saveCustomExpenseCategories, normalizeCategoryName, renameCustomExpenseCategory } from '../utils/storage';
 
 type SettingsSection = 
@@ -22,22 +22,28 @@ type SettingsSection =
   | 'about'
   | 'danger';
 
+const formatDate = (timestamp: number): string => {
+  return new Date(timestamp).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
 export default function SettingsScreen() {
   const { currentColors, themeMode, setThemeMode } = useTheme();
   const { currency, setCurrency } = useCurrency();
-  const { appData, data, clearAllData, refreshData } = useBudgetData();
+  const { appData, data, clearAllData, refreshData, activeBudget, addBudget, renameBudget, deleteBudget, duplicateBudget, setActiveBudget } = useBudgetData();
   const { themedStyles, isPad } = useThemedStyles();
   const { showToast } = useToast();
   
   // iPad split view state
   const [selectedSection, setSelectedSection] = useState<SettingsSection>('budgets');
 
-  // Currency selection modal state
-  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
+  // Currency selection state
   const [currencySearchQuery, setCurrencySearchQuery] = useState('');
 
-  // Manage categories modal state
-  const [showCategoriesModal, setShowCategoriesModal] = useState(false);
+  // Manage categories state
   const [customs, setCustoms] = useState<string[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [renameModalVisible, setRenameModalVisible] = useState(false);
@@ -47,6 +53,17 @@ export default function SettingsScreen() {
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [newCategoryInput, setNewCategoryInput] = useState<string>('');
   const [creating, setCreating] = useState(false);
+
+  // Budget management state
+  const [newBudgetName, setNewBudgetName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [dropdownBudgetId, setDropdownBudgetId] = useState<string | null>(null);
+  const [showCreateBudgetModal, setShowCreateBudgetModal] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
+  const [operationInProgress, setOperationInProgress] = useState(false);
+  const buttonRefs = useRef<{ [key: string]: TouchableOpacity | null }>({});
 
   const handleDistributionMethodChange = (method: 'even' | 'income-based') => {
     console.log('Distribution method change:', method);
@@ -87,7 +104,6 @@ export default function SettingsScreen() {
 
   const handleCurrencyChange = (curr: Currency) => {
     setCurrency(curr);
-    setShowCurrencyModal(false);
     setCurrencySearchQuery('');
     showToast(`Currency changed to ${curr.name}`, 'success');
   };
@@ -105,10 +121,11 @@ export default function SettingsScreen() {
     }
   }, []);
 
-  const handleManageCategoriesPress = () => {
-    setShowCategoriesModal(true);
-    refreshCategories();
-  };
+  useEffect(() => {
+    if (selectedSection === 'categories') {
+      refreshCategories();
+    }
+  }, [selectedSection, refreshCategories]);
 
   const isInUse = (category: string): boolean => {
     if (!data?.expenses) return false;
@@ -228,6 +245,266 @@ export default function SettingsScreen() {
     setNewCategoryInput('');
   };
 
+  // Budget management functions
+  const budgets = useMemo(() => {
+    return appData.budgets || [];
+  }, [appData.budgets]);
+
+  const handleCreateBudget = useCallback(async () => {
+    if (!newBudgetName.trim()) {
+      showToast('Please enter a budget name', 'error');
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const result = await addBudget(newBudgetName.trim());
+      if (result.success) {
+        showToast('Budget created successfully', 'success');
+        setNewBudgetName('');
+        setShowCreateBudgetModal(false);
+      } else {
+        showToast(result.error?.message || 'Failed to create budget', 'error');
+      }
+    } catch (error) {
+      console.error('Error creating budget:', error);
+      showToast('Failed to create budget', 'error');
+    } finally {
+      setIsCreating(false);
+    }
+  }, [newBudgetName, addBudget, showToast]);
+
+  const handleRenameBudget = useCallback(async (budgetId: string) => {
+    if (!editingName.trim()) {
+      showToast('Please enter a budget name', 'error');
+      return;
+    }
+
+    setOperationInProgress(true);
+    try {
+      const result = await renameBudget(budgetId, editingName.trim());
+      if (result.success) {
+        showToast('Budget renamed successfully', 'success');
+        setEditingBudgetId(null);
+        setEditingName('');
+        setDropdownBudgetId(null);
+      } else {
+        showToast(result.error?.message || 'Failed to rename budget', 'error');
+      }
+    } catch (error) {
+      console.error('Error renaming budget:', error);
+      showToast('Failed to rename budget', 'error');
+    } finally {
+      setOperationInProgress(false);
+    }
+  }, [editingName, renameBudget, showToast]);
+
+  const handleDeleteBudget = useCallback(async (budgetId: string, budgetName: string) => {
+    if (activeBudget?.id === budgetId) {
+      showToast('Cannot delete the active budget. Please set another budget as active first.', 'error');
+      return;
+    }
+
+    Alert.alert(
+      'Delete Budget',
+      `Are you sure you want to delete "${budgetName}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setOperationInProgress(true);
+            setDropdownBudgetId(null);
+            try {
+              const result = await deleteBudget(budgetId);
+              if (result.success) {
+                showToast('Budget deleted successfully', 'success');
+              } else {
+                showToast(result.error?.message || 'Failed to delete budget', 'error');
+              }
+            } catch (error) {
+              console.error('Error deleting budget:', error);
+              showToast('Failed to delete budget', 'error');
+            } finally {
+              setOperationInProgress(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [deleteBudget, showToast, activeBudget]);
+
+  const handleDuplicateBudget = useCallback(async (budgetId: string, budgetName: string) => {
+    setOperationInProgress(true);
+    setDropdownBudgetId(null);
+    try {
+      const result = await duplicateBudget(budgetId, `${budgetName} (Copy)`);
+      if (result.success) {
+        showToast('Budget duplicated successfully', 'success');
+      } else {
+        showToast(result.error?.message || 'Failed to duplicate budget', 'error');
+      }
+    } catch (error) {
+      console.error('Error duplicating budget:', error);
+      showToast('Failed to duplicate budget', 'error');
+    } finally {
+      setOperationInProgress(false);
+    }
+  }, [duplicateBudget, showToast]);
+
+  const handleSetActiveBudget = useCallback(async (budgetId: string) => {
+    setOperationInProgress(true);
+    setDropdownBudgetId(null);
+    try {
+      const result = await setActiveBudget(budgetId);
+      if (result.success) {
+        console.log('Active budget changed successfully');
+      } else {
+        showToast(result.error?.message || 'Failed to set active budget', 'error');
+      }
+    } catch (error) {
+      console.error('Error setting active budget:', error);
+      showToast('Failed to set active budget', 'error');
+    } finally {
+      setOperationInProgress(false);
+    }
+  }, [setActiveBudget, showToast]);
+
+  const handleDropdownPress = useCallback((budgetId: string) => {
+    const buttonRef = buttonRefs.current[budgetId];
+    if (buttonRef) {
+      buttonRef.measure((x, y, width, height, pageX, pageY) => {
+        setDropdownPosition({
+          x: pageX - 180 + width,
+          y: pageY + height + 8,
+        });
+        setDropdownBudgetId(dropdownBudgetId === budgetId ? null : budgetId);
+      });
+    } else {
+      setDropdownPosition({ x: 200, y: 150 });
+      setDropdownBudgetId(dropdownBudgetId === budgetId ? null : budgetId);
+    }
+  }, [dropdownBudgetId]);
+
+  const DropdownMenu = ({ budget }: { budget: Budget }) => {
+    const isActive = activeBudget?.id === budget.id;
+    
+    return (
+      <Modal
+        visible={dropdownBudgetId === budget.id}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setDropdownBudgetId(null)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+          }}
+          activeOpacity={1}
+          onPress={() => setDropdownBudgetId(null)}
+        >
+          <View
+            style={{
+              position: 'absolute',
+              left: dropdownPosition.x,
+              top: dropdownPosition.y,
+              minWidth: 180,
+              backgroundColor: currentColors.backgroundAlt,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: currentColors.border,
+              shadowColor: currentColors.text,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 8,
+              paddingVertical: 8,
+              zIndex: 1000,
+            }}
+          >
+            {!isActive && (
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                }}
+                onPress={() => handleSetActiveBudget(budget.id)}
+                activeOpacity={0.7}
+              >
+                <Icon name="checkmark-circle" size={18} color={currentColors.success} />
+                <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Set as Active</Text>
+              </TouchableOpacity>
+            )}
+            
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+              }}
+              onPress={() => {
+                setEditingBudgetId(budget.id);
+                setEditingName(budget.name);
+                setDropdownBudgetId(null);
+              }}
+              activeOpacity={0.7}
+            >
+              <Icon name="create" size={18} color={currentColors.text} />
+              <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Rename</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+              }}
+              onPress={() => handleDuplicateBudget(budget.id, budget.name)}
+              activeOpacity={0.7}
+            >
+              <Icon name="copy" size={18} color={currentColors.text} />
+              <Text style={[themedStyles.text, { marginLeft: 12, fontSize: 15 }]}>Duplicate</Text>
+            </TouchableOpacity>
+            
+            {budgets.length > 1 && (
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  opacity: isActive ? 0.5 : 1,
+                }}
+                onPress={() => {
+                  if (!isActive) {
+                    handleDeleteBudget(budget.id, budget.name);
+                  }
+                }}
+                disabled={isActive}
+                activeOpacity={0.7}
+              >
+                <Icon name="trash" size={18} color={isActive ? currentColors.textSecondary : currentColors.error} />
+                <Text style={[themedStyles.text, { 
+                  marginLeft: 12, 
+                  fontSize: 15, 
+                  color: isActive ? currentColors.textSecondary : currentColors.error 
+                }]}>
+                  {isActive ? 'Cannot Delete Active' : 'Delete'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    );
+  };
+
   // Filter currencies based on search query
   const filteredCurrencies = useMemo(() => {
     if (!currencySearchQuery.trim()) {
@@ -259,75 +536,471 @@ export default function SettingsScreen() {
       case 'budgets':
         return (
           <View style={{ flex: 1 }}>
-            <Text style={[themedStyles.title, { textAlign: 'left', marginBottom: 16 }]}>Budgets</Text>
-            <Text style={[themedStyles.textSecondary, { marginBottom: 24 }]}>
-              Manage your budgets, create new ones, or switch between existing budgets.
-            </Text>
-            <TouchableOpacity
-              style={[themedStyles.card, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
-              onPress={() => router.push('/budgets')}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                <Icon name="folder-outline" size={24} style={{ color: currentColors.primary, marginRight: 16 }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 4 }]}>Manage Budgets</Text>
-                  <Text style={themedStyles.textSecondary}>
-                    {appData?.budgets?.length || 0} budget{(appData?.budgets?.length || 0) !== 1 ? 's' : ''}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+              <View>
+                <Text style={[themedStyles.title, { textAlign: 'left', marginBottom: 8 }]}>Budgets</Text>
+                <Text style={[themedStyles.textSecondary]}>
+                  Manage your budgets, create new ones, or switch between existing budgets.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowCreateBudgetModal(true)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: currentColors.primary,
+                  paddingHorizontal: 20,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                }}
+              >
+                <Icon name="add" size={20} style={{ color: 'white', marginRight: 8 }} />
+                <Text style={{ color: 'white', fontSize: 16, fontWeight: '600' }}>New Budget</Text>
+              </TouchableOpacity>
+            </View>
+
+            {operationInProgress && (
+              <View style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 9999,
+              }}>
+                <View style={{
+                  backgroundColor: currentColors.backgroundAlt,
+                  padding: 24,
+                  borderRadius: 16,
+                  alignItems: 'center',
+                  minWidth: 150,
+                }}>
+                  <ActivityIndicator size="large" color={currentColors.primary} />
+                  <Text style={[themedStyles.text, { marginTop: 16, fontSize: 16 }]}>
+                    Processing...
                   </Text>
                 </View>
               </View>
-              <Icon name="chevron-forward" size={24} style={{ color: currentColors.textSecondary }} />
-            </TouchableOpacity>
+            )}
+
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={true}>
+              {budgets.length > 0 ? budgets.map((budget) => {
+                const isActive = activeBudget?.id === budget.id;
+                const isEditing = editingBudgetId === budget.id;
+                
+                return (
+                  <View 
+                    key={budget.id} 
+                    style={[
+                      themedStyles.card, 
+                      { 
+                        position: 'relative',
+                        borderWidth: isActive ? 2 : 1,
+                        borderColor: isActive ? currentColors.success : currentColors.border,
+                        backgroundColor: isActive ? currentColors.success + '08' : currentColors.backgroundAlt,
+                        boxShadow: isActive ? '0px 4px 12px rgba(34, 197, 94, 0.15)' : '0px 2px 4px rgba(0,0,0,0.05)',
+                      }
+                    ]}
+                  >
+                    <View style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}>
+                      <View style={{ flex: 1 }}>
+                        {isEditing ? (
+                          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                            <TextInput
+                              style={[themedStyles.input, { flex: 1, marginBottom: 0 }]}
+                              value={editingName}
+                              onChangeText={setEditingName}
+                              autoFocus
+                              selectTextOnFocus
+                            />
+                            <TouchableOpacity
+                              onPress={() => handleRenameBudget(budget.id)}
+                              style={{ padding: 8 }}
+                            >
+                              <Icon name="checkmark" size={20} color={currentColors.success} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => {
+                                setEditingBudgetId(null);
+                                setEditingName('');
+                              }}
+                              style={{ padding: 8 }}
+                            >
+                              <Icon name="close" size={20} color={currentColors.error} />
+                            </TouchableOpacity>
+                          </View>
+                        ) : (
+                          <TouchableOpacity
+                            onPress={() => !isActive && handleSetActiveBudget(budget.id)}
+                            style={{ flex: 1 }}
+                            disabled={operationInProgress}
+                          >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                              <Text style={[
+                                themedStyles.text,
+                                { 
+                                  fontWeight: isActive ? '700' : '600', 
+                                  flex: 1,
+                                  fontSize: 18,
+                                  color: isActive ? currentColors.success : currentColors.text
+                                }
+                              ]}>
+                                {budget.name}
+                              </Text>
+                              {isActive && (
+                                <View style={[
+                                  {
+                                    backgroundColor: currentColors.success,
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 4,
+                                    borderRadius: 8,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                  }
+                                ]}>
+                                  <Icon name="checkmark-circle" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
+                                  <Text style={[
+                                    {
+                                      color: '#FFFFFF',
+                                      fontSize: 12,
+                                      fontWeight: '700'
+                                    }
+                                  ]}>
+                                    Active
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                            
+                            <View style={{ flexDirection: 'column', gap: 4 }}>
+                              <View style={{ flexDirection: 'row', gap: 20 }}>
+                                <Text style={[themedStyles.textSecondary, { fontSize: 14 }]}>
+                                  {budget.people?.length || 0} people
+                                </Text>
+                                <Text style={[themedStyles.textSecondary, { fontSize: 14 }]}>
+                                  {budget.expenses?.length || 0} expenses
+                                </Text>
+                              </View>
+                              <View style={{ flexDirection: 'row', gap: 20 }}>
+                                <Text style={[themedStyles.textSecondary, { fontSize: 13 }]}>
+                                  Created: {formatDate(budget.createdAt)}
+                                </Text>
+                                <Text style={[themedStyles.textSecondary, { fontSize: 13 }]}>
+                                  Modified: {formatDate(budget.modifiedAt)}
+                                </Text>
+                              </View>
+                            </View>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      
+                      {!isEditing && (
+                        <TouchableOpacity
+                          ref={(ref) => {
+                            buttonRefs.current[budget.id] = ref;
+                          }}
+                          onPress={() => handleDropdownPress(budget.id)}
+                          style={{ 
+                            padding: 8, 
+                            marginLeft: 12,
+                            borderRadius: 8,
+                            backgroundColor: currentColors.background + '80'
+                          }}
+                          activeOpacity={0.7}
+                          disabled={operationInProgress}
+                        >
+                          <Icon name="ellipsis-vertical" size={20} color={currentColors.text} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    
+                    <DropdownMenu budget={budget} />
+                  </View>
+                );
+              }) : (
+                <View style={[themedStyles.card, themedStyles.centerContent, { paddingVertical: 60 }]}>
+                  <Icon name="folder" size={64} color={currentColors.textSecondary} />
+                  <Text style={[themedStyles.text, { marginTop: 20, textAlign: 'center', fontSize: 18, fontWeight: '600' }]}>
+                    No budgets yet
+                  </Text>
+                  <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginTop: 8, fontSize: 15 }]}>
+                    Tap the New Budget button to create your first budget
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
           </View>
         );
 
       case 'categories':
         return (
           <View style={{ flex: 1 }}>
-            <Text style={[themedStyles.title, { textAlign: 'left', marginBottom: 16 }]}>Categories</Text>
-            <Text style={[themedStyles.textSecondary, { marginBottom: 24 }]}>
-              Customize your expense categories to better organize your spending.
-            </Text>
-            <TouchableOpacity
-              style={[themedStyles.card, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
-              onPress={handleManageCategoriesPress}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                <Icon name="pricetags-outline" size={24} style={{ color: currentColors.primary, marginRight: 16 }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 4 }]}>Manage Categories</Text>
-                  <Text style={themedStyles.textSecondary}>
-                    Customize expense categories
-                  </Text>
+            <View style={{ marginBottom: 24 }}>
+              <Text style={[themedStyles.title, { textAlign: 'left', marginBottom: 8 }]}>Categories</Text>
+              <Text style={[themedStyles.textSecondary]}>
+                Customize your expense categories to better organize your spending.
+              </Text>
+            </View>
+
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={true}>
+              <View style={[themedStyles.card, { marginBottom: 16 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                  <Icon name="shield-checkmark-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                  <Text style={[themedStyles.text, { fontWeight: '600' }]}>Default Categories</Text>
+                </View>
+                <Text style={[themedStyles.textSecondary, { marginBottom: 12, fontSize: 14 }]}>
+                  These categories cannot be deleted.
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                  {DEFAULT_CATEGORIES.map((c) => (
+                    <View
+                      key={c}
+                      style={[
+                        themedStyles.badge,
+                        {
+                          backgroundColor: currentColors.border,
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 16,
+                          marginRight: 8,
+                          marginBottom: 8,
+                        },
+                      ]}
+                    >
+                      <Text style={[themedStyles.badgeText, { color: currentColors.text, fontSize: 12 }]}>{c}</Text>
+                    </View>
+                  ))}
                 </View>
               </View>
-              <Icon name="chevron-forward" size={24} style={{ color: currentColors.textSecondary }} />
-            </TouchableOpacity>
+
+              <View style={[themedStyles.card, { flex: 1 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Icon name="pricetags-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                    <Text style={[themedStyles.text, { fontWeight: '600' }]}>Custom Categories</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={handleCreateCategory}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: currentColors.primary,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      borderRadius: 20,
+                    }}
+                    accessibilityLabel="Add new category"
+                    accessibilityRole="button"
+                  >
+                    <Icon name="add" size={16} style={{ color: 'white', marginRight: 4 }} />
+                    <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>Add New</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {categoriesLoading ? (
+                  <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+                    <ActivityIndicator size="small" color={currentColors.primary} />
+                    <Text style={[themedStyles.textSecondary, { marginTop: 8 }]}>Loading...</Text>
+                  </View>
+                ) : customs.length === 0 ? (
+                  <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+                    <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 16 }]}>
+                      No custom categories yet.
+                    </Text>
+                    <TouchableOpacity
+                      onPress={handleCreateCategory}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: currentColors.primary + '15',
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: currentColors.primary + '30',
+                      }}
+                    >
+                      <Icon name="add" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                      <Text style={{ color: currentColors.primary, fontSize: 14, fontWeight: '600' }}>Create Your First Category</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  customs.map((c) => {
+                    const used = isInUse(c);
+                    return (
+                      <View
+                        key={c}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          paddingVertical: 12,
+                          borderBottomWidth: customs.indexOf(c) === customs.length - 1 ? 0 : 1,
+                          borderBottomColor: currentColors.border,
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <View
+                            style={[
+                              themedStyles.badge,
+                              {
+                                backgroundColor: currentColors.secondary + '20',
+                                paddingHorizontal: 10,
+                                paddingVertical: 6,
+                                borderRadius: 16,
+                                marginRight: 12,
+                                borderWidth: 1,
+                                borderColor: currentColors.secondary,
+                              },
+                            ]}
+                          >
+                            <Text style={[themedStyles.text, { color: currentColors.secondary, fontSize: 12, fontWeight: '700' }]}>{c}</Text>
+                          </View>
+                          {used && <Text style={[themedStyles.textSecondary, { color: currentColors.warning }]}>In use</Text>}
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <TouchableOpacity
+                            onPress={() => handleRenameCategory(c)}
+                            style={{
+                              padding: 10,
+                              borderRadius: 8,
+                              backgroundColor: currentColors.primary + '15',
+                              marginRight: 8,
+                            }}
+                            accessibilityLabel={`Rename ${c}`}
+                            accessibilityRole="button"
+                          >
+                            <Icon name="pencil-outline" size={20} style={{ color: currentColors.primary }} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => handleDeleteCategory(c)}
+                            disabled={used}
+                            style={{
+                              padding: 10,
+                              borderRadius: 8,
+                              backgroundColor: used ? currentColors.border : currentColors.error + '15',
+                            }}
+                            accessibilityLabel={`Delete ${c}`}
+                            accessibilityRole="button"
+                          >
+                            <Icon 
+                              name="trash-outline" 
+                              size={20} 
+                              style={{ color: used ? currentColors.textSecondary : currentColors.error }} 
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            </ScrollView>
           </View>
         );
 
       case 'currency':
         return (
           <View style={{ flex: 1 }}>
-            <Text style={[themedStyles.title, { textAlign: 'left', marginBottom: 16 }]}>Currency</Text>
-            <Text style={[themedStyles.textSecondary, { marginBottom: 24 }]}>
-              Select your preferred currency for displaying amounts throughout the app.
-            </Text>
-            <TouchableOpacity
-              style={[themedStyles.card, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
-              onPress={() => setShowCurrencyModal(true)}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                <Icon name="card-outline" size={24} style={{ color: currentColors.primary, marginRight: 16 }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 4 }]}>Current Currency</Text>
-                  <Text style={themedStyles.textSecondary}>
-                    {currency.symbol} {currency.name} ({currency.code})
-                  </Text>
-                </View>
+            <View style={{ marginBottom: 24 }}>
+              <Text style={[themedStyles.title, { textAlign: 'left', marginBottom: 8 }]}>Currency</Text>
+              <Text style={[themedStyles.textSecondary]}>
+                Select your preferred currency for displaying amounts throughout the app.
+              </Text>
+            </View>
+
+            <View style={[themedStyles.card, { marginBottom: 16 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                <Icon name="search" size={20} style={{ color: currentColors.textSecondary, marginRight: 8 }} />
+                <Text style={[themedStyles.text, { fontWeight: '600' }]}>Search Currencies</Text>
               </View>
-              <Icon name="chevron-forward" size={24} style={{ color: currentColors.textSecondary }} />
-            </TouchableOpacity>
+              <TextInput
+                style={[
+                  themedStyles.input,
+                  {
+                    marginBottom: 0,
+                    borderColor: currentColors.border,
+                  }
+                ]}
+                value={currencySearchQuery}
+                onChangeText={setCurrencySearchQuery}
+                placeholder="Search by name, code, or symbol..."
+                placeholderTextColor={currentColors.textSecondary}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <View style={[themedStyles.card, { marginBottom: 16, paddingBottom: 12 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Icon name="globe-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
+                <Text style={[themedStyles.text, { fontWeight: '600' }]}>
+                  {currencySearchQuery.trim() 
+                    ? `Search Results (${filteredCurrencies.length})` 
+                    : `All Currencies (${CURRENCIES.length})`
+                  }
+                </Text>
+              </View>
+            </View>
+
+            <View style={[
+              themedStyles.card, 
+              { 
+                flex: 1, 
+                padding: 0, 
+                overflow: 'hidden'
+              }
+            ]}>
+              <ScrollView 
+                style={{ flex: 1 }}
+                contentContainerStyle={{ padding: 16 }}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+              >
+                {filteredCurrencies.length === 0 ? (
+                  <View style={{ alignItems: 'center', padding: 20 }}>
+                    <Icon name="search" size={32} style={{ color: currentColors.textSecondary, marginBottom: 8 }} />
+                    <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
+                      No currencies found matching "{currencySearchQuery}"
+                    </Text>
+                  </View>
+                ) : (
+                  filteredCurrencies.map((curr, index) => (
+                    <TouchableOpacity
+                      key={curr.code}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingVertical: 12,
+                        borderBottomWidth: index === filteredCurrencies.length - 1 ? 0 : 1,
+                        borderBottomColor: currentColors.border,
+                      }}
+                      onPress={() => handleCurrencyChange(curr)}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 2 }]}>
+                          {curr.name}
+                        </Text>
+                        <Text style={themedStyles.textSecondary}>
+                          {curr.symbol} • {curr.code}
+                        </Text>
+                      </View>
+                      {currency.code === curr.code && (
+                        <Icon name="checkmark-circle" size={24} style={{ color: currentColors.primary }} />
+                      )}
+                    </TouchableOpacity>
+                  ))
+                )}
+              </ScrollView>
+            </View>
           </View>
         );
 
@@ -565,303 +1238,10 @@ export default function SettingsScreen() {
           </View>
 
           {/* Right Detail View */}
-          <ScrollView 
-            style={{ flex: 1 }} 
-            contentContainerStyle={{ 
-              padding: 48,
-              paddingBottom: 140,
-            }}
-          >
+          <View style={{ flex: 1, padding: 48, paddingBottom: 140 }}>
             {renderDetailView()}
-          </ScrollView>
+          </View>
         </View>
-
-        {/* Currency Selection Modal */}
-        <Modal
-          visible={showCurrencyModal}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => {
-            setShowCurrencyModal(false);
-            setCurrencySearchQuery('');
-          }}
-        >
-          <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
-            <StandardHeader 
-              title="Select Currency" 
-              showLeftIcon={true}
-              leftIcon="close"
-              onLeftPress={() => {
-                setShowCurrencyModal(false);
-                setCurrencySearchQuery('');
-              }}
-              showRightIcon={false}
-              backgroundColor={currentColors.backgroundAlt}
-            />
-
-            <View style={[themedStyles.content, { flex: 1, paddingHorizontal: 16, paddingTop: 16 }]}>
-              <View style={[themedStyles.card, { marginBottom: 16 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                  <Icon name="search" size={20} style={{ color: currentColors.textSecondary, marginRight: 8 }} />
-                  <Text style={[themedStyles.text, { fontWeight: '600' }]}>Search Currencies</Text>
-                </View>
-                <TextInput
-                  style={[
-                    themedStyles.input,
-                    {
-                      marginBottom: 0,
-                      borderColor: currentColors.border,
-                    }
-                  ]}
-                  value={currencySearchQuery}
-                  onChangeText={setCurrencySearchQuery}
-                  placeholder="Search by name, code, or symbol..."
-                  placeholderTextColor={currentColors.textSecondary}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-
-              <View style={[themedStyles.card, { marginBottom: 16, paddingBottom: 12 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Icon name="globe-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-                  <Text style={[themedStyles.text, { fontWeight: '600' }]}>
-                    {currencySearchQuery.trim() 
-                      ? `Search Results (${filteredCurrencies.length})` 
-                      : `All Currencies (${CURRENCIES.length})`
-                    }
-                  </Text>
-                </View>
-              </View>
-
-              <View style={[
-                themedStyles.card, 
-                { 
-                  flex: 1, 
-                  padding: 0, 
-                  overflow: 'hidden'
-                }
-              ]}>
-                <ScrollView 
-                  style={{ flex: 1 }}
-                  contentContainerStyle={{ padding: 16 }}
-                  showsVerticalScrollIndicator={true}
-                  nestedScrollEnabled={true}
-                >
-                  {filteredCurrencies.length === 0 ? (
-                    <View style={{ alignItems: 'center', padding: 20 }}>
-                      <Icon name="search" size={32} style={{ color: currentColors.textSecondary, marginBottom: 8 }} />
-                      <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
-                        No currencies found matching "{currencySearchQuery}"
-                      </Text>
-                    </View>
-                  ) : (
-                    filteredCurrencies.map((curr, index) => (
-                      <TouchableOpacity
-                        key={curr.code}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          paddingVertical: 12,
-                          borderBottomWidth: index === filteredCurrencies.length - 1 ? 0 : 1,
-                          borderBottomColor: currentColors.border,
-                        }}
-                        onPress={() => handleCurrencyChange(curr)}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 2 }]}>
-                            {curr.name}
-                          </Text>
-                          <Text style={themedStyles.textSecondary}>
-                            {curr.symbol} • {curr.code}
-                          </Text>
-                        </View>
-                        {currency.code === curr.code && (
-                          <Icon name="checkmark-circle" size={24} style={{ color: currentColors.primary }} />
-                        )}
-                      </TouchableOpacity>
-                    ))
-                  )}
-                </ScrollView>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
-        {/* Manage Categories Modal */}
-        <Modal
-          visible={showCategoriesModal}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setShowCategoriesModal(false)}
-        >
-          <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
-            <StandardHeader 
-              title="Manage Categories" 
-              showLeftIcon={true}
-              leftIcon="close"
-              onLeftPress={() => setShowCategoriesModal(false)}
-              showRightIcon={false}
-              backgroundColor={currentColors.backgroundAlt}
-            />
-
-            <ScrollView style={[themedStyles.content, { flex: 1, paddingHorizontal: 16, paddingTop: 16 }]} contentContainerStyle={{ paddingBottom: 24 }}>
-              <View style={[themedStyles.card, { marginBottom: 16 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                  <Icon name="shield-checkmark-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-                  <Text style={[themedStyles.text, { fontWeight: '600' }]}>Default Categories</Text>
-                </View>
-                <Text style={[themedStyles.textSecondary, { marginBottom: 12, fontSize: 14 }]}>
-                  These categories cannot be deleted.
-                </Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                  {DEFAULT_CATEGORIES.map((c) => (
-                    <View
-                      key={c}
-                      style={[
-                        themedStyles.badge,
-                        {
-                          backgroundColor: currentColors.border,
-                          paddingHorizontal: 12,
-                          paddingVertical: 6,
-                          borderRadius: 16,
-                          marginRight: 8,
-                          marginBottom: 8,
-                        },
-                      ]}
-                    >
-                      <Text style={[themedStyles.badgeText, { color: currentColors.text, fontSize: 12 }]}>{c}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-
-              <View style={[themedStyles.card, { flex: 1 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Icon name="pricetags-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-                    <Text style={[themedStyles.text, { fontWeight: '600' }]}>Custom Categories</Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={handleCreateCategory}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      backgroundColor: currentColors.primary,
-                      paddingHorizontal: 12,
-                      paddingVertical: 8,
-                      borderRadius: 20,
-                    }}
-                    accessibilityLabel="Add new category"
-                    accessibilityRole="button"
-                  >
-                    <Icon name="add" size={16} style={{ color: 'white', marginRight: 4 }} />
-                    <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>Add New</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {categoriesLoading ? (
-                  <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-                    <ActivityIndicator size="small" color={currentColors.primary} />
-                    <Text style={[themedStyles.textSecondary, { marginTop: 8 }]}>Loading...</Text>
-                  </View>
-                ) : customs.length === 0 ? (
-                  <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-                    <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 16 }]}>
-                      No custom categories yet.
-                    </Text>
-                    <TouchableOpacity
-                      onPress={handleCreateCategory}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: currentColors.primary + '15',
-                        paddingHorizontal: 16,
-                        paddingVertical: 12,
-                        borderRadius: 12,
-                        borderWidth: 1,
-                        borderColor: currentColors.primary + '30',
-                      }}
-                    >
-                      <Icon name="add" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-                      <Text style={{ color: currentColors.primary, fontSize: 14, fontWeight: '600' }}>Create Your First Category</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  customs.map((c) => {
-                    const used = isInUse(c);
-                    return (
-                      <View
-                        key={c}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          paddingVertical: 12,
-                          borderBottomWidth: customs.indexOf(c) === customs.length - 1 ? 0 : 1,
-                          borderBottomColor: currentColors.border,
-                        }}
-                      >
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <View
-                            style={[
-                              themedStyles.badge,
-                              {
-                                backgroundColor: currentColors.secondary + '20',
-                                paddingHorizontal: 10,
-                                paddingVertical: 6,
-                                borderRadius: 16,
-                                marginRight: 12,
-                                borderWidth: 1,
-                                borderColor: currentColors.secondary,
-                              },
-                            ]}
-                          >
-                            <Text style={[themedStyles.text, { color: currentColors.secondary, fontSize: 12, fontWeight: '700' }]}>{c}</Text>
-                          </View>
-                          {used && <Text style={[themedStyles.textSecondary, { color: currentColors.warning }]}>In use</Text>}
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <TouchableOpacity
-                            onPress={() => handleRenameCategory(c)}
-                            style={{
-                              padding: 10,
-                              borderRadius: 8,
-                              backgroundColor: currentColors.primary + '15',
-                              marginRight: 8,
-                            }}
-                            accessibilityLabel={`Rename ${c}`}
-                            accessibilityRole="button"
-                          >
-                            <Icon name="pencil-outline" size={20} style={{ color: currentColors.primary }} />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() => handleDeleteCategory(c)}
-                            disabled={used}
-                            style={{
-                              padding: 10,
-                              borderRadius: 8,
-                              backgroundColor: used ? currentColors.border : currentColors.error + '15',
-                            }}
-                            accessibilityLabel={`Delete ${c}`}
-                            accessibilityRole="button"
-                          >
-                            <Icon 
-                              name="trash-outline" 
-                              size={20} 
-                              style={{ color: used ? currentColors.textSecondary : currentColors.error }} 
-                            />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    );
-                  })
-                )}
-              </View>
-            </ScrollView>
-          </View>
-        </Modal>
 
         {/* Rename Category Modal */}
         <Modal
@@ -1075,11 +1455,86 @@ export default function SettingsScreen() {
             </View>
           </KeyboardAvoidingView>
         </Modal>
+
+        {/* Create Budget Modal */}
+        <Modal
+          visible={showCreateBudgetModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => {
+            setShowCreateBudgetModal(false);
+            setNewBudgetName('');
+          }}
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}>
+            <View style={{
+              backgroundColor: currentColors.backgroundAlt,
+              borderRadius: 16,
+              padding: 24,
+              margin: 20,
+              width: '90%',
+              maxWidth: 400,
+              borderWidth: 1,
+              borderColor: currentColors.border,
+            }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <Text style={[themedStyles.subtitle, { marginBottom: 0, fontSize: 20 }]}>Create New Budget</Text>
+                <TouchableOpacity onPress={() => {
+                  setShowCreateBudgetModal(false);
+                  setNewBudgetName('');
+                }}>
+                  <Icon name="close" size={24} color={currentColors.text} />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={[themedStyles.text, { marginBottom: 8, fontWeight: '600' }]}>
+                Budget Name:
+              </Text>
+              
+              <TextInput
+                style={themedStyles.input}
+                placeholder="Enter budget name"
+                placeholderTextColor={currentColors.textSecondary}
+                value={newBudgetName}
+                onChangeText={setNewBudgetName}
+                editable={!isCreating}
+                autoFocus
+              />
+              
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    text="Cancel"
+                    onPress={() => {
+                      setShowCreateBudgetModal(false);
+                      setNewBudgetName('');
+                    }}
+                    disabled={isCreating}
+                    variant="outline"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    text={isCreating ? 'Creating...' : 'Create'}
+                    onPress={handleCreateBudget}
+                    disabled={!newBudgetName.trim() || isCreating}
+                    variant="primary"
+                  />
+                </View>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     );
   }
 
-  // iPhone layout (original single-column layout)
+  // iPhone layout (original single-column layout) - keeping all existing modals
   return (
     <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
       <StandardHeader 
@@ -1134,7 +1589,7 @@ export default function SettingsScreen() {
               justifyContent: 'space-between',
               minHeight: 44,
             }}
-            onPress={handleManageCategoriesPress}
+            onPress={() => router.push('/manage-categories')}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
               <Icon name="pricetags-outline" size={20} style={{ color: currentColors.text, marginRight: 12 }} />
@@ -1149,7 +1604,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Currency */}
+        {/* Currency - Opens modal on iPhone */}
         <View style={[themedStyles.card, { marginBottom: 16 }]}>
           <TouchableOpacity
             style={{
@@ -1158,7 +1613,40 @@ export default function SettingsScreen() {
               justifyContent: 'space-between',
               minHeight: 44,
             }}
-            onPress={() => setShowCurrencyModal(true)}
+            onPress={() => {
+              Alert.alert(
+                'Select Currency',
+                'Choose your preferred currency',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  ...CURRENCIES.slice(0, 10).map(curr => ({
+                    text: `${curr.symbol} ${curr.name} (${curr.code})`,
+                    onPress: () => handleCurrencyChange(curr)
+                  })),
+                  {
+                    text: 'View All Currencies',
+                    onPress: () => {
+                      // Show a simple text input alert for search
+                      Alert.prompt(
+                        'Search Currency',
+                        'Enter currency name or code',
+                        (text) => {
+                          const found = CURRENCIES.find(c => 
+                            c.code.toLowerCase() === text.toLowerCase() ||
+                            c.name.toLowerCase().includes(text.toLowerCase())
+                          );
+                          if (found) {
+                            handleCurrencyChange(found);
+                          } else {
+                            Alert.alert('Not Found', 'Currency not found. Please try again.');
+                          }
+                        }
+                      );
+                    }
+                  }
+                ]
+              );
+            }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
               <Icon name="card-outline" size={20} style={{ color: currentColors.text, marginRight: 12 }} />
@@ -1276,506 +1764,6 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScrollView>
-
-      {/* Currency Selection Modal */}
-      <Modal
-        visible={showCurrencyModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => {
-          setShowCurrencyModal(false);
-          setCurrencySearchQuery('');
-        }}
-      >
-        <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
-          <StandardHeader 
-            title="Select Currency" 
-            showLeftIcon={true}
-            leftIcon="close"
-            onLeftPress={() => {
-              setShowCurrencyModal(false);
-              setCurrencySearchQuery('');
-            }}
-            showRightIcon={false}
-            backgroundColor={currentColors.backgroundAlt}
-          />
-
-          <View style={[themedStyles.content, { flex: 1, paddingHorizontal: 16, paddingTop: 16 }]}>
-            <View style={[themedStyles.card, { marginBottom: 16 }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <Icon name="search" size={20} style={{ color: currentColors.textSecondary, marginRight: 8 }} />
-                <Text style={[themedStyles.text, { fontWeight: '600' }]}>Search Currencies</Text>
-              </View>
-              <TextInput
-                style={[
-                  themedStyles.input,
-                  {
-                    marginBottom: 0,
-                    borderColor: currentColors.border,
-                  }
-                ]}
-                value={currencySearchQuery}
-                onChangeText={setCurrencySearchQuery}
-                placeholder="Search by name, code, or symbol..."
-                placeholderTextColor={currentColors.textSecondary}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-
-            <View style={[themedStyles.card, { marginBottom: 16, paddingBottom: 12 }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Icon name="globe-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-                <Text style={[themedStyles.text, { fontWeight: '600' }]}>
-                  {currencySearchQuery.trim() 
-                    ? `Search Results (${filteredCurrencies.length})` 
-                    : `All Currencies (${CURRENCIES.length})`
-                  }
-                </Text>
-              </View>
-            </View>
-
-            <View style={[
-              themedStyles.card, 
-              { 
-                flex: 1, 
-                padding: 0, 
-                overflow: 'hidden'
-              }
-            ]}>
-              <ScrollView 
-                style={{ flex: 1 }}
-                contentContainerStyle={{ padding: 16 }}
-                showsVerticalScrollIndicator={true}
-                nestedScrollEnabled={true}
-              >
-                {filteredCurrencies.length === 0 ? (
-                  <View style={{ alignItems: 'center', padding: 20 }}>
-                    <Icon name="search" size={32} style={{ color: currentColors.textSecondary, marginBottom: 8 }} />
-                    <Text style={[themedStyles.textSecondary, { textAlign: 'center' }]}>
-                      No currencies found matching "{currencySearchQuery}"
-                    </Text>
-                  </View>
-                ) : (
-                  filteredCurrencies.map((curr, index) => (
-                    <TouchableOpacity
-                      key={curr.code}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        paddingVertical: 12,
-                        borderBottomWidth: index === filteredCurrencies.length - 1 ? 0 : 1,
-                        borderBottomColor: currentColors.border,
-                      }}
-                      onPress={() => handleCurrencyChange(curr)}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 2 }]}>
-                          {curr.name}
-                        </Text>
-                        <Text style={themedStyles.textSecondary}>
-                          {curr.symbol} • {curr.code}
-                        </Text>
-                      </View>
-                      {currency.code === curr.code && (
-                        <Icon name="checkmark-circle" size={24} style={{ color: currentColors.primary }} />
-                      )}
-                    </TouchableOpacity>
-                  ))
-                )}
-              </ScrollView>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Manage Categories Modal */}
-      <Modal
-        visible={showCategoriesModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowCategoriesModal(false)}
-      >
-        <View style={[themedStyles.container, { backgroundColor: currentColors.background }]}>
-          <StandardHeader 
-            title="Manage Categories" 
-            showLeftIcon={true}
-            leftIcon="close"
-            onLeftPress={() => setShowCategoriesModal(false)}
-            showRightIcon={false}
-            backgroundColor={currentColors.backgroundAlt}
-          />
-
-          <ScrollView style={[themedStyles.content, { flex: 1, paddingHorizontal: 16, paddingTop: 16 }]} contentContainerStyle={{ paddingBottom: 24 }}>
-            <View style={[themedStyles.card, { marginBottom: 16 }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                <Icon name="shield-checkmark-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-                <Text style={[themedStyles.text, { fontWeight: '600' }]}>Default Categories</Text>
-              </View>
-              <Text style={[themedStyles.textSecondary, { marginBottom: 12, fontSize: 14 }]}>
-                These categories cannot be deleted.
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                {DEFAULT_CATEGORIES.map((c) => (
-                  <View
-                    key={c}
-                    style={[
-                      themedStyles.badge,
-                      {
-                        backgroundColor: currentColors.border,
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        borderRadius: 16,
-                        marginRight: 8,
-                        marginBottom: 8,
-                      },
-                    ]}
-                  >
-                    <Text style={[themedStyles.badgeText, { color: currentColors.text, fontSize: 12 }]}>{c}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            <View style={[themedStyles.card, { flex: 1 }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Icon name="pricetags-outline" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-                  <Text style={[themedStyles.text, { fontWeight: '600' }]}>Custom Categories</Text>
-                </View>
-                <TouchableOpacity
-                  onPress={handleCreateCategory}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: currentColors.primary,
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    borderRadius: 20,
-                  }}
-                  accessibilityLabel="Add new category"
-                  accessibilityRole="button"
-                >
-                  <Icon name="add" size={16} style={{ color: 'white', marginRight: 4 }} />
-                  <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>Add New</Text>
-                </TouchableOpacity>
-              </View>
-
-              {categoriesLoading ? (
-                <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-                  <ActivityIndicator size="small" color={currentColors.primary} />
-                  <Text style={[themedStyles.textSecondary, { marginTop: 8 }]}>Loading...</Text>
-                </View>
-              ) : customs.length === 0 ? (
-                <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-                  <Text style={[themedStyles.textSecondary, { textAlign: 'center', marginBottom: 16 }]}>
-                    No custom categories yet.
-                  </Text>
-                  <TouchableOpacity
-                    onPress={handleCreateCategory}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      backgroundColor: currentColors.primary + '15',
-                      paddingHorizontal: 16,
-                      paddingVertical: 12,
-                      borderRadius: 12,
-                      borderWidth: 1,
-                      borderColor: currentColors.primary + '30',
-                    }}
-                  >
-                    <Icon name="add" size={20} style={{ color: currentColors.primary, marginRight: 8 }} />
-                    <Text style={{ color: currentColors.primary, fontSize: 14, fontWeight: '600' }}>Create Your First Category</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                customs.map((c) => {
-                  const used = isInUse(c);
-                  return (
-                    <View
-                      key={c}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        paddingVertical: 12,
-                        borderBottomWidth: customs.indexOf(c) === customs.length - 1 ? 0 : 1,
-                        borderBottomColor: currentColors.border,
-                      }}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <View
-                          style={[
-                            themedStyles.badge,
-                            {
-                              backgroundColor: currentColors.secondary + '20',
-                              paddingHorizontal: 10,
-                              paddingVertical: 6,
-                              borderRadius: 16,
-                              marginRight: 12,
-                              borderWidth: 1,
-                              borderColor: currentColors.secondary,
-                            },
-                          ]}
-                        >
-                          <Text style={[themedStyles.text, { color: currentColors.secondary, fontSize: 12, fontWeight: '700' }]}>{c}</Text>
-                        </View>
-                        {used && <Text style={[themedStyles.textSecondary, { color: currentColors.warning }]}>In use</Text>}
-                      </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <TouchableOpacity
-                          onPress={() => handleRenameCategory(c)}
-                          style={{
-                            padding: 10,
-                            borderRadius: 8,
-                            backgroundColor: currentColors.primary + '15',
-                            marginRight: 8,
-                          }}
-                          accessibilityLabel={`Rename ${c}`}
-                          accessibilityRole="button"
-                        >
-                          <Icon name="pencil-outline" size={20} style={{ color: currentColors.primary }} />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => handleDeleteCategory(c)}
-                          disabled={used}
-                          style={{
-                            padding: 10,
-                            borderRadius: 8,
-                            backgroundColor: used ? currentColors.border : currentColors.error + '15',
-                          }}
-                          accessibilityLabel={`Delete ${c}`}
-                          accessibilityRole="button"
-                        >
-                          <Icon 
-                            name="trash-outline" 
-                            size={20} 
-                            style={{ color: used ? currentColors.textSecondary : currentColors.error }} 
-                          />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  );
-                })
-              )}
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
-
-      {/* Rename Category Modal */}
-      <Modal
-        visible={renameModalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={handleRenameCancel}
-      >
-        <KeyboardAvoidingView 
-          style={{ flex: 1 }} 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <View style={{
-            flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            paddingHorizontal: 20,
-          }}>
-            <View style={[
-              themedStyles.card,
-              {
-                width: '100%',
-                maxWidth: 400,
-                padding: 24,
-                borderRadius: 16,
-                backgroundColor: currentColors.background,
-              }
-            ]}>
-              <Text style={[
-                themedStyles.title, 
-                { 
-                  marginBottom: 8, 
-                  textAlign: 'center',
-                  color: currentColors.text,
-                  fontSize: 20,
-                  fontWeight: '700'
-                }
-              ]}>
-                Rename Category
-              </Text>
-              <Text style={[
-                themedStyles.textSecondary, 
-                { 
-                  marginBottom: 20, 
-                  textAlign: 'center',
-                  color: currentColors.textSecondary,
-                  fontSize: 14
-                }
-              ]}>
-                Enter a new name for "{categoryToRename}"
-              </Text>
-
-              <View style={{ marginBottom: 24 }}>
-                <Text style={[
-                  themedStyles.text, 
-                  { 
-                    marginBottom: 8,
-                    color: currentColors.text,
-                    fontSize: 16,
-                    fontWeight: '600'
-                  }
-                ]}>
-                  Category Name
-                </Text>
-                <TextInput
-                  style={[
-                    themedStyles.input,
-                    {
-                      borderColor: currentColors.border,
-                      borderWidth: 1,
-                      borderRadius: 12,
-                      paddingHorizontal: 16,
-                      paddingVertical: 12,
-                      fontSize: 16,
-                      color: currentColors.text,
-                      backgroundColor: currentColors.background,
-                    }
-                  ]}
-                  value={newCategoryName}
-                  onChangeText={setNewCategoryName}
-                  placeholder="Enter category name"
-                  placeholderTextColor={currentColors.textSecondary}
-                  maxLength={20}
-                  autoFocus={true}
-                  selectTextOnFocus={true}
-                />
-              </View>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
-                <Button
-                  text="Cancel"
-                  onPress={handleRenameCancel}
-                  variant="outline"
-                  style={{ flex: 1 }}
-                />
-                <Button
-                  text={renaming ? "Renaming..." : "Rename"}
-                  onPress={handleRenameSubmit}
-                  disabled={!newCategoryName.trim() || newCategoryName.trim() === categoryToRename || renaming}
-                  style={{ flex: 1 }}
-                />
-              </View>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* Create Category Modal */}
-      <Modal
-        visible={createModalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={handleCreateCancel}
-      >
-        <KeyboardAvoidingView 
-          style={{ flex: 1 }} 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <View style={{
-            flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            paddingHorizontal: 20,
-          }}>
-            <View style={[
-              themedStyles.card,
-              {
-                width: '100%',
-                maxWidth: 400,
-                padding: 24,
-                borderRadius: 16,
-                backgroundColor: currentColors.background,
-              }
-            ]}>
-              <Text style={[
-                themedStyles.title, 
-                { 
-                  marginBottom: 8, 
-                  textAlign: 'center',
-                  color: currentColors.text,
-                  fontSize: 20,
-                  fontWeight: '700'
-                }
-              ]}>
-                Create New Category
-              </Text>
-              <Text style={[
-                themedStyles.textSecondary, 
-                { 
-                  marginBottom: 20, 
-                  textAlign: 'center',
-                  color: currentColors.textSecondary,
-                  fontSize: 14
-                }
-              ]}>
-                Enter a name for your new custom category
-              </Text>
-
-              <View style={{ marginBottom: 24 }}>
-                <Text style={[
-                  themedStyles.text, 
-                  { 
-                    marginBottom: 8,
-                    color: currentColors.text,
-                    fontSize: 16,
-                    fontWeight: '600'
-                  }
-                ]}>
-                  Category Name
-                </Text>
-                <TextInput
-                  style={[
-                    themedStyles.input,
-                    {
-                      borderColor: currentColors.border,
-                      borderWidth: 1,
-                      borderRadius: 12,
-                      paddingHorizontal: 16,
-                      paddingVertical: 12,
-                      fontSize: 16,
-                      color: currentColors.text,
-                      backgroundColor: currentColors.background,
-                    }
-                  ]}
-                  value={newCategoryInput}
-                  onChangeText={setNewCategoryInput}
-                  placeholder="Enter category name"
-                  placeholderTextColor={currentColors.textSecondary}
-                  maxLength={20}
-                  autoFocus={true}
-                />
-              </View>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
-                <Button
-                  text="Cancel"
-                  onPress={handleCreateCancel}
-                  variant="outline"
-                  style={{ flex: 1 }}
-                />
-                <Button
-                  text={creating ? "Creating..." : "Create"}
-                  onPress={handleCreateSubmit}
-                  disabled={!newCategoryInput.trim() || creating}
-                  style={{ flex: 1 }}
-                />
-              </View>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
     </View>
   );
 }
