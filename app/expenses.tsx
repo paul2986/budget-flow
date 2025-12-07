@@ -19,7 +19,7 @@ type SortOrder = 'asc' | 'desc';
 export default function ExpensesScreen() {
   const { data, removeExpense, saving, refreshData } = useBudgetData();
   const { currentColors } = useTheme();
-  const { themedStyles } = useThemedStyles();
+  const { themedStyles, isPad } = useThemedStyles();
   const { formatCurrency } = useCurrency();
   const params = useLocalSearchParams<{ 
     showRecurring?: string;
@@ -639,7 +639,7 @@ export default function ExpensesScreen() {
       {/* Conditionally render ScrollView only when there are expenses to show */}
       {filteredExpenses.length > 0 ? (
         <ScrollView style={themedStyles.content} contentContainerStyle={themedStyles.scrollContent}>
-          <View style={{ gap: 8 }}>
+          <View style={isPad ? { flexDirection: 'row', flexWrap: 'wrap', gap: 16 } : { gap: 8 }}>
             {filteredExpenses.map((expense) => {
               const person = expense.personId ? data.people.find((p) => p.id === expense.personId) : null;
               const monthlyAmount = calculateMonthlyAmount(expense.amount, expense.frequency);
@@ -663,11 +663,12 @@ export default function ExpensesScreen() {
                   style={[
                     themedStyles.card, 
                     { 
-                      padding: 16,
+                      padding: isPad ? 20 : 16,
                       opacity: isDeleting ? 0.6 : 1,
                       borderLeftWidth: 3,
                       borderLeftColor: isHousehold ? currentColors.household : currentColors.personal,
-                      marginBottom: 8,
+                      marginBottom: isPad ? 0 : 8,
+                      width: isPad ? 'calc(50% - 8px)' : '100%',
                       // Add subtle border for expired/expiring expenses
                       ...(expirationInfo?.isExpired && {
                         borderWidth: 1,

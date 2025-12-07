@@ -1,9 +1,21 @@
 
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Dimensions, Platform } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { useCurrency } from '../hooks/useCurrency';
 import { useThemedStyles } from '../hooks/useThemedStyles';
+
+// Helper function to detect iPad
+const isIPad = () => {
+  const { width, height } = Dimensions.get('window');
+  const aspectRatio = height / width;
+  
+  // iPad detection: larger screen + typical iPad aspect ratios
+  return Platform.OS === 'ios' && Math.min(width, height) >= 768 && (
+    (aspectRatio > 1.2 && aspectRatio < 1.4) || // Portrait iPad
+    (aspectRatio > 0.7 && aspectRatio < 0.85)   // Landscape iPad
+  );
+};
 import { 
   calculatePersonIncome, 
   calculatePersonalExpenses, 
@@ -31,6 +43,7 @@ export default function IndividualBreakdownsSection({
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
   const { themedStyles } = useThemedStyles();
+  const isPad = isIPad();
 
   // Helper function to convert amounts based on view mode
   const convertAmount = (amount: number): number => {
@@ -61,7 +74,7 @@ export default function IndividualBreakdownsSection({
   }
 
   return (
-    <View style={{ gap: 16 }}>
+    <View style={isPad ? { flexDirection: 'row', flexWrap: 'wrap', gap: 20 } : { gap: 16 }}>
       {people.map((person) => {
         const personIncome = calculatePersonIncome(person);
         const personPersonalExpenses = calculatePersonalExpenses(expenses, person.id);
@@ -99,6 +112,7 @@ export default function IndividualBreakdownsSection({
                 borderColor: currentColors.border,
                 borderWidth: 1,
                 marginBottom: 0,
+                width: isPad ? 'calc(50% - 10px)' : '100%',
               }
             ]}
           >

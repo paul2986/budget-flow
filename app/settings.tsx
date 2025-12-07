@@ -17,7 +17,7 @@ export default function SettingsScreen() {
   const { currentColors, themeMode, setThemeMode } = useTheme();
   const { currency, setCurrency } = useCurrency();
   const { appData, data, clearAllData, refreshData } = useBudgetData();
-  const { themedStyles } = useThemedStyles();
+  const { themedStyles, isPad } = useThemedStyles();
   const { showToast } = useToast();
   
   // Currency selection modal state
@@ -245,7 +245,7 @@ export default function SettingsScreen() {
 
       <ScrollView style={themedStyles.content} contentContainerStyle={[themedStyles.scrollContent, { paddingHorizontal: 0, paddingTop: 16 }]}>
         {/* App Info */}
-        <View style={[themedStyles.card, { marginBottom: 24 }]}>
+        <View style={[themedStyles.card, { marginBottom: 24, maxWidth: isPad ? 600 : undefined, alignSelf: isPad ? 'center' : undefined, width: '100%' }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
             <Icon name="wallet-outline" size={24} style={{ color: currentColors.primary, marginRight: 12 }} />
             <Text style={[themedStyles.subtitle, { flex: 1 }]}>Budget Flow</Text>
@@ -256,7 +256,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Budgets */}
-        <View style={[themedStyles.card, { marginBottom: 16 }]}>
+        <View style={[themedStyles.card, { marginBottom: 16, maxWidth: isPad ? 600 : undefined, alignSelf: isPad ? 'center' : undefined, width: '100%' }]}>
           <TouchableOpacity
             style={{
               flexDirection: 'row',
@@ -280,7 +280,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Categories */}
-        <View style={[themedStyles.card, { marginBottom: 16 }]}>
+        <View style={[themedStyles.card, { marginBottom: 16, maxWidth: isPad ? 600 : undefined, alignSelf: isPad ? 'center' : undefined, width: '100%' }]}>
           <TouchableOpacity
             style={{
               flexDirection: 'row',
@@ -304,7 +304,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Currency */}
-        <View style={[themedStyles.card, { marginBottom: 16 }]}>
+        <View style={[themedStyles.card, { marginBottom: 16, maxWidth: isPad ? 600 : undefined, alignSelf: isPad ? 'center' : undefined, width: '100%' }]}>
           <TouchableOpacity
             style={{
               flexDirection: 'row',
@@ -328,7 +328,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Theme */}
-        <View style={[themedStyles.card, { marginBottom: 16 }]}>
+        <View style={[themedStyles.card, { marginBottom: 16, maxWidth: isPad ? 600 : undefined, alignSelf: isPad ? 'center' : undefined, width: '100%' }]}>
           <Text style={[themedStyles.text, { fontWeight: '600', marginBottom: 12 }]}>Theme</Text>
           {[
             { key: 'system', label: 'System' },
@@ -356,7 +356,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Tools */}
-        <View style={[themedStyles.card, { marginBottom: 16 }]}>
+        <View style={[themedStyles.card, { marginBottom: 16, maxWidth: isPad ? 600 : undefined, alignSelf: isPad ? 'center' : undefined, width: '100%' }]}>
           <TouchableOpacity
             style={{
               flexDirection: 'row',
@@ -386,7 +386,10 @@ export default function SettingsScreen() {
             marginBottom: 24,
             borderColor: currentColors.error + '40',
             borderWidth: 2,
-            backgroundColor: currentColors.error + '08'
+            backgroundColor: currentColors.error + '08',
+            maxWidth: isPad ? 600 : undefined,
+            alignSelf: isPad ? 'center' : undefined,
+            width: '100%'
           }
         ]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
@@ -422,7 +425,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* App Info */}
-        <View style={[themedStyles.card, { backgroundColor: currentColors.backgroundAlt }]}>
+        <View style={[themedStyles.card, { backgroundColor: currentColors.backgroundAlt, maxWidth: isPad ? 600 : undefined, alignSelf: isPad ? 'center' : undefined, width: '100%' }]}>
           <Text style={[themedStyles.textSecondary, { fontSize: 12, textAlign: 'center', lineHeight: 18 }]}>
             Budget Flow v1.0.0{'\n'}
             Offline-first budget tracking{'\n'}

@@ -1,9 +1,21 @@
 
 import React from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Dimensions, Platform } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import Icon from './Icon';
+
+// Helper function to detect iPad
+const isIPad = () => {
+  const { width, height } = Dimensions.get('window');
+  const aspectRatio = height / width;
+  
+  // iPad detection: larger screen + typical iPad aspect ratios
+  return Platform.OS === 'ios' && Math.min(width, height) >= 768 && (
+    (aspectRatio > 1.2 && aspectRatio < 1.4) || // Portrait iPad
+    (aspectRatio > 0.7 && aspectRatio < 0.85)   // Landscape iPad
+  );
+};
 
 interface HeaderButton {
   icon: string;
@@ -47,8 +59,13 @@ export default function StandardHeader({
 }: StandardHeaderProps) {
   const { currentColors } = useTheme();
   const { themedStyles } = useThemedStyles();
+  const isPad = isIPad();
 
   // Standardized button styling
+  const buttonSize = isPad ? 52 : 44;
+  const buttonGap = isPad ? 12 : 8;
+  const iconSize = isPad ? 26 : 22;
+  
   const getButtonStyle = (type: 'left' | 'right', isActive?: boolean, customBg?: string) => {
     let backgroundColor = customBg;
     
@@ -61,9 +78,9 @@ export default function StandardHeader({
     }
 
     return {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: buttonSize,
+      height: buttonSize,
+      borderRadius: buttonSize / 2,
       backgroundColor,
       justifyContent: 'center' as const,
       alignItems: 'center' as const,
@@ -82,9 +99,9 @@ export default function StandardHeader({
   const leftButtonsCount = leftButtons?.length || (showLeftIcon && onLeftPress ? 1 : 0);
   const rightButtonsCount = rightButtons?.length || (showRightIcon && onRightPress ? 1 : 0);
   
-  // Each button is 44px wide with 8px margin between them
-  const leftButtonsWidth = leftButtonsCount > 0 ? (leftButtonsCount * 44) + ((leftButtonsCount - 1) * 8) : 44;
-  const rightButtonsWidth = rightButtonsCount > 0 ? (rightButtonsCount * 44) + ((rightButtonsCount - 1) * 8) : 44;
+  // Each button is buttonSize wide with buttonGap margin between them
+  const leftButtonsWidth = leftButtonsCount > 0 ? (leftButtonsCount * buttonSize) + ((leftButtonsCount - 1) * buttonGap) : buttonSize;
+  const rightButtonsWidth = rightButtonsCount > 0 ? (rightButtonsCount * buttonSize) + ((rightButtonsCount - 1) * buttonGap) : buttonSize;
   
   // Use the larger of the two widths to ensure symmetry
   const sideWidth = Math.max(leftButtonsWidth, rightButtonsWidth);
@@ -93,13 +110,13 @@ export default function StandardHeader({
     <View style={[
       themedStyles.header, 
       { 
-        height: subtitle ? 76 : 64, 
+        height: subtitle ? (isPad ? 88 : 76) : (isPad ? 72 : 64), 
         boxShadow: '0px 1px 2px rgba(0,0,0,0.10)',
         backgroundColor: backgroundColor || currentColors.backgroundAlt
       }
     ]}>
       {/* Left side - supports multiple left buttons */}
-      <View style={{ width: sideWidth, height: 44, justifyContent: 'center', alignItems: 'flex-start', flexDirection: 'row' }}>
+      <View style={{ width: sideWidth, height: buttonSize, justifyContent: 'center', alignItems: 'flex-start', flexDirection: 'row' }}>
         {leftButtons && leftButtons.length > 0 ? (
           leftButtons.map((btn, idx) => (
             <TouchableOpacity
@@ -108,7 +125,7 @@ export default function StandardHeader({
               disabled={loading}
               style={[
                 getButtonStyle('left', false, btn.backgroundColor),
-                { marginRight: idx < leftButtons.length - 1 ? 8 : 0 }
+                { marginRight: idx < leftButtons.length - 1 ? buttonGap : 0 }
               ]}
             >
               {loading ? (
@@ -116,7 +133,7 @@ export default function StandardHeader({
               ) : (
                 <Icon 
                   name={btn.icon as any} 
-                  size={22} 
+                  size={iconSize} 
                   style={{ color: getIconColor('left', btn.iconColor) }} 
                 />
               )}
@@ -130,7 +147,7 @@ export default function StandardHeader({
           >
             <Icon 
               name={leftIcon as any} 
-              size={24} 
+              size={iconSize} 
               style={{ color: getIconColor('left', leftIconColor) }} 
             />
           </TouchableOpacity>
@@ -139,18 +156,18 @@ export default function StandardHeader({
 
       {/* Center title + optional subtitle - now properly centered */}
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={[themedStyles.headerTitle, { textAlign: 'center', lineHeight: 22 }]}>
+        <Text style={[themedStyles.headerTitle, { textAlign: 'center', lineHeight: isPad ? 28 : 22 }]}>
           {title}
         </Text>
         {subtitle ? (
-          <Text style={[themedStyles.textSecondary, { marginTop: 2, fontSize: 12 }]}>
+          <Text style={[themedStyles.textSecondary, { marginTop: 2, fontSize: isPad ? 14 : 12 }]}>
             {subtitle}
           </Text>
         ) : null}
       </View>
 
       {/* Right side - supports multiple header buttons */}
-      <View style={{ width: sideWidth, height: 44, justifyContent: 'center', alignItems: 'flex-end', flexDirection: 'row' }}>
+      <View style={{ width: sideWidth, height: buttonSize, justifyContent: 'center', alignItems: 'flex-end', flexDirection: 'row' }}>
         {rightButtons && rightButtons.length > 0 ? (
           rightButtons.map((btn, idx) => (
             <TouchableOpacity
@@ -159,7 +176,7 @@ export default function StandardHeader({
               disabled={loading}
               style={[
                 getButtonStyle('right', false, btn.backgroundColor),
-                { marginLeft: idx > 0 ? 8 : 0 }
+                { marginLeft: idx > 0 ? buttonGap : 0 }
               ]}
             >
               {loading ? (
@@ -167,7 +184,7 @@ export default function StandardHeader({
               ) : (
                 <Icon 
                   name={btn.icon as any} 
-                  size={22} 
+                  size={iconSize} 
                   style={{ color: getIconColor('right', btn.iconColor) }} 
                 />
               )}
@@ -184,7 +201,7 @@ export default function StandardHeader({
             ) : (
               <Icon
                 name={rightIcon as any}
-                size={24}
+                size={iconSize}
                 style={{ color: getIconColor('right', rightIconColor) }}
               />
             )}

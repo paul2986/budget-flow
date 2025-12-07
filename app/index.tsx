@@ -32,7 +32,7 @@ export default function HomeScreen() {
   // All hooks must be called at the top, before any conditional logic
   const { currentColors } = useTheme();
   const { formatCurrency } = useCurrency();
-  const { themedStyles } = useThemedStyles();
+  const { themedStyles, isPad } = useThemedStyles();
   const { showToast } = useToast();
   const { data, loading, activeBudget, appData, refreshTrigger, refreshData, addBudget } = useBudgetData();
   const { isLocked, authenticateForBudget } = useBudgetLock();
@@ -979,106 +979,213 @@ export default function HomeScreen() {
       >
         {calculations && (
           <>
-            {/* 1. Overview Section */}
-            <View style={{ marginBottom: 24 }}>
-              <View style={{ 
-                flexDirection: 'row', 
-                alignItems: 'center', 
-                marginBottom: 16,
-                minHeight: 32,
-              }}>
-                <Icon 
-                  name="analytics-outline" 
-                  size={24} 
-                  style={{ 
-                    color: currentColors.primary, 
-                    marginRight: 12,
-                    marginTop: -2,
-                  }} 
-                />
-                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0, flex: 1 }]}>
-                  Overview
-                </Text>
-                <TouchableOpacity
-                  onPress={() => showInfoModal(
-                    'Overview',
-                    'This section provides a high-level summary of your budget. You can switch between daily, monthly, and yearly views to see your total income, total expenses, and remaining balance. The breakdown shows how your expenses are split between household and personal categories.'
-                  )}
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: currentColors.info + '20',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Icon name="information-circle-outline" size={20} style={{ color: currentColors.info }} />
-                </TouchableOpacity>
-              </View>
-              <View style={[
-                themedStyles.card,
-                {
-                  marginBottom: 0,
-                }
-              ]}>
-                <OverviewSection 
-                  calculations={calculations}
-                  people={people}
-                  expenses={expenses}
-                  householdSettings={data.householdSettings}
-                  onViewModeChange={handleViewModeChange}
-                />
-              </View>
-            </View>
+            {/* iPad: Two-column layout for Overview and Individual Breakdowns */}
+            {isPad ? (
+              <View style={{ flexDirection: 'row', gap: 24, marginBottom: 24 }}>
+                {/* Left Column: Overview */}
+                <View style={{ flex: 1 }}>
+                  <View style={{ 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    marginBottom: 16,
+                    minHeight: 32,
+                  }}>
+                    <Icon 
+                      name="analytics-outline" 
+                      size={28} 
+                      style={{ 
+                        color: currentColors.primary, 
+                        marginRight: 12,
+                        marginTop: -2,
+                      }} 
+                    />
+                    <Text style={[themedStyles.subtitle, { fontSize: 26, fontWeight: '700', marginBottom: 0, flex: 1 }]}>
+                      Overview
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => showInfoModal(
+                        'Overview',
+                        'This section provides a high-level summary of your budget. You can switch between daily, monthly, and yearly views to see your total income, total expenses, and remaining balance. The breakdown shows how your expenses are split between household and personal categories.'
+                      )}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        backgroundColor: currentColors.info + '20',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Icon name="information-circle-outline" size={22} style={{ color: currentColors.info }} />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={[
+                    themedStyles.card,
+                    {
+                      marginBottom: 0,
+                    }
+                  ]}>
+                    <OverviewSection 
+                      calculations={calculations}
+                      people={people}
+                      expenses={expenses}
+                      householdSettings={data.householdSettings}
+                      onViewModeChange={handleViewModeChange}
+                    />
+                  </View>
+                </View>
 
-            {/* 2. Individual Breakdowns Section */}
-            <View style={{ marginBottom: 24 }}>
-              <View style={{ 
-                flexDirection: 'row', 
-                alignItems: 'center', 
-                marginBottom: 16,
-                minHeight: 32,
-              }}>
-                <Icon 
-                  name="people-outline" 
-                  size={24} 
-                  style={{ 
-                    color: currentColors.primary, 
-                    marginRight: 12,
-                    marginTop: -2,
-                  }} 
-                />
-                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0, flex: 1 }]}>
-                  Individual Breakdowns
-                </Text>
-                <TouchableOpacity
-                  onPress={() => showInfoModal(
-                    'Individual Breakdowns',
-                    'This section shows a detailed breakdown for each person in your budget. It displays their total income, personal expenses, household share, and remaining balance. The progress bar visualizes how their income is allocated across different expense categories.'
-                  )}
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: currentColors.info + '20',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Icon name="information-circle-outline" size={20} style={{ color: currentColors.info }} />
-                </TouchableOpacity>
+                {/* Right Column: Individual Breakdowns */}
+                <View style={{ flex: 1 }}>
+                  <View style={{ 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    marginBottom: 16,
+                    minHeight: 32,
+                  }}>
+                    <Icon 
+                      name="people-outline" 
+                      size={28} 
+                      style={{ 
+                        color: currentColors.primary, 
+                        marginRight: 12,
+                        marginTop: -2,
+                      }} 
+                    />
+                    <Text style={[themedStyles.subtitle, { fontSize: 26, fontWeight: '700', marginBottom: 0, flex: 1 }]}>
+                      Individual Breakdowns
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => showInfoModal(
+                        'Individual Breakdowns',
+                        'This section shows a detailed breakdown for each person in your budget. It displays their total income, personal expenses, household share, and remaining balance. The progress bar visualizes how their income is allocated across different expense categories.'
+                      )}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        backgroundColor: currentColors.info + '20',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Icon name="information-circle-outline" size={22} style={{ color: currentColors.info }} />
+                    </TouchableOpacity>
+                  </View>
+                  <IndividualBreakdownsSection 
+                    people={people}
+                    expenses={expenses}
+                    householdSettings={data.householdSettings}
+                    totalHouseholdExpenses={calculations.householdExpenses}
+                    viewMode={globalViewMode}
+                  />
+                </View>
               </View>
-              <IndividualBreakdownsSection 
-                people={people}
-                expenses={expenses}
-                householdSettings={data.householdSettings}
-                totalHouseholdExpenses={calculations.householdExpenses}
-                viewMode={globalViewMode}
-              />
-            </View>
+            ) : (
+              <>
+                {/* iPhone: Single column layout */}
+                {/* 1. Overview Section */}
+                <View style={{ marginBottom: 24 }}>
+                  <View style={{ 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    marginBottom: 16,
+                    minHeight: 32,
+                  }}>
+                    <Icon 
+                      name="analytics-outline" 
+                      size={24} 
+                      style={{ 
+                        color: currentColors.primary, 
+                        marginRight: 12,
+                        marginTop: -2,
+                      }} 
+                    />
+                    <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0, flex: 1 }]}>
+                      Overview
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => showInfoModal(
+                        'Overview',
+                        'This section provides a high-level summary of your budget. You can switch between daily, monthly, and yearly views to see your total income, total expenses, and remaining balance. The breakdown shows how your expenses are split between household and personal categories.'
+                      )}
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        backgroundColor: currentColors.info + '20',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Icon name="information-circle-outline" size={20} style={{ color: currentColors.info }} />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={[
+                    themedStyles.card,
+                    {
+                      marginBottom: 0,
+                    }
+                  ]}>
+                    <OverviewSection 
+                      calculations={calculations}
+                      people={people}
+                      expenses={expenses}
+                      householdSettings={data.householdSettings}
+                      onViewModeChange={handleViewModeChange}
+                    />
+                  </View>
+                </View>
 
-            {/* 3. Expense Breakdown Section */}
+                {/* 2. Individual Breakdowns Section */}
+                <View style={{ marginBottom: 24 }}>
+                  <View style={{ 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    marginBottom: 16,
+                    minHeight: 32,
+                  }}>
+                    <Icon 
+                      name="people-outline" 
+                      size={24} 
+                      style={{ 
+                        color: currentColors.primary, 
+                        marginRight: 12,
+                        marginTop: -2,
+                      }} 
+                    />
+                    <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0, flex: 1 }]}>
+                      Individual Breakdowns
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => showInfoModal(
+                        'Individual Breakdowns',
+                        'This section shows a detailed breakdown for each person in your budget. It displays their total income, personal expenses, household share, and remaining balance. The progress bar visualizes how their income is allocated across different expense categories.'
+                      )}
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        backgroundColor: currentColors.info + '20',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Icon name="information-circle-outline" size={20} style={{ color: currentColors.info }} />
+                    </TouchableOpacity>
+                  </View>
+                  <IndividualBreakdownsSection 
+                    people={people}
+                    expenses={expenses}
+                    householdSettings={data.householdSettings}
+                    totalHouseholdExpenses={calculations.householdExpenses}
+                    viewMode={globalViewMode}
+                  />
+                </View>
+              </>
+            )}
+
+            {/* 3. Expense Breakdown Section - Full width on both */}
             <View style={{ marginBottom: 24 }}>
               <View style={{ 
                 flexDirection: 'row', 
@@ -1088,14 +1195,14 @@ export default function HomeScreen() {
               }}>
                 <Icon 
                   name="pie-chart-outline" 
-                  size={24} 
+                  size={isPad ? 28 : 24} 
                   style={{ 
                     color: currentColors.primary, 
                     marginRight: 12,
                     marginTop: -2,
                   }} 
                 />
-                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0, flex: 1 }]}>
+                <Text style={[themedStyles.subtitle, { fontSize: isPad ? 26 : 22, fontWeight: '700', marginBottom: 0, flex: 1 }]}>
                   Expense Breakdown
                 </Text>
                 <TouchableOpacity
@@ -1104,15 +1211,15 @@ export default function HomeScreen() {
                     'This section categorizes all your expenses into household and personal types. Each category shows the total amount, number of expenses, and percentage of your overall spending. Tap on any category to view the detailed list of expenses within that category.'
                   )}
                   style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
+                    width: isPad ? 36 : 32,
+                    height: isPad ? 36 : 32,
+                    borderRadius: isPad ? 18 : 16,
                     backgroundColor: currentColors.info + '20',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Icon name="information-circle-outline" size={20} style={{ color: currentColors.info }} />
+                  <Icon name="information-circle-outline" size={isPad ? 22 : 20} style={{ color: currentColors.info }} />
                 </TouchableOpacity>
               </View>
               <ExpenseBreakdownSection 
@@ -1123,7 +1230,7 @@ export default function HomeScreen() {
               />
             </View>
 
-            {/* 4. Ending/Expiring Section */}
+            {/* 4. Ending/Expiring Section - Full width on both */}
             <View style={{ marginBottom: 100 }}>
               <View style={{ 
                 flexDirection: 'row', 
@@ -1133,14 +1240,14 @@ export default function HomeScreen() {
               }}>
                 <Icon 
                   name="time-outline" 
-                  size={24} 
+                  size={isPad ? 28 : 24} 
                   style={{ 
                     color: currentColors.primary, 
                     marginRight: 12,
                     marginTop: -2,
                   }} 
                 />
-                <Text style={[themedStyles.subtitle, { fontSize: 22, fontWeight: '700', marginBottom: 0, flex: 1 }]}>
+                <Text style={[themedStyles.subtitle, { fontSize: isPad ? 26 : 22, fontWeight: '700', marginBottom: 0, flex: 1 }]}>
                   Ending & Expired
                 </Text>
                 <TouchableOpacity
@@ -1149,15 +1256,15 @@ export default function HomeScreen() {
                     'This section helps you track expenses that have end dates. The "Expiring Soon" tab shows expenses ending within the next 30 days, while the "Ended" tab displays expenses that have already expired. You can extend the end date of expiring expenses by tapping the "Extend" button.'
                   )}
                   style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
+                    width: isPad ? 36 : 32,
+                    height: isPad ? 36 : 32,
+                    borderRadius: isPad ? 18 : 16,
                     backgroundColor: currentColors.info + '20',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Icon name="information-circle-outline" size={20} style={{ color: currentColors.info }} />
+                  <Icon name="information-circle-outline" size={isPad ? 22 : 20} style={{ color: currentColors.info }} />
                 </TouchableOpacity>
               </View>
               <View style={[

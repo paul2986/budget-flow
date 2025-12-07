@@ -22,7 +22,7 @@ import IncomeModal from '../components/IncomeModal';
 export default function PeopleScreen() {
   const { data, addPerson, removePerson, addIncome, removeIncome, saving, refreshData, loading } = useBudgetData();
   const { currentColors } = useTheme();
-  const { themedStyles, themedButtonStyles } = useThemedStyles();
+  const { themedStyles, themedButtonStyles, isPad } = useThemedStyles();
   const { formatCurrency } = useCurrency();
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [newPersonName, setNewPersonName] = useState('');
@@ -337,7 +337,8 @@ export default function PeopleScreen() {
 
         {/* People List - Only show when data is loaded */}
         {isDataLoaded && data.people.length > 0 && (
-          data.people.map((person) => {
+          <View style={isPad ? { flexDirection: 'row', flexWrap: 'wrap', gap: 16 } : {}}>
+          {data.people.map((person) => {
             const totalIncome = calculatePersonIncome(person);
             const monthlyIncome = calculateMonthlyAmount(totalIncome, 'yearly');
             const remainingIncome = calculateRemainingIncome(person);
@@ -351,6 +352,7 @@ export default function PeopleScreen() {
                   themedStyles.card, 
                   { 
                     opacity: isDeleting ? 0.6 : 1,
+                    width: isPad ? 'calc(50% - 8px)' : '100%',
                   }
                 ]}
                 onPress={() => handleEditPerson(person)}
@@ -485,7 +487,8 @@ export default function PeopleScreen() {
                 </View>
               </TouchableOpacity>
             );
-          })
+          })}
+          </View>
         )}
       </ScrollView>
 

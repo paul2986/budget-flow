@@ -1,10 +1,23 @@
 
 import { useMemo } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Dimensions, Platform } from 'react-native';
 import { useTheme } from './useTheme';
+
+// Helper function to detect iPad
+const isIPad = () => {
+  const { width, height } = Dimensions.get('window');
+  const aspectRatio = height / width;
+  
+  // iPad detection: larger screen + typical iPad aspect ratios
+  return Platform.OS === 'ios' && Math.min(width, height) >= 768 && (
+    (aspectRatio > 1.2 && aspectRatio < 1.4) || // Portrait iPad
+    (aspectRatio > 0.7 && aspectRatio < 0.85)   // Landscape iPad
+  );
+};
 
 export const useThemedStyles = () => {
   const { currentColors } = useTheme();
+  const isPad = isIPad();
 
   const themedStyles = useMemo(() => StyleSheet.create({
     wrapper: {
@@ -21,48 +34,52 @@ export const useThemedStyles = () => {
     },
     content: {
       flex: 1,
-      padding: 16,
+      padding: isPad ? 32 : 16,
       paddingBottom: 0, // Remove bottom padding from content, handled by scrollContent
+      maxWidth: isPad ? 1200 : undefined,
+      alignSelf: isPad ? 'center' : undefined,
+      width: '100%',
     },
     scrollContent: {
       paddingBottom: 140, // Increased padding to ensure content is visible above nav bar
       minHeight: '100%', // Ensure content takes full height to prevent clipping
+      paddingHorizontal: isPad ? 32 : 0,
     },
     title: {
-      fontSize: 28,
+      fontSize: isPad ? 36 : 28,
       fontWeight: '800',
       textAlign: 'center',
       color: currentColors.text,
-      marginBottom: 20,
+      marginBottom: isPad ? 28 : 20,
       letterSpacing: -0.5,
     },
     subtitle: {
-      fontSize: 20,
+      fontSize: isPad ? 24 : 20,
       fontWeight: '700',
       color: currentColors.text,
-      marginBottom: 16,
+      marginBottom: isPad ? 20 : 16,
       letterSpacing: -0.3,
     },
     text: {
-      fontSize: 16,
+      fontSize: isPad ? 18 : 16,
       fontWeight: '400',
       color: currentColors.text,
-      lineHeight: 24,
+      lineHeight: isPad ? 28 : 24,
     },
     textSecondary: {
-      fontSize: 14,
+      fontSize: isPad ? 16 : 14,
       fontWeight: '400',
       color: currentColors.textSecondary,
-      lineHeight: 20,
+      lineHeight: isPad ? 24 : 20,
     },
     section: {
       marginBottom: 24,
     },
     card: {
       backgroundColor: currentColors.backgroundAlt,
-      borderRadius: 16,
-      padding: 15, // Changed from 10 to 15
-      marginBottom: 16,
+      borderRadius: isPad ? 20 : 16,
+      padding: isPad ? 24 : 15,
+      marginBottom: isPad ? 20 : 16,
       boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
       elevation: 4,
       borderWidth: 1,
@@ -110,8 +127,8 @@ export const useThemedStyles = () => {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 20,
-      paddingVertical: 16,
+      paddingHorizontal: isPad ? 32 : 20,
+      paddingVertical: isPad ? 20 : 16,
       backgroundColor: currentColors.backgroundAlt,
       borderBottomWidth: 1,
       borderBottomColor: currentColors.border,
@@ -122,7 +139,7 @@ export const useThemedStyles = () => {
       shadowRadius: 2,
     },
     headerTitle: {
-      fontSize: 20,
+      fontSize: isPad ? 24 : 20,
       fontWeight: '700',
       color: currentColors.text,
       letterSpacing: -0.3,
@@ -271,5 +288,6 @@ export const useThemedStyles = () => {
   return {
     themedStyles,
     themedButtonStyles,
+    isPad, // Export isPad flag for components to use
   };
 };
